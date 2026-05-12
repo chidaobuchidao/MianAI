@@ -7,10 +7,9 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: 2219909857
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ai-interview
       MYSQL_CHARSET: utf8mb4
-
       MYSQL_COLLATION: utf8mb4_bin
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:

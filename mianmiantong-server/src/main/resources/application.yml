@@ -7,8 +7,8 @@ spring:
 
   datasource:
     url: jdbc:mysql://localhost:3306/ai-interview?characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 2219909857
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
@@ -34,7 +34,7 @@ mybatis-plus:
 
 # JWT
 jwt:
-  secret: mianmiantong-jwt-secret-key-2024-please-change-in-production
+  secret: ${JWT_SECRET:}
   expiration: 604800000  # 7 days in ms
 
 # AI Provider: qwen or deepseek
@@ -45,7 +45,7 @@ ai:
     model: qwen-turbo
     endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
   deepseek:
-    api-key: sk-72952d2f8af74b928bb92b569ceac892
+    api-key: ${DEEPSEEK_API_KEY:}
     model: deepseek-v4-flash
     endpoint: https://api.deepseek.com/chat/completions
 
