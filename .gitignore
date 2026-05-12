@@ -35,3 +35,4 @@ logs/
 # Temp
 *.tmp
 *.temp
+application-local.yml
