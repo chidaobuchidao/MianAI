@@ -1,0 +1,36 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Maven
+target/
+*.jar
+!src/
+
+# Node
+node_modules/
+dist/
+
+# uni-app
+unpackage/
+*.map
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temp
+*.tmp
+*.temp
