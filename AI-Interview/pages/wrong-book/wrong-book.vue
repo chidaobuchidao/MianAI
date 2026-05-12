@@ -1,17 +1,22 @@
 <template>
-  <view class="wrong-book">
+  <DeepStatusBar />
+    <view class="wrong-book">
+    <DeepStatusBar />
     <view class="head-bar">
       <text class="h-title">错题本</text>
       <text class="h-count" v-if="questions.length">积累 {{ questions.length }} 题</text>
     </view>
 
     <view v-if="questions.length" class="list">
-      <view class="item" v-for="q in questions" :key="q.id">
-        <view class="item-body">
+      <DeepStatusBar />
+    <view class="item" v-for="q in questions" :key="q.id">
+        <DeepStatusBar />
+    <view class="item-body">
           <text class="item-title">{{ q.title }}</text>
           <text class="item-ans">正确答案：{{ q.answer }}</text>
         </view>
-        <view class="item-fn" @click="removeWrong(q.id)">
+        <DeepStatusBar />
+    <view class="item-fn" @click="removeWrong(q.id)">
           <text>已掌握</text>
         </view>
       </view>

@@ -20,5 +20,6 @@ public class Resume {
     private String parsedText;
     private Integer parseStatus;
     private String docTaskId;
+    private byte[] fileData;
     private LocalDateTime createTime;
 }

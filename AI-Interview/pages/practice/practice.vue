@@ -1,31 +1,45 @@
 <template>
-  <view class="practice">
+  <DeepStatusBar />
+    <view class="practice">
     <!-- 开始屏 -->
+    <DeepStatusBar />
     <view class="start-screen" v-if="!started && !finished">
-      <view class="start-card">
+      <DeepStatusBar />
+    <view class="start-card">
         <text class="start-icon">🎯</text>
         <text class="start-title">自由刷题</text>
         <text class="start-desc">随机抽取 10 道题目</text>
-        <view class="start-stats">
-          <view class="stat"><text class="stat-num">10</text><text class="stat-lbl">题量</text></view>
-          <view class="stat-divider" />
-          <view class="stat"><text class="stat-num">不限</text><text class="stat-lbl">时间</text></view>
-          <view class="stat-divider" />
-          <view class="stat"><text class="stat-num">即时</text><text class="stat-lbl">判分</text></view>
+        <DeepStatusBar />
+    <view class="start-stats">
+          <DeepStatusBar />
+    <view class="stat"><text class="stat-num">10</text><text class="stat-lbl">题量</text></view>
+          <DeepStatusBar />
+    <view class="stat-divider" />
+          <DeepStatusBar />
+    <view class="stat"><text class="stat-num">不限</text><text class="stat-lbl">时间</text></view>
+          <DeepStatusBar />
+    <view class="stat-divider" />
+          <DeepStatusBar />
+    <view class="stat"><text class="stat-num">即时</text><text class="stat-lbl">判分</text></view>
         </view>
         <button class="btn-start" @click="startPractice">开始刷题</button>
       </view>
     </view>
 
     <!-- 答题屏 -->
+    <DeepStatusBar />
     <view class="quiz-screen" v-if="started && !finished && currentQuestion">
       <!-- 进度条 -->
-      <view class="progress-bar">
-        <view class="progress-fill" :style="{ width: ((currentIndex + 1) / questions.length * 100) + '%' }" />
+      <DeepStatusBar />
+    <view class="progress-bar">
+        <DeepStatusBar />
+    <view class="progress-fill" :style="{ width: ((currentIndex + 1) / questions.length * 100) + '%' }" />
       </view>
 
-      <view class="quiz-card">
-        <view class="quiz-meta">
+      <DeepStatusBar />
+    <view class="quiz-card">
+        <DeepStatusBar />
+    <view class="quiz-meta">
           <text class="quiz-index">第 {{ currentIndex + 1 }} 题</text>
           <text class="quiz-type">{{ getTypeLabel(currentQuestion.type) }}</text>
         </view>
@@ -45,7 +59,8 @@
             }"
             @click="selectOption(opt.label)"
           >
-            <view class="opt-letter" :class="{ active: selectedAnswer === opt.label }">{{ opt.label }}</view>
+            <DeepStatusBar />
+    <view class="opt-letter" :class="{ active: selectedAnswer === opt.label }">{{ opt.label }}</view>
             <text class="opt-text">{{ opt.content }}</text>
             <text v-if="answered && opt.label === currentQuestion.answer" class="opt-mark">✓</text>
           </view>
@@ -63,7 +78,8 @@
             }"
             @click="selectOption(v)"
           >
-            <view class="opt-letter" :class="{ active: selectedAnswer === v }">{{ v === '正确' ? '✓' : '✗' }}</view>
+            <DeepStatusBar />
+    <view class="opt-letter" :class="{ active: selectedAnswer === v }">{{ v === '正确' ? '✓' : '✗' }}</view>
             <text class="opt-text">{{ v }}</text>
           </view>
         </view>
@@ -74,7 +90,8 @@
         <!-- 判分结果 -->
         <view v-if="answered" class="quiz-result" :class="lastResult?.isCorrect ? 'is-correct' : 'is-wrong'">
           <text class="result-icon">{{ lastResult?.isCorrect ? '✓' : '✗' }}</text>
-          <view class="result-body">
+          <DeepStatusBar />
+    <view class="result-body">
             <text class="result-verdict">{{ lastResult?.isCorrect ? '回答正确' : '回答错误' }}</text>
             <text class="result-answer">正确答案：{{ lastResult?.correctAnswer }}</text>
             <text class="result-analysis" v-if="lastResult?.analysis">{{ lastResult?.analysis }}</text>
@@ -83,7 +100,8 @@
       </view>
 
       <!-- 按钮 -->
-      <view class="quiz-actions" v-if="answered">
+      <DeepStatusBar />
+    <view class="quiz-actions" v-if="answered">
         <button v-if="currentIndex < questions.length - 1" class="btn-next" @click="nextQuestion">下一题</button>
         <button v-else class="btn-finish" @click="finish">查看结果</button>
       </view>
@@ -91,8 +109,10 @@
     </view>
 
     <!-- 完成屏 -->
+    <DeepStatusBar />
     <view class="finish-screen" v-if="finished">
-      <view class="finish-circle" :class="correctCount >= 6 ? 'good' : 'retry'">
+      <DeepStatusBar />
+    <view class="finish-circle" :class="correctCount >= 6 ? 'good' : 'retry'">
         <text class="finish-score">{{ correctCount }}/{{ questions.length }}</text>
       </view>
       <text class="finish-msg">{{ correctCount >= 8 ? '太棒了！' : correctCount >= 6 ? '继续加油！' : '多多练习！' }}</text>

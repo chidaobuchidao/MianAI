@@ -1,5 +1,6 @@
 <template>
   <view class="home">
+    <DeepStatusBar />
     <!-- Hero -->
     <view class="hero">
       <view class="hero-glow" />

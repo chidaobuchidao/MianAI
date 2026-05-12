@@ -37,9 +37,13 @@ public class DeepSeekAiService implements AiService {
                              @Value("${ai.deepseek.endpoint}") String endpoint) {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
-        this.apiKey = apiKey;
+        // Spring @Value 可能因占位符解析失败返回空，兜底读系统属性
+        this.apiKey = !apiKey.isBlank() ? apiKey : System.getProperty("DEEPSEEK_API_KEY", apiKey);
         this.model = model;
         this.endpoint = endpoint;
+        log.info("DeepSeek config - endpoint: {}, model: {}, apiKey(len={}, prefix={})",
+                endpoint, model, this.apiKey.length(),
+                this.apiKey.isEmpty() ? "<EMPTY>" : this.apiKey.substring(0, Math.min(7, this.apiKey.length())));
     }
 
     @Override

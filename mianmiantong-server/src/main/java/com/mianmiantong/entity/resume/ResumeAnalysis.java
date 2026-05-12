@@ -19,5 +19,6 @@ public class ResumeAnalysis {
     private String highlights;
     private String interviewQuestions;
     private String suggestion;
+    private Integer deepStatus; // 0待优化 1进行中 2已完成 -1失败
     private LocalDateTime createTime;
 }

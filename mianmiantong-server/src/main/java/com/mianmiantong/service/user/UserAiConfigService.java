@@ -19,6 +19,12 @@ public class UserAiConfigService {
     }
 
     public void save(Long userId, String provider, String apiKey) {
+        // apiKey为空时删除记录，回退使用系统默认Key
+        if (apiKey == null || apiKey.isBlank()) {
+            mapper.deleteById(userId);
+            return;
+        }
+
         UserAiConfig existing = mapper.selectById(userId);
         LocalDateTime now = LocalDateTime.now();
         if (existing != null) {

@@ -13,9 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -34,7 +36,7 @@ public class ResumeService {
     }
 
     /**
-     * 上传简历 — 保存记录并提交解析任务
+     * 上传简历 — 保存记录后立即返回，文档解析异步执行
      */
     @Transactional
     public Map<String, Object> upload(MultipartFile file, String jobDescription, String position) {
@@ -51,24 +53,51 @@ public class ResumeService {
         resume.setJobDescription(jobDescription);
         resume.setPosition(position);
         resume.setParseStatus(0);
+        // 保存原始文件，用于后续模板保留导出
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+            resume.setFileData(fileBytes);
+        } catch (Exception e) {
+            log.error("读取文件失败: fileName={}", fileName, e);
+            resume.setParseStatus(-1);
+            resumeMapper.insert(resume);
+            Map<String, Object> result = new HashMap<>();
+            result.put("resumeId", resume.getId());
+            result.put("parseStatus", resume.getParseStatus());
+            result.put("fileName", resume.getFileName());
+            return result;
+        }
         resumeMapper.insert(resume);
 
-        try {
-            String taskId = documentAiService.submitParse(file.getInputStream(), fileName);
-            resume.setDocTaskId(taskId);
-            resumeMapper.updateById(resume);
-        } catch (Exception e) {
-            resume.setParseStatus(-1);
-            resumeMapper.updateById(resume);
-            throw new RuntimeException("文档解析提交失败", e);
-        }
+        // 异步提交文档解析，不阻塞上传响应
+        final Long resumeId = resume.getId();
+        CompletableFuture.runAsync(() -> {
+            try {
+                String taskId = documentAiService.submitParse(
+                        new ByteArrayInputStream(fileBytes), fileName);
+                Resume r = resumeMapper.selectById(resumeId);
+                if (r != null) {
+                    r.setDocTaskId(taskId);
+                    resumeMapper.updateById(r);
+                }
+                log.info("简历解析任务提交成功: resumeId={}, taskId={}", resumeId, taskId);
+            } catch (Exception e) {
+                log.error("文档解析提交失败: resumeId={}, fileName={}", resumeId, fileName, e);
+                Resume r = resumeMapper.selectById(resumeId);
+                if (r != null) {
+                    r.setParseStatus(-1);
+                    resumeMapper.updateById(r);
+                }
+            }
+        });
 
-        log.info("简历上传成功: resumeId={}, fileName={}", resume.getId(), fileName);
+        log.info("简历上传完成: resumeId={}, parseStatus=0(异步解析中), fileName={}",
+                resume.getId(), fileName);
 
         Map<String, Object> result = new HashMap<>();
         result.put("resumeId", resume.getId());
-        result.put("taskId", resume.getDocTaskId());
-        result.put("parseStatus", resume.getParseStatus());
+        result.put("parseStatus", 0);
         result.put("fileName", resume.getFileName());
         return result;
     }
@@ -126,6 +155,7 @@ public class ResumeService {
                 .eq(Resume::getUserId, userId)
                 .orderByDesc(Resume::getCreateTime)
                 .last("LIMIT 20")
+                .select(info -> !"fileData".equals(info.getColumn()))
         );
     }
 

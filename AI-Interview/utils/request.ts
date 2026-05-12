@@ -1,7 +1,7 @@
 // uni.request 封装 + JWT 拦截器
 // 开发模式下后端不可用时静默返回空数据，不阻塞 UI 展示
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'http://192.168.137.134:8080';
 const TOKEN_KEY = 'mianmiantong_token';
 export function getToken(): string {
   return uni.getStorageSync(TOKEN_KEY) || '';
@@ -139,6 +139,7 @@ export function streamRequest(
     method: 'POST',
     data: filtered,
     header: headers,
+    timeout: 180000,
     enableChunked: true,
     success: (res) => {
       if (!receivedChunks) {

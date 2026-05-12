@@ -1,5 +1,10 @@
 <template>
   <view class="upload-page">
+    <DeepStatusBar />
+    <!-- 继续优化提示 -->
+    <view class="resume-bar" v-if="activeResume" @click="goReport">
+      <text class="rb-text">📋 您有简历正在优化中，点击继续查看</text>
+    </view>
     <!-- 标题区 -->
     <view class="header">
       <text class="h-title">简历优化</text>
@@ -56,6 +61,21 @@ import { get } from '@/utils/request';
 interface FileInfo { name: string; size: number; path: string; }
 
 const fileInfo = ref<FileInfo | null>(null);
+const activeResume = ref<any>(null);
+
+function checkActive() {
+  try {
+    const raw = uni.getStorageSync('deep_optimizing');
+    if (raw) activeResume.value = JSON.parse(raw);
+  } catch { activeResume.value = null; }
+}
+checkActive();
+
+function goReport() {
+  if (activeResume.value) {
+    uni.navigateTo({ url: `/pages/resume/report?resumeId=${activeResume.value.resumeId}` });
+  }
+}
 const jobDescription = ref('');
 const position = ref('');
 const uploading = ref(false);
@@ -96,7 +116,7 @@ async function doUpload() {
     const token = uni.getStorageSync('mianmiantong_token') || '';
 
     const res = await uni.uploadFile({
-      url: 'http://localhost:8080/api/resume/upload',
+      url: 'http://192.168.137.134:8080/api/resume/upload',
       filePath: fileInfo.value!.path,
       name: 'file',
       formData: {
@@ -165,6 +185,8 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
 
 <style lang="scss" scoped>
 .upload-page { min-height: 100vh; background: #f0f4ff; padding: 30rpx; }
+.resume-bar { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 16rpx 24rpx; border-radius: 16rpx; margin-bottom: 20rpx; }
+.rb-text { color: #fff; font-size: 24rpx; display: block; }
 .header { text-align: center; padding: 40rpx 0; }
 .h-title { font-size: 40rpx; font-weight: 800; color: #0f172a; display: block; }
 .h-desc { font-size: 26rpx; color: #94a3b8; margin-top: 10rpx; display: block; }

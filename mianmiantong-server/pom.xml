@@ -68,6 +68,13 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- dotenv -->
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -128,6 +135,13 @@
             <groupId>com.aliyun</groupId>
             <artifactId>credentials-java</artifactId>
             <version>0.3.5</version>
+        </dependency>
+
+        <!-- Apache POI - Word文档生成 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
         </dependency>
 
         <!-- Test -->

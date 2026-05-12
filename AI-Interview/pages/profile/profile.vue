@@ -1,8 +1,11 @@
 <template>
-  <view class="profile">
+  <DeepStatusBar />
+    <view class="profile">
     <!-- 头部 -->
+    <DeepStatusBar />
     <view class="head">
-      <view class="avatar" v-if="!userStore.avatarUrl">
+      <DeepStatusBar />
+    <view class="avatar" v-if="!userStore.avatarUrl">
         <text class="avatar-txt">{{ (userStore.nickname || '?')[0] }}</text>
       </view>
       <image class="avatar" v-else :src="userStore.avatarUrl" mode="aspectFill" />
@@ -11,39 +14,50 @@
     </view>
 
     <!-- 数据卡片 -->
+    <DeepStatusBar />
     <view class="data-row">
-      <view class="data-card">
+      <DeepStatusBar />
+    <view class="data-card">
         <text class="data-num">{{ stats.practiceCount }}</text>
         <text class="data-lbl">刷题数</text>
       </view>
-      <view class="data-card">
+      <DeepStatusBar />
+    <view class="data-card">
         <text class="data-num">{{ stats.interviewCount }}</text>
         <text class="data-lbl">面试次数</text>
       </view>
-      <view class="data-card">
+      <DeepStatusBar />
+    <view class="data-card">
         <text class="data-num">{{ stats.wrongCount }}</text>
         <text class="data-lbl">错题积累</text>
       </view>
     </view>
 
     <!-- 菜单 -->
+    <DeepStatusBar />
     <view class="menu">
-      <view class="menu-item" @click="goInterviewHistory">
-        <view class="mi-left">
+      <DeepStatusBar />
+    <view class="menu-item" @click="goInterviewHistory">
+        <DeepStatusBar />
+    <view class="mi-left">
           <text class="mi-icon">📋</text>
           <text class="mi-text">面试历史</text>
         </view>
         <text class="mi-arrow">›</text>
       </view>
-      <view class="menu-item" @click="goExam">
-        <view class="mi-left">
+      <DeepStatusBar />
+    <view class="menu-item" @click="goExam">
+        <DeepStatusBar />
+    <view class="mi-left">
           <text class="mi-icon">📝</text>
           <text class="mi-text">在线试卷</text>
         </view>
         <text class="mi-arrow">›</text>
       </view>
-      <view class="menu-item" @click="goWrongBook">
-        <view class="mi-left">
+      <DeepStatusBar />
+    <view class="menu-item" @click="goWrongBook">
+        <DeepStatusBar />
+    <view class="mi-left">
           <text class="mi-icon">📊</text>
           <text class="mi-text">错题本</text>
         </view>
@@ -52,13 +66,17 @@
     </view>
 
     <!-- AI API Key -->
+    <DeepStatusBar />
     <view class="menu" style="margin-top: 24rpx;">
-      <view class="menu-item" @click="showAiKeyModal = true">
-        <view class="mi-left">
+      <DeepStatusBar />
+    <view class="menu-item" @click="showAiKeyModal = true">
+        <DeepStatusBar />
+    <view class="mi-left">
           <text class="mi-icon">🔑</text>
           <text class="mi-text">AI API Key</text>
         </view>
-        <view class="mi-right">
+        <DeepStatusBar />
+    <view class="mi-right">
           <text class="mi-hint" v-if="!aiKeyConfigured">未配置</text>
           <text class="mi-hint configured" v-else>{{ aiProvider }}</text>
           <text class="mi-arrow">›</text>
@@ -66,9 +84,12 @@
       </view>
     </view>
 
+    <DeepStatusBar />
     <view class="menu" style="margin-top: 24rpx;">
-      <view class="menu-item" @click="handleLogout">
-        <view class="mi-left">
+      <DeepStatusBar />
+    <view class="menu-item" @click="handleLogout">
+        <DeepStatusBar />
+    <view class="mi-left">
           <text class="mi-icon">🚪</text>
           <text class="mi-text" style="color:#ef4444;">退出登录</text>
         </view>
@@ -77,21 +98,27 @@
     </view>
 
     <!-- AI Key 弹窗 -->
+    <DeepStatusBar />
     <view class="modal-mask" v-if="showAiKeyModal" @click="showAiKeyModal = false">
-      <view class="modal-card" @click.stop>
+      <DeepStatusBar />
+    <view class="modal-card" @click.stop>
         <text class="modal-title">AI API Key 配置</text>
         <text class="modal-desc">填入你自己的 API Key，优先使用你的 Key 调用 AI。留空则使用系统默认。</text>
-        <view class="form-item">
+        <DeepStatusBar />
+    <view class="form-item">
           <text class="form-label">Provider</text>
           <picker mode="selector" :range="providers" :value="providers.indexOf(aiProvider)" @change="onProviderChange">
-            <view class="form-picker">{{ aiProvider }}</view>
+            <DeepStatusBar />
+    <view class="form-picker">{{ aiProvider }}</view>
           </picker>
         </view>
-        <view class="form-item">
+        <DeepStatusBar />
+    <view class="form-item">
           <text class="form-label">API Key</text>
           <input class="form-input" v-model="inputApiKey" placeholder="sk-xxxxxxxx" />
         </view>
-        <view class="modal-btns">
+        <DeepStatusBar />
+    <view class="modal-btns">
           <button class="mbtn cancel" @click="showAiKeyModal = false">取消</button>
           <button class="mbtn save" @click="saveAiKey">保存</button>
         </view>
