@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mianmiantong
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/ai-interview?characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 2219909857
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT
+jwt:
+  secret: mianmiantong-jwt-secret-key-2024-please-change-in-production
+  expiration: 604800000  # 7 days in ms
+
+# AI Provider: qwen or deepseek
+ai:
+  provider: deepseek
+  qwen:
+    api-key: ${DASHSCOPE_API_KEY:your-qwen-api-key}
+    model: qwen-turbo
+    endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+  deepseek:
+    api-key: sk-72952d2f8af74b928bb92b569ceac892
+    model: deepseek-v4-flash
+    endpoint: https://api.deepseek.com/chat/completions
+
+# Knife4j
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+knife4j:
+  enable: true
+
+# Aliyun Document AI
+aliyun:
+  docmind:
+    endpoint: docmind-api.cn-hangzhou.aliyuncs.com
+
+# WeChat
+wechat:
+  app-id: ${WECHAT_APP_ID:your-wechat-app-id}
+  app-secret: ${WECHAT_APP_SECRET:your-wechat-app-secret}
