@@ -1,0 +1,15 @@
+{
+    "id": "mianmiantong",
+    "name": "面面通",
+    "version": "1.0.0",
+    "description": "AI模拟面试与智能刷题小程序",
+    "scripts": {},
+    "author": "",
+    "dependencies": {
+        "pinia": "^2.3.1",
+        "uview-plus": "^3.8.18"
+    },
+    "engines": {
+        "HBuilderX": "^3.99"
+    }
+}

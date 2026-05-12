@@ -1,0 +1,155 @@
+{
+    "easycom": {
+        "autoscan": true,
+        "custom": {
+            "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+        }
+    },
+    "globalStyle": {
+        "navigationBarTextStyle": "white",
+        "navigationBarTitleText": "面面通",
+        "navigationBarBackgroundColor": "#2B6FF2",
+        "backgroundColor": "#F5F6FA"
+    },
+    "pages": [
+        {
+            "path": "pages/index/index",
+            "style": {
+                "navigationBarTitleText": "面面通"
+            }
+        },
+        {
+            "path": "pages/practice/practice",
+            "style": {
+                "navigationBarTitleText": "自由刷题"
+            }
+        },
+        {
+            "path": "pages/wrong-book/wrong-book",
+            "style": {
+                "navigationBarTitleText": "错题本"
+            }
+        },
+        {
+            "path": "pages/profile/profile",
+            "style": {
+                "navigationBarTitleText": "我的"
+            }
+        }
+    ],
+    "subPackages": [
+        {
+            "root": "pages/login",
+            "pages": [
+                {
+                    "path": "login",
+                    "style": {
+                        "navigationBarTitleText": "登录"
+                    }
+                }
+            ]
+        },
+        {
+            "root": "pages/question",
+            "pages": [
+                {
+                    "path": "list",
+                    "style": {
+                        "navigationBarTitleText": "题库"
+                    }
+                }
+            ]
+        },
+        {
+            "root": "pages/exam",
+            "pages": [
+                {
+                    "path": "index",
+                    "style": {
+                        "navigationBarTitleText": "在线试卷"
+                    }
+                },
+                {
+                    "path": "do",
+                    "style": {
+                        "navigationBarTitleText": "答题中"
+                    }
+                }
+            ]
+        },
+        {
+            "root": "pages/resume",
+            "pages": [
+                {
+                    "path": "upload",
+                    "style": {
+                        "navigationBarTitleText": "简历优化"
+                    }
+                },
+                {
+                    "path": "report",
+                    "style": {
+                        "navigationBarTitleText": "分析报告"
+                    }
+                }
+            ]
+        },
+        {
+            "root": "pages/interview",
+            "pages": [
+                {
+                    "path": "chat",
+                    "style": {
+                        "navigationBarTitleText": "AI面试"
+                    }
+                },
+                {
+                    "path": "report",
+                    "style": {
+                        "navigationBarTitleText": "面试报告"
+                    }
+                },
+                {
+                    "path": "history",
+                    "style": {
+                        "navigationBarTitleText": "面试历史"
+                    }
+                }
+            ]
+        }
+    ],
+    "tabBar": {
+        "color": "#999999",
+        "selectedColor": "#2B6FF2",
+        "backgroundColor": "#FFFFFF",
+        "borderStyle": "black",
+        "list": [
+            {
+                "pagePath": "pages/index/index",
+                "text": "首页"
+            },
+            {
+                "pagePath": "pages/practice/practice",
+                "text": "刷题"
+            },
+            {
+                "pagePath": "pages/wrong-book/wrong-book",
+                "text": "错题本"
+            },
+            {
+                "pagePath": "pages/profile/profile",
+                "text": "我的"
+            }
+        ]
+    },
+	"condition" : { //模式配置，仅开发期间生效
+		"current": 0, //当前激活的模式(list 的索引项)
+		"list": [
+			{
+				"name": "", //模式名称
+				"path": "", //启动页面，必选
+				"query": "" //启动参数，在页面的onLoad函数里面得到
+			}
+		]
+	}
+}
