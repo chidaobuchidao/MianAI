@@ -51,12 +51,19 @@
       </view>
       <text class="progress-text">{{ progressText }}</text>
     </view>
+
+    <!-- 历史入口 -->
+    <view class="history-entry" @click="goHistory">
+      <text class="he-icon">📂</text>
+      <text class="he-text">历史记录</text>
+      <text class="he-arrow">›</text>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { get } from '@/utils/request';
+import { get, BASE_URL } from '@/utils/request';
 
 interface FileInfo { name: string; size: number; path: string; }
 
@@ -76,6 +83,7 @@ function goReport() {
     uni.navigateTo({ url: `/pages/resume/report?resumeId=${activeResume.value.resumeId}` });
   }
 }
+function goHistory() { uni.navigateTo({ url: '/pages/resume/history' }); }
 const jobDescription = ref('');
 const position = ref('');
 const uploading = ref(false);
@@ -116,7 +124,7 @@ async function doUpload() {
     const token = uni.getStorageSync('mianmiantong_token') || '';
 
     const res = await uni.uploadFile({
-      url: 'http://192.168.137.134:8080/api/resume/upload',
+      url: `${BASE_URL}/api/resume/upload`,
       filePath: fileInfo.value!.path,
       name: 'file',
       formData: {
@@ -227,4 +235,13 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
 .progress-fill.animating { background: linear-gradient(90deg, #2b6ff2, #6366f1, #2b6ff2); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .progress-text { font-size: 24rpx; color: #64748b; margin-top: 12rpx; display: block; text-align: center; }
+
+.history-entry {
+  display: flex; align-items: center; background: #fff;
+  margin: 30rpx 24rpx; padding: 24rpx 28rpx; border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
+}
+.he-icon { font-size: 36rpx; margin-right: 14rpx; }
+.he-text { font-size: 26rpx; color: #334155; flex: 1; }
+.he-arrow { font-size: 32rpx; color: #cbd5e1; }
 </style>
