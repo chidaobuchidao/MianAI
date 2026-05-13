@@ -204,10 +204,15 @@ function parseSSEEvent(raw: string, callbacks: StreamCallbacks): void {
   const dataLines: string[] = [];
 
   for (const line of lines) {
-    if (line.startsWith('event: ')) {
-      eventType = line.slice(7).trim();
-    } else if (line.startsWith('data: ')) {
-      dataLines.push(line.slice(6));
+    if (line.startsWith('event:')) {
+      // Spring SseEmitter 格式为 event:name（无空格），同时也兼容 event: name
+      let name = line.slice(6);
+      if (name.charCodeAt(0) === 32) name = name.slice(1);
+      eventType = name;
+    } else if (line.startsWith('data:')) {
+      let val = line.slice(5);
+      if (val.charCodeAt(0) === 32) val = val.slice(1);
+      dataLines.push(val);
     }
   }
 

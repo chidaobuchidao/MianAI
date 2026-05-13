@@ -264,6 +264,8 @@ function doStreamDeep(resumeId: number) {
         } catch (_) {}
       },
       onError: async (err) => {
+        // 如果已经完成（onFinish 先触发），忽略后续的 error
+        if (deepStatus.value === 2) return;
         cleanupStream();
         try {
           const r = await get<{ deepStatus: number; retryCount: number }>(
@@ -282,7 +284,8 @@ function doStreamDeep(resumeId: number) {
 }
 
 function cleanupStream() {
-  if (deepAbort) { deepAbort(); deepAbort = null; }
+  // 不主动 abort，避免触发 fail → onError 覆盖 onFinish 的状态
+  deepAbort = null;
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   if (deepTimer) { clearInterval(deepTimer); deepTimer = null; }
 }
