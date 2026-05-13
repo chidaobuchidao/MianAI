@@ -150,13 +150,15 @@ public class ResumeService {
 
     public List<Resume> getHistory() {
         Long userId = JwtAuthFilter.getCurrentUserId();
-        return resumeMapper.selectList(
+        List<Resume> list = resumeMapper.selectList(
             new LambdaQueryWrapper<Resume>()
                 .eq(Resume::getUserId, userId)
                 .orderByDesc(Resume::getCreateTime)
                 .last("LIMIT 20")
-                .select(info -> !"fileData".equals(info.getColumn()))
         );
+        // 清空大字段，避免响应过大
+        list.forEach(r -> { r.setFileData(null); r.setParsedText(null); });
+        return list;
     }
 
     public void delete(Long resumeId) {
