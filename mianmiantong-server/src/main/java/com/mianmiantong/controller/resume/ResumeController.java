@@ -69,14 +69,16 @@ public class ResumeController {
 
     /** Phase 2: 深度优化 SSE 流式 */
     @PostMapping("/{resumeId}/analyze-deep")
-    public SseEmitter analyzeDeep(@PathVariable Long resumeId) {
-        return analysisService.analyzeDeepStream(resumeId);
+    public SseEmitter analyzeDeep(@PathVariable Long resumeId,
+                                  @RequestParam(value = "model", required = false) String model) {
+        return analysisService.analyzeDeepStream(resumeId, model);
     }
 
     /** 检查重试状态并触发重试 */
     @PostMapping("/{resumeId}/retry-deep")
-    public SseEmitter retryDeep(@PathVariable Long resumeId) {
-        return analysisService.analyzeDeepStream(resumeId);
+    public SseEmitter retryDeep(@PathVariable Long resumeId,
+                                @RequestParam(value = "model", required = false) String model) {
+        return analysisService.analyzeDeepStream(resumeId, model);
     }
 
     /** 查询是否可重试 */

@@ -52,6 +52,15 @@
         <!-- 未开始 -->
         <view v-if="deepStatus === 0" class="deep-idle">
           <text class="deep-hint">AI 将逐段优化简历并生成面试追问</text>
+          <view class="model-pick">
+            <text class="model-label">模型</text>
+            <view class="model-opts">
+              <view class="model-opt" :class="{ active: deepModel === 'deepseek-v4-flash' }"
+                @click="deepModel = 'deepseek-v4-flash'">Flash</view>
+              <view class="model-opt" :class="{ active: deepModel === 'deepseek-v4-pro' }"
+                @click="deepModel = 'deepseek-v4-pro'">Pro</view>
+            </view>
+          </view>
           <button class="btn-deep" @click="startDeepOptimize">开始深度优化</button>
         </view>
 
@@ -151,6 +160,7 @@ const deepStatus = ref(0);
 const retryRemaining = ref(3);
 const retryCount = ref(0);
 const deepElapsed = ref(0);
+const deepModel = ref('deepseek-v4-flash');
 let deepTimer: ReturnType<typeof setInterval> | null = null;
 
 interface Template { id: number; name: string; description: string; styleClass: string; bgColor: string; accentColor: string; }
@@ -248,7 +258,7 @@ function doStreamDeep(resumeId: number) {
   }, 10000);
 
   deepAbort = streamRequest(
-    `/api/resume/${resumeId}/analyze-deep`,
+    `/api/resume/${resumeId}/analyze-deep?model=${encodeURIComponent(deepModel.value)}`,
     {},
     {
       onToken: (token) => {
@@ -393,6 +403,11 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 .deep-section { margin-top: 10rpx; }
 .deep-idle { text-align: center; padding: 24rpx 0; }
 .deep-hint { font-size: 24rpx; color: #94a3b8; display: block; margin-bottom: 20rpx; }
+.model-pick { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin-bottom: 24rpx; }
+.model-label { font-size: 24rpx; color: #64748b; }
+.model-opts { display: flex; gap: 0; background: #f1f5f9; border-radius: 12rpx; overflow: hidden; }
+.model-opt { font-size: 22rpx; padding: 10rpx 24rpx; color: #94a3b8; transition: all 0.15s; }
+.model-opt.active { background: #2b6ff2; color: #fff; }
 .btn-deep { width: 100%; height: 80rpx; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 40rpx; border: none; }
 .deep-running { display: flex; flex-direction: column; align-items: center; padding: 40rpx 0; }
 .deep-spinner { width: 56rpx; height: 56rpx; border: 4rpx solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }

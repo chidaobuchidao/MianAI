@@ -98,13 +98,14 @@ public class DeepSeekAiService implements AiService {
 
     @Override
     public void streamChat(String systemPrompt, List<Map<String, String>> messages,
-                           String userApiKey, Consumer<String> onToken) {
+                           String userApiKey, String modelOverride, Consumer<String> onToken) {
         String key = (userApiKey != null && !userApiKey.isBlank()) ? userApiKey : apiKey;
-        doStreamChat(systemPrompt, messages, key, onToken);
+        String mdl = (modelOverride != null && !modelOverride.isBlank()) ? modelOverride : model;
+        doStreamChat(systemPrompt, messages, key, mdl, onToken);
     }
 
     private void doStreamChat(String systemPrompt, List<Map<String, String>> messages,
-                              String key, Consumer<String> onToken) {
+                              String key, String mdl, Consumer<String> onToken) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -115,7 +116,7 @@ public class DeepSeekAiService implements AiService {
             allMessages.addAll(messages);
 
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", model);
+            body.put("model", mdl);
             body.put("messages", allMessages);
             body.put("stream", true);
 

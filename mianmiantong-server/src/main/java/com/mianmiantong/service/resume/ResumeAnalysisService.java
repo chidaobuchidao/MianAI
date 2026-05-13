@@ -98,7 +98,7 @@ public class ResumeAnalysisService {
     }
 
     /** Phase 2: 深度优化 SSE 流式（含重试与断点续传） */
-    public SseEmitter analyzeDeepStream(Long resumeId) {
+    public SseEmitter analyzeDeepStream(Long resumeId, String model) {
         Resume resume = resumeMapper.selectById(resumeId);
         ResumeAnalysis analysis = upsert(resumeId);
 
@@ -151,7 +151,7 @@ public class ResumeAnalysisService {
             try {
                 final long[] lastSaveTime = {System.currentTimeMillis()};
 
-                aiService.streamChat(basePrompt, messages, null, token -> {
+                aiService.streamChat(basePrompt, messages, null, model, token -> {
                     buf.append(token);
                     safeSend(emitter, "token", token);
 
