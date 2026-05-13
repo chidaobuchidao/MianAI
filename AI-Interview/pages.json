@@ -91,6 +91,12 @@
                     "style": {
                         "navigationBarTitleText": "分析报告"
                     }
+                },
+                {
+                    "path": "history",
+                    "style": {
+                        "navigationBarTitleText": "简历历史"
+                    }
                 }
             ]
         },
