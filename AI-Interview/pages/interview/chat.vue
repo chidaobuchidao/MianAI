@@ -13,6 +13,15 @@
           <view class="rs-picker">{{ selectedResumeName || '选择简历（可选）' }}</view>
         </picker>
       </view>
+      <view class="model-bar">
+        <text class="model-bar-label">模型</text>
+        <view class="model-opts">
+          <view class="model-opt" :class="{ active: interviewModel === 'deepseek-v4-flash' }"
+            @click="interviewModel = 'deepseek-v4-flash'">Flash</view>
+          <view class="model-opt" :class="{ active: interviewModel === 'deepseek-v4-pro' }"
+            @click="interviewModel = 'deepseek-v4-pro'">Pro</view>
+        </view>
+      </view>
       <view class="pos-grid">
         <view class="pos-card" v-for="p in positions" :key="p" @click="startInterview(p)">
           <text class="pos-emoji">{{ getPosEmoji(p) }}</text>
@@ -64,6 +73,7 @@ const posEmoji: Record<string,string> = { 'Java后端开发':'☕','前端开发
 function getPosEmoji(p: string) { return posEmoji[p] || '💼'; }
 
 const started = ref(false); const finished = ref(false); const loading = ref(false);
+const interviewModel = ref('deepseek-v4-flash');
 const sessionId = ref(0); const messages = ref<{role:string;content:string}[]>([]);
 const inputText = ref(''); const report = ref<Record<string,unknown>|null>(null);
 
@@ -173,7 +183,7 @@ function parseInline(text: string): RichNode[] {
 /* ========== API 调用 ========== */
 async function startInterview(pos: string) {
   try { uni.showLoading({ title:'思考中...' });
-    const body: Record<string, unknown> = { position: pos };
+    const body: Record<string, unknown> = { position: pos, model: interviewModel.value };
     if (selectedResumeId.value) {
       body.resumeId = selectedResumeId.value;
     }
@@ -267,4 +277,9 @@ function goReport() {
 .fin-icon { font-size: 120rpx; }
 .fin-title { font-size: 40rpx; font-weight: 800; color: #0f172a; margin-top: 20rpx; }
 .fin-btn { width: 460rpx; height: 96rpx; background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; font-size: 32rpx; font-weight: 700; border-radius: 48rpx; border: none; margin-top: 60rpx; }
+.model-bar { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin-bottom: 20rpx; }
+.model-bar-label { font-size: 24rpx; color: #64748b; }
+.model-opts { display: flex; gap: 0; background: #f1f5f9; border-radius: 12rpx; overflow: hidden; }
+.model-opt { font-size: 22rpx; padding: 10rpx 24rpx; color: #94a3b8; transition: all 0.15s; }
+.model-opt.active { background: #2b6ff2; color: #fff; }
 </style>

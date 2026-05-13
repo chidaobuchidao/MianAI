@@ -8,4 +8,5 @@ public class InterviewStartRequest {
     @NotBlank(message = "面试岗位不能为空")
     private String position;
     private Long resumeId;
+    private String model;
 }

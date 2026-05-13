@@ -19,6 +19,7 @@ public class InterviewSession {
     private String dimensions;
     private String feedback;
     private Integer status;
+    private String model;
     private LocalDateTime createTime;
     private LocalDateTime finishTime;
 }

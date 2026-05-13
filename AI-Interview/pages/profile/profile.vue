@@ -114,6 +114,15 @@
         </view>
         <DeepStatusBar />
     <view class="form-item">
+          <text class="form-label">默认模型</text>
+          <view class="model-opts">
+            <view class="model-opt" :class="{ active: aiModel === 'deepseek-v4-flash' }"
+              @click="aiModel = 'deepseek-v4-flash'">Flash</view>
+            <view class="model-opt" :class="{ active: aiModel === 'deepseek-v4-pro' }"
+              @click="aiModel = 'deepseek-v4-pro'">Pro</view>
+          </view>
+        </view>
+        <view class="form-item">
           <text class="form-label">API Key</text>
           <input class="form-input" v-model="inputApiKey" placeholder="sk-xxxxxxxx" />
         </view>
@@ -142,6 +151,7 @@ const stats = ref<Stats>({ practiceCount: 0, interviewCount: 0, wrongCount: 0 })
 const showAiKeyModal = ref(false);
 const inputApiKey = ref('');
 const aiProvider = ref('deepseek');
+const aiModel = ref('deepseek-v4-flash');
 const aiKeyConfigured = ref(false);
 const providers = ['deepseek', 'qwen'];
 
@@ -154,10 +164,11 @@ async function loadStats() {
 
 async function loadAiConfig() {
   try {
-    const res = await get<{provider:string;apiKey:string}>('/api/user/ai-config');
+    const res = await get<{provider:string;apiKey:string;model:string}>('/api/user/ai-config');
     if (res.data && res.data.apiKey) {
       aiProvider.value = res.data.provider;
       inputApiKey.value = res.data.apiKey;
+      aiModel.value = res.data.model || 'deepseek-v4-flash';
       aiKeyConfigured.value = true;
     }
   } catch {}
@@ -169,7 +180,7 @@ async function saveAiKey() {
     return;
   }
   try {
-    await put('/api/user/ai-config', { apiKey: inputApiKey.value.trim(), provider: aiProvider.value });
+    await put('/api/user/ai-config', { apiKey: inputApiKey.value.trim(), provider: aiProvider.value, model: aiModel.value });
     aiKeyConfigured.value = true;
     showAiKeyModal.value = false;
     uni.showToast({ title:'保存成功', icon:'success' });
@@ -243,6 +254,9 @@ function handleLogout() {
 .form-item { margin-top: 28rpx; }
 .form-label { font-size: 26rpx; font-weight: 600; color: #334155; display: block; margin-bottom: 10rpx; }
 .form-input { border: 2rpx solid #e2e8f0; border-radius: 12rpx; padding: 20rpx 24rpx; font-size: 26rpx; background: #f8fafc; width: 100%; box-sizing: border-box; }
+.model-opts { display: flex; gap: 0; background: #f1f5f9; border-radius: 12rpx; overflow: hidden; width: fit-content; }
+.model-opt { font-size: 24rpx; padding: 12rpx 32rpx; color: #94a3b8; transition: all 0.15s; }
+.model-opt.active { background: #2b6ff2; color: #fff; }
 .form-picker { border: 2rpx solid #e2e8f0; border-radius: 12rpx; padding: 20rpx 24rpx; font-size: 26rpx; background: #f8fafc; color: #334155; }
 .modal-btns { display: flex; gap: 16rpx; margin-top: 32rpx; }
 .mbtn { flex: 1; height: 80rpx; border: none; border-radius: 40rpx; font-size: 28rpx; font-weight: 700; }

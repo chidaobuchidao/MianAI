@@ -13,6 +13,7 @@ public class UserAiConfig {
     private Long userId;
     private String provider;
     private String apiKey;
+    private String model;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

@@ -144,6 +144,7 @@ public class InterviewService {
         session.setUserId(userId);
         session.setPosition(position);
         session.setCurrentQuestionIndex(0);
+        session.setModel(request.getModel());
 
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(Map.of("role", "assistant", "content", firstQuestion, "time", LocalDateTime.now().toString()));
@@ -330,7 +331,8 @@ public class InterviewService {
             boolean[] finished = {false};
 
             try {
-                aiService.streamChat(systemPrompt, aiMessages, userApiKey, token -> {
+                aiService.streamChat(systemPrompt, aiMessages, userApiKey,
+                        session.getModel(), token -> {
                     fullResponse.append(token);
                     try {
                         emitter.send(SseEmitter.event().name("token").data(token));

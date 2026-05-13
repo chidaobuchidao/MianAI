@@ -72,7 +72,7 @@ public class UserController {
     @PutMapping("/ai-config")
     public Result<?> saveAiConfig(@RequestBody UserAiConfigRequest req) {
         Long userId = JwtAuthFilter.getCurrentUserId();
-        userAiConfigService.save(userId, req.getProvider(), req.getApiKey());
+        userAiConfigService.save(userId, req.getProvider(), req.getApiKey(), req.getModel());
         return Result.ok(null);
     }
 }
