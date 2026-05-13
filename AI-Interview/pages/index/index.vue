@@ -40,12 +40,19 @@
         <text class="action-title">错题本</text>
         <text class="action-desc">查漏补缺</text>
       </view>
-      <view class="action resume-opt" @click="goResume">
+      <view class="action resume-row" @click="goResume">
         <view class="action-icon-wrap">
           <text class="action-icon">📋</text>
         </view>
-        <text class="action-title">简历优化</text>
+        <text class="action-title">上传简历</text>
         <text class="action-desc">AI智能优化</text>
+      </view>
+      <view class="action resume-row" @click="goResumeHistory">
+        <view class="action-icon-wrap">
+          <text class="action-icon">📂</text>
+        </view>
+        <text class="action-title">历史记录</text>
+        <text class="action-desc">查看优化报告</text>
       </view>
     </view>
 
@@ -84,6 +91,7 @@ function goExam() { uni.navigateTo({ url: '/pages/exam/index' }); }
 function goPractice() { uni.switchTab({ url: '/pages/practice/practice' }); }
 function goWrongBook() { uni.switchTab({ url: '/pages/wrong-book/wrong-book' }); }
 function goResume() { uni.navigateTo({ url: '/pages/resume/upload' }); }
+function goResumeHistory() { uni.navigateTo({ url: '/pages/resume/history' }); }
 </script>
 
 <style lang="scss" scoped>
@@ -132,7 +140,7 @@ function goResume() { uni.navigateTo({ url: '/pages/resume/upload' }); }
 .exam .action-icon-wrap { background: linear-gradient(135deg, #fef3c7, #fde68a); }
 .practice .action-icon-wrap { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
 .wrong .action-icon-wrap { background: linear-gradient(135deg, #fee2e2, #fecaca); }
-.resume-opt .action-icon-wrap { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+.resume-row .action-icon-wrap { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
 .action-icon { font-size: 36rpx; }
 .action-title { display: block; font-size: 28rpx; font-weight: 700; color: #0f172a; }
 .action-desc { display: block; font-size: 22rpx; color: #94a3b8; margin-top: 4rpx; }
