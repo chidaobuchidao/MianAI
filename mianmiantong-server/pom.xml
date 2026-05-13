@@ -14,6 +14,8 @@
     <artifactId>mianmiantong-server</artifactId>
     <version>1.0.0</version>
     <name>面面通</name>
+    <packaging>jar</packaging>
+    <finalName>mianmiantong</finalName>
 
     <properties>
         <java.version>17</java.version>
@@ -66,13 +68,6 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
-        </dependency>
-
-        <!-- dotenv -->
-        <dependency>
-            <groupId>io.github.cdimascio</groupId>
-            <artifactId>dotenv-java</artifactId>
-            <version>3.2.0</version>
         </dependency>
 
         <!-- JWT -->
