@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { BASE_URL } from '@/utils/request';
 
 interface DeepInfo { resumeId: number; name: string; }
 const info = ref<DeepInfo | null>(null);
@@ -27,7 +28,7 @@ function load() {
       const d = JSON.parse(raw) as DeepInfo;
       // 检查是否已完成
       uni.request({
-        url: `http://192.168.137.134:8080/api/resume/${d.resumeId}/deep-status`,
+        url: `${BASE_URL}/api/resume/${d.resumeId}/deep-status`,
         header: { Authorization: 'Bearer ' + (uni.getStorageSync('mianmiantong_token') || '') },
         success: (r: any) => {
           if (r.data?.data?.deepStatus === 1) {

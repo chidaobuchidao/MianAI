@@ -148,17 +148,9 @@ public class ResumeService {
         );
     }
 
-    public List<Resume> getHistory() {
+    public List<com.mianmiantong.dto.resume.ResumeHistoryDto> getHistory() {
         Long userId = JwtAuthFilter.getCurrentUserId();
-        List<Resume> list = resumeMapper.selectList(
-            new LambdaQueryWrapper<Resume>()
-                .eq(Resume::getUserId, userId)
-                .orderByDesc(Resume::getCreateTime)
-                .last("LIMIT 20")
-        );
-        // 清空大字段，避免响应过大
-        list.forEach(r -> { r.setFileData(null); r.setParsedText(null); });
-        return list;
+        return resumeMapper.selectHistory(userId);
     }
 
     public void delete(Long resumeId) {
