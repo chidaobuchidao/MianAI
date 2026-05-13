@@ -62,6 +62,17 @@
           <text class="deep-time">已运行 {{ deepElapsed }}s</text>
         </view>
 
+        <!-- 失败：重试面板 -->
+        <view v-if="deepStatus === -1" class="deep-failed">
+          <text class="deep-fail-text">深度优化失败</text>
+          <text class="deep-fail-hint" v-if="retryRemaining > 0">还可重试 {{ retryRemaining }} 次</text>
+          <text class="deep-fail-hint" v-else>已达最大重试次数</text>
+          <view class="btn-row" style="justify-content:center;margin-top:20rpx">
+            <button v-if="retryRemaining > 0" class="btn-retry" @click="retryDeepOptimize">重新优化</button>
+            <button class="btn-back" @click="goHome">返回首页</button>
+          </view>
+        </view>
+
         <!-- 已完成 -->
         <template v-if="deepStatus === 2">
           <!-- 逐段优化对比 -->
@@ -118,7 +129,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { get, post } from '@/utils/request';
+import { get, post, BASE_URL, streamRequest } from '@/utils/request';
 import UnifiedDiff from '@/components/UnifiedDiff.vue';
 import TemplateSelector from '@/components/TemplateSelector.vue';
 
@@ -137,6 +148,8 @@ const score = ref(0);
 const showTemplatePicker = ref(false);
 const templates = ref<Template[]>([]);
 const deepStatus = ref(0);
+const retryRemaining = ref(3);
+const retryCount = ref(0);
 const deepElapsed = ref(0);
 let deepTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -156,8 +169,16 @@ onLoad(async (opts) => {
       score.value = r.data.overallScore;
       deepStatus.value = (r.data as any).deepStatus ?? 0;
       loading.value = false;
-      // 如果深度优化进行中，恢复轮询
-      if (deepStatus.value === 1) startPollDeep(resumeId);
+      // 恢复失败状态（显示重试面板）
+      if (deepStatus.value === -1) {
+        try {
+          const s = await get<{ retryCount: number }>(`/api/resume/${resumeId}/deep-status`);
+          retryCount.value = s.data?.retryCount ?? 0;
+          retryRemaining.value = Math.max(0, 3 - retryCount.value);
+        } catch (_) {}
+      }
+      // 如果深度优化进行中，恢复流式连接
+      if (deepStatus.value === 1) doStreamDeep(resumeId);
       return;
     }
   } catch {}
@@ -186,39 +207,84 @@ onLoad(async (opts) => {
   loading.value = false;
 });
 
+let deepAbort: (() => void) | null = null;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let lastTokenTime = 0;
+
 function startDeepOptimize() {
   if (!report.value) return;
   const resumeId = report.value.resumeId;
   deepStatus.value = 1;
   deepElapsed.value = 0;
   deepTimer = setInterval(() => deepElapsed.value++, 1000);
-  // 存到本地，其他页面可读取
+  lastTokenTime = Date.now();
+
   uni.setStorageSync('deep_optimizing', JSON.stringify({
     resumeId, name: report.value.fileName || '简历'
   }));
-  post(`/api/resume/${resumeId}/analyze-deep`).catch(() => {});
-  startPollDeep(resumeId);
+
+  doStreamDeep(resumeId);
 }
 
-function startPollDeep(resumeId: number) {
-  const poll = setInterval(async () => {
-    try {
-      const r = await get<{ deepStatus: number }>(`/api/resume/${resumeId}/deep-status`);
-      if (r.data) deepStatus.value = r.data.deepStatus;
-      if (r.data && r.data.deepStatus === 2) {
+function retryDeepOptimize() {
+  if (!report.value) return;
+  const resumeId = report.value.resumeId;
+  deepStatus.value = 1;
+  deepElapsed.value = 0;
+  deepTimer = setInterval(() => deepElapsed.value++, 1000);
+  lastTokenTime = Date.now();
+  doStreamDeep(resumeId);
+}
+
+function doStreamDeep(resumeId: number) {
+  lastTokenTime = Date.now();
+
+  // 心跳检测：30 秒无 token 则提示
+  heartbeatTimer = setInterval(() => {
+    if (Date.now() - lastTokenTime > 30000 && deepStatus.value === 1) {
+      uni.showToast({ title: 'AI 响应较慢，请耐心等待', icon: 'none', duration: 2000 });
+      lastTokenTime = Date.now();
+    }
+  }, 10000);
+
+  deepAbort = streamRequest(
+    `/api/resume/${resumeId}/analyze-deep`,
+    {},
+    {
+      onToken: (token) => {
+        lastTokenTime = Date.now();
+      },
+      onFinish: async (data) => {
+        cleanupStream();
+        deepStatus.value = 2;
         uni.removeStorageSync('deep_optimizing');
-        const full = await get<Report>(`/api/resume/${resumeId}/analysis`);
-        if (full.data) { report.value = full.data; }
-        clearInterval(poll);
-        if (deepTimer) { clearInterval(deepTimer); deepTimer = null; }
-      } else if (r.data && r.data.deepStatus === -1) {
-        uni.removeStorageSync('deep_optimizing');
-        clearInterval(poll);
-        if (deepTimer) { clearInterval(deepTimer); deepTimer = null; }
-        uni.showToast({ title: '深度优化失败', icon: 'error' });
-      }
-    } catch (_) {}
-  }, 3000);
+        try {
+          const full = await get<Report>(`/api/resume/${resumeId}/analysis`);
+          if (full.data) { report.value = full.data; }
+        } catch (_) {}
+      },
+      onError: async (err) => {
+        cleanupStream();
+        try {
+          const r = await get<{ deepStatus: number; retryCount: number }>(
+            `/api/resume/${resumeId}/deep-status`
+          );
+          deepStatus.value = r.data?.deepStatus ?? -1;
+          retryCount.value = r.data?.retryCount ?? 0;
+          retryRemaining.value = Math.max(0, 3 - (r.data?.retryCount ?? 0));
+        } catch (_) {
+          deepStatus.value = -1;
+          retryRemaining.value = 0;
+        }
+      },
+    }
+  );
+}
+
+function cleanupStream() {
+  if (deepAbort) { deepAbort(); deepAbort = null; }
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (deepTimer) { clearInterval(deepTimer); deepTimer = null; }
 }
 
 function copyText(text: string) {
@@ -231,7 +297,7 @@ function downloadWord() {
   if (!resumeId) return;
 
   uni.downloadFile({
-    url: `http://192.168.137.134:8080/api/resume/${resumeId}/export-word`,
+    url: `${BASE_URL}/api/resume/${resumeId}/export-word`,
     header: { Authorization: 'Bearer ' + token },
     success: (res) => {
       if (res.statusCode === 200) {
@@ -249,7 +315,7 @@ function onTemplateSelect(templateId: number) {
   const resumeId = report.value.resumeId;
   uni.showLoading({ title: '生成中...' });
   uni.downloadFile({
-    url: `http://192.168.137.134:8080/api/resume/template/generate?resumeId=${resumeId}&templateId=${templateId}`,
+    url: `${BASE_URL}/api/resume/template/generate?resumeId=${resumeId}&templateId=${templateId}`,
     header: { Authorization: 'Bearer ' + token },
     success: (res) => {
       uni.hideLoading();
@@ -269,7 +335,7 @@ function previewWord() {
   if (!resumeId) return;
   uni.showLoading({ title: '加载预览...' });
   uni.downloadFile({
-    url: `http://192.168.137.134:8080/api/resume/${resumeId}/preview-html?token=${encodeURIComponent(token)}`,
+    url: `${BASE_URL}/api/resume/${resumeId}/preview-html?token=${encodeURIComponent(token)}`,
     success: (res) => {
       uni.hideLoading();
       if (res.statusCode === 200) {
@@ -329,6 +395,14 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 .deep-spinner { width: 56rpx; height: 56rpx; border: 4rpx solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
 .deep-text { font-size: 26rpx; color: #6366f1; margin-top: 16rpx; }
 .deep-time { font-size: 22rpx; color: #94a3b8; margin-top: 6rpx; }
+
+/* Deep optimization failed */
+.deep-failed { text-align: center; padding: 24rpx 0; }
+.deep-fail-text { font-size: 28rpx; color: #ef4444; font-weight: 600; display: block; }
+.deep-fail-hint { font-size: 24rpx; color: #94a3b8; margin-top: 8rpx; display: block; }
+.btn-retry { font-size: 28rpx; color: #fff; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 40rpx; border: none; padding: 16rpx 48rpx; }
+.btn-back { font-size: 28rpx; color: #64748b; background: #f1f5f9; border-radius: 40rpx; border: none; padding: 16rpx 48rpx; }
+
 .card-sub-label { font-size: 26rpx; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16rpx; margin-top: 20rpx; }
 .deep-result { margin-top: 8rpx; }
 .deep-questions { margin-top: 8rpx; }
