@@ -97,6 +97,105 @@ public class ResumeAnalysisService {
         });
     }
 
+    /** Phase 2: 深度优化 SSE 流式（含重试与断点续传） */
+    public SseEmitter analyzeDeepStream(Long resumeId) {
+        Resume resume = resumeMapper.selectById(resumeId);
+        ResumeAnalysis analysis = upsert(resumeId);
+
+        // 检查重试次数
+        int retryCount = analysis.getRetryCount() != null ? analysis.getRetryCount() : 0;
+        if (retryCount >= 3) {
+            SseEmitter rejectEmitter = new SseEmitter();
+            rejectEmitter.onCompletion(() -> {});
+            try {
+                rejectEmitter.send(SseEmitter.event().name("error")
+                        .data("{\"message\":\"已达最大重试次数(3次)\",\"retryCount\":" + retryCount + "}"));
+                rejectEmitter.complete();
+            } catch (Exception ignored) {}
+            return rejectEmitter;
+        }
+
+        // 标记进行中，重试次数+1
+        analysis.setRetryCount(retryCount + 1);
+        analysis.setDeepStatus(1);
+        save(analysis);
+
+        // 构建 prompt
+        String basePrompt = buildDeepPrompt(resume, analysis);
+
+        // 如果有 partial，续传
+        String partial = analysis.getPartialResponse();
+        String userMessage;
+        if (partial != null && !partial.isBlank()) {
+            userMessage = "之前的输出被中断，已输出的内容：\n" + partial + "\n\n请从断点处继续输出完整的JSON，不要重复已输出的内容。";
+        } else {
+            userMessage = "开始深度优化";
+        }
+
+        List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", userMessage));
+        SseEmitter emitter = new SseEmitter(600_000L);
+        StringBuilder buf = new StringBuilder();
+        if (partial != null) buf.append(partial);
+
+        emitter.onTimeout(() -> {
+            safeSavePartial(analysis, buf.toString());
+            safeSend(emitter, "error", "{\"message\":\"分析超时，已保存中间结果，可重试\",\"retryCount\":" + analysis.getRetryCount() + "}");
+            emitter.complete();
+        });
+
+        emitter.onError(ex -> {
+            safeSavePartial(analysis, buf.toString());
+        });
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                final long[] lastSaveTime = {System.currentTimeMillis()};
+
+                aiService.streamChat(basePrompt, messages, null, token -> {
+                    buf.append(token);
+                    safeSend(emitter, "token", token);
+
+                    // 每 5 秒保存中间结果
+                    long now = System.currentTimeMillis();
+                    if (now - lastSaveTime[0] >= 5000) {
+                        lastSaveTime[0] = now;
+                        safeSavePartial(analysis, buf.toString());
+                    }
+                });
+
+                // 解析最终 JSON
+                String fullResponse = buf.toString();
+                Map<String, Object> report = objectMapper.readValue(extractJson(fullResponse), Map.class);
+
+                analysis.setHighlights(toJson(report.get("highlights")));
+                analysis.setOptimizedText((String) report.get("optimizedText"));
+                analysis.setInterviewQuestions(toJson(report.get("interviewQuestions")));
+                analysis.setDeepStatus(2);
+                analysis.setPartialResponse(null); // 清除中间结果
+                save(analysis);
+
+                emitter.send(SseEmitter.event().name("finish")
+                        .data(objectMapper.writeValueAsString(Map.of(
+                                "resumeId", resumeId, "deepStatus", 2,
+                                "phase", "deep"))));
+                emitter.complete();
+                log.info("深度优化(SSE)完成: resumeId={}, retry={}", resumeId, analysis.getRetryCount());
+
+            } catch (Exception e) {
+                log.error("深度优化(SSE)失败: resumeId={}", resumeId, e);
+                safeSavePartial(analysis, buf.toString());
+                safeSend(emitter, "error", "{\"message\":\"AI分析失败\",\"retryCount\":" + analysis.getRetryCount() + "}");
+                try {
+                    analysis.setDeepStatus(-1);
+                    save(analysis);
+                } catch (Exception ignored) {}
+                emitter.complete();
+            }
+        });
+
+        return emitter;
+    }
+
     /** Phase 1: 快速评分 SSE（兼容旧版，保留） */
     public SseEmitter analyzeStream(Long resumeId) {
         Resume resume = resumeMapper.selectById(resumeId);
@@ -179,13 +278,40 @@ public class ResumeAnalysisService {
         });
     }
 
-    /** 获取深度优化状态 */
+    /** 检查是否可以重试 */
+    public Map<String, Object> retryDeepOptimize(Long resumeId) {
+        ResumeAnalysis analysis = analysisMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ResumeAnalysis>()
+                        .eq(ResumeAnalysis::getResumeId, resumeId));
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (analysis == null) {
+            result.put("retryable", false);
+            result.put("message", "分析记录不存在");
+            return result;
+        }
+        int count = analysis.getRetryCount() != null ? analysis.getRetryCount() : 0;
+        result.put("retryable", count < 3);
+        result.put("retryCount", count);
+        result.put("remaining", 3 - count);
+        result.put("hasPartial", analysis.getPartialResponse() != null
+                && !analysis.getPartialResponse().isBlank());
+        return result;
+    }
+
+    /** 获取深度优化状态（含重试与断点信息） */
     public Map<String, Object> getDeepStatus(Long resumeId) {
         ResumeAnalysis analysis = analysisMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ResumeAnalysis>()
                         .eq(ResumeAnalysis::getResumeId, resumeId));
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("deepStatus", analysis != null ? analysis.getDeepStatus() : null);
+        if (analysis == null) {
+            result.put("deepStatus", null);
+            return result;
+        }
+        result.put("deepStatus", analysis.getDeepStatus());
+        result.put("retryCount", analysis.getRetryCount() != null ? analysis.getRetryCount() : 0);
+        result.put("hasPartial", analysis.getPartialResponse() != null
+                && !analysis.getPartialResponse().isBlank());
         return result;
     }
 
@@ -246,5 +372,23 @@ public class ResumeAnalysisService {
     private Object parseJson(String json) {
         if (json == null) return null;
         try { return objectMapper.readValue(json, Object.class); } catch (JsonProcessingException e) { return json; }
+    }
+
+    /** 构建深度优化 prompt */
+    private String buildDeepPrompt(Resume resume, ResumeAnalysis analysis) {
+        String keywords = analysis.getMissingKeywords() != null ? analysis.getMissingKeywords() : "无";
+        return String.format(DEEP_PROMPT, resume.getJobDescription(),
+                analysis.getOverallScore() != null ? analysis.getOverallScore() : 5,
+                keywords, resume.getParsedText());
+    }
+
+    /** 安全保存 partialResponse */
+    private void safeSavePartial(ResumeAnalysis analysis, String partial) {
+        try {
+            analysis.setPartialResponse(partial);
+            save(analysis);
+        } catch (Exception e) {
+            log.warn("保存中间结果失败: resumeId={}", analysis.getResumeId());
+        }
     }
 }
