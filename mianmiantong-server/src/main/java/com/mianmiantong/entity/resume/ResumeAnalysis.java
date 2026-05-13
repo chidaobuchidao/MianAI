@@ -20,5 +20,7 @@ public class ResumeAnalysis {
     private String interviewQuestions;
     private String suggestion;
     private Integer deepStatus; // 0待优化 1进行中 2已完成 -1失败
+    private Integer retryCount; // 深度优化重试次数
+    private String partialResponse; // 深度优化中间结果
     private LocalDateTime createTime;
 }
