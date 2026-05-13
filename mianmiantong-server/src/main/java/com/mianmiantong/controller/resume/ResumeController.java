@@ -67,11 +67,22 @@ public class ResumeController {
         return Result.ok(Map.of("message", "分析已开始"));
     }
 
-    /** Phase 2: 触发深度优化（异步后台执行） */
+    /** Phase 2: 深度优化 SSE 流式 */
     @PostMapping("/{resumeId}/analyze-deep")
-    public Result<?> analyzeDeep(@PathVariable Long resumeId) {
-        analysisService.analyzeDeepAsync(resumeId);
-        return Result.ok(Map.of("deepStatus", 1, "message", "深度优化已开始"));
+    public SseEmitter analyzeDeep(@PathVariable Long resumeId) {
+        return analysisService.analyzeDeepStream(resumeId);
+    }
+
+    /** 检查重试状态并触发重试 */
+    @PostMapping("/{resumeId}/retry-deep")
+    public SseEmitter retryDeep(@PathVariable Long resumeId) {
+        return analysisService.analyzeDeepStream(resumeId);
+    }
+
+    /** 查询是否可重试 */
+    @GetMapping("/{resumeId}/retry-deep")
+    public Result<?> retryDeepStatus(@PathVariable Long resumeId) {
+        return Result.ok(analysisService.retryDeepOptimize(resumeId));
     }
 
     /** 查询深度优化状态 */
