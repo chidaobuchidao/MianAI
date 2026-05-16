@@ -75,12 +75,20 @@ public class InterviewService {
 
         **重要：JSON必须是一整行，不要换行，不要用markdown代码块包裹，确保是合法的JSON格式！**
 
+        ## 笔试编程环节
+        当候选人或系统触发"进入编程环节"时：
+        - 出一道与岗位相关的实际编程题（如算法、数据结构、SQL设计等）
+        - 题目要有明确场景，不要纯理论
+        - 要求候选人写出核心代码，强调代码完整性和边界处理
+        - 候选人写完代码后，你需要审阅并给出反馈（正确性、风格、优化建议）
+
         ## 注意事项
         - 每次回复控制在50-200字，保持对话节奏
         - 问题要具体，不要问"你了解XXX吗"这种开放式问题
         - 多问"为什么"和"怎么做的"，少问"是什么"
         - 候选人如果说"不会"或"不了解"，不要反复追问同一个话题
         - 你的提问序列里应该逐渐增加难度，形成一个自然的面试曲线
+        - **你永远是面试官，不要以候选人身份说话，不要做自我介绍**
         """;
 
     public InterviewService(InterviewSessionMapper sessionMapper, AiService aiService,
@@ -125,7 +133,7 @@ public class InterviewService {
         String systemPrompt = String.format(SYSTEM_PROMPT, position) + resumeContext;
 
         List<Map<String, String>> initMessages = List.of(
-            Map.of("role", "user", "content", "面试开始，请你先做自我介绍，然后问我第一个问题。")
+            Map.of("role", "user", "content", "面试现在开始。请你作为面试官，先让候选人做一个简短的自我介绍，然后问第一个技术问题。注意：你是面试官，候选人会回答你的问题。")
         );
 
         log.info("\n" + "=".repeat(80) + "\n" +

@@ -378,11 +378,25 @@ const { sendAnswer, reportScore } = useInterviewStream({
   onFinish: handleFinish
 })
 
+// Detect coding round triggers in user messages
+const CODING_TRIGGERS = ['[进入编程环节]', '进入笔试环节', '开始编程', '进入编程']
+
+function isCodingTrigger(text: string): boolean {
+  return CODING_TRIGGERS.some(t => text.includes(t))
+}
+
 // Thin wrapper: extract and trim text, then delegate to composable
 function sendTextAnswer() {
   const text = inputText.value.trim()
   if (!text) return
   inputText.value = ''
+
+  if (isCodingTrigger(text)) {
+    startCoding()
+    sendAnswer('[进入编程环节]')
+    return
+  }
+
   sendAnswer(text)
 }
 
