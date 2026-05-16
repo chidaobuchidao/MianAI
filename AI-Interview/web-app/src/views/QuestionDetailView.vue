@@ -13,6 +13,7 @@
 
       <div class="detail-body" v-if="question">
         <!-- Question card -->
+        <Transition :name="slideDirection" mode="out-in">
         <div class="question-card" :key="questionId">
           <span class="q-type">{{ typeLabel(question.type) }}</span>
           <h3 class="q-text">{{ question.title }}</h3>
@@ -63,6 +64,7 @@
           <span class="detail-tag">{{ question.categoryName || '未分类' }}</span>
           <span class="detail-tag">{{ difficultyLabel(question.difficulty) }}</span>
         </div>
+        </Transition>
       </div>
 
       <!-- Skeleton -->
@@ -101,6 +103,7 @@ const categoryName = computed(() => route.query.categoryName as string || '')
 const question = ref<Question | null>(null)
 const questionIds = ref<number[]>([])
 const currentIndex = ref(-1)
+const slideDirection = ref<'slide-left' | 'slide-right'>('slide-left')
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < questionIds.value.length - 1)
@@ -139,6 +142,7 @@ async function fetchQuestionList() {
 
 async function goPrev() {
   if (!hasPrev.value) return
+  slideDirection.value = 'slide-right'
   const prevId = questionIds.value[currentIndex.value - 1]
   router.replace({
     path: `/questions/${prevId}`,
@@ -148,6 +152,7 @@ async function goPrev() {
 
 async function goNext() {
   if (!hasNext.value) return
+  slideDirection.value = 'slide-left'
   const nextId = questionIds.value[currentIndex.value + 1]
   router.replace({
     path: `/questions/${nextId}`,
@@ -283,4 +288,28 @@ onMounted(async () => {
   box-shadow: var(--shadow-md);
 }
 .action-pri:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Slide transitions */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.25s var(--ease-out-expo);
+}
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(40px);
+}
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(40px);
+}
 </style>
