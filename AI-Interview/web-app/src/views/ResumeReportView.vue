@@ -87,10 +87,13 @@
           <p class="deep-hint">AI 将逐段优化简历并生成面试追问</p>
           <div class="model-bar">
             <span class="model-label">模型</span>
-            <button class="model-opt" :class="{ active: deepModel === 'deepseek-v4-flash' }"
-              @click="deepModel = 'deepseek-v4-flash'">Flash</button>
-            <button class="model-opt" :class="{ active: deepModel === 'deepseek-v4-pro' }"
-              @click="deepModel = 'deepseek-v4-pro'">Pro</button>
+            <div class="capsule-toggle">
+              <div class="capsule-slider" :class="{ right: deepModel === 'deepseek-v4-pro' }" />
+              <button class="capsule-opt" :class="{ active: deepModel === 'deepseek-v4-flash' }"
+                @click="deepModel = 'deepseek-v4-flash'">Flash</button>
+              <button class="capsule-opt" :class="{ active: deepModel === 'deepseek-v4-pro' }"
+                @click="deepModel = 'deepseek-v4-pro'">Pro</button>
+            </div>
           </div>
           <button class="btn btn--primary btn--full" @click="startDeep">
             <span>开始深度优化</span>
@@ -656,30 +659,42 @@ onUnmounted(() => { cleanupStream() })
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 20px;
 }
 
-.model-label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
+.model-label { font-size: 13px; color: var(--text-muted); }
 
-.model-opt {
-  padding: 5px 14px;
-  border-radius: 100px;
-  font-size: 12px;
-  font-weight: 500;
+.capsule-toggle {
+  position: relative;
+  display: inline-flex;
   border: 1px solid var(--border-medium);
-  background: var(--bg-paper);
-  color: var(--text-muted);
-  cursor: pointer;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--bg-surface);
 }
-
-.model-opt.active {
+.capsule-slider {
+  position: absolute;
+  top: 0; left: 0;
+  width: 50%; height: 100%;
   background: var(--bg-dark);
+  border-radius: var(--radius-full);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 0;
+}
+.capsule-slider.right {
+  transform: translateX(100%);
+}
+.capsule-opt {
+  position: relative; z-index: 1;
+  padding: 5px 16px;
+  font-size: 13px; font-weight: 500;
+  border: none; background: transparent;
+  color: var(--text-muted); cursor: pointer;
+  transition: color 0.25s;
+}
+.capsule-opt.active {
   color: #fff;
-  border-color: var(--bg-dark);
 }
 
 .deep-running {
