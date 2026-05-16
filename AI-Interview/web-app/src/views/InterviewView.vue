@@ -282,8 +282,6 @@ function advancePipeline(currentStage: string) {
 
 function startCoding() {
   advancePipeline('coding')
-  // Activate code editor panel + notify AI
-  showCodePanel.value = true
   sendAnswer('[进入编程环节]')
 }
 
