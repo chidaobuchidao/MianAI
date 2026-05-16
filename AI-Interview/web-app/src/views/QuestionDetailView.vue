@@ -11,9 +11,9 @@
         <span class="page-head__cat">{{ categoryName || '' }}</span>
       </div>
 
-      <div class="detail-stage">
+      <div class="detail-stage" v-if="question">
         <Transition :name="slideDirection">
-          <div class="detail-panel" v-if="question" :key="questionId">
+          <div class="detail-panel" :key="questionId">
 
             <div class="question-card">
               <span class="q-type">{{ typeLabel(question.type) }}</span>
@@ -62,11 +62,11 @@
             </div>
 
           </div>
-
-          <div class="detail-panel" v-else :key="'skeleton-' + questionId">
-            <SkeletonBar :height="200" />
-          </div>
         </Transition>
+      </div>
+
+      <div class="detail-stage" v-else>
+        <SkeletonBar :height="200" />
       </div>
     </div>
 
@@ -163,10 +163,7 @@ function goPrev() {
   if (!hasPrev.value) return
   slideDirection.value = 'slide-right'
   const prevId = questionIds.value[currentIndex.value - 1]
-  // Pre-seed cache so fetchDetail hits instantly
-  if (cache.has(prevId)) {
-    question.value = cache.get(prevId)!
-  }
+  if (cache.has(prevId)) question.value = cache.get(prevId)!
   router.replace({ path: `/questions/${prevId}`, query: route.query })
 }
 
@@ -174,9 +171,7 @@ function goNext() {
   if (!hasNext.value) return
   slideDirection.value = 'slide-left'
   const nextId = questionIds.value[currentIndex.value + 1]
-  if (cache.has(nextId)) {
-    question.value = cache.get(nextId)!
-  }
+  if (cache.has(nextId)) question.value = cache.get(nextId)!
   router.replace({ path: `/questions/${nextId}`, query: route.query })
 }
 
