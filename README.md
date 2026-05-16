@@ -62,13 +62,21 @@ IntervVault/
 |------|----------|
 | ![首页](docs/images/homepage.png) | ![查看题库](docs/images/questions.png) |
 
-| 自由刷题 | AI 面试 |
-|----------|---------|
-| ![自由刷题](docs/images/practice.png) | ![AI面试](docs/images/interview.png) |
+| 自由刷题 | AI 面试入口 |
+|----------|-------------|
+| ![自由刷题](docs/images/practice.png) | ![AI面试入口](docs/images/interview.png) |
 
-| 简历优化 |
-|----------|
-| ![简历优化](docs/images/resume.png) |
+| 面试聊天（PC 端） | 面试聊天（移动端） |
+|-------------------|---------------------|
+| ![面试聊天](docs/images/interview-design.png) | ![面试聊天移动端](docs/images/interview-design-mobiephone.png) |
+
+| 简历上传 | 简历评分报告 |
+|----------|--------------|
+| ![简历上传](docs/images/resume.png) | ![简历报告](docs/images/resumereport.png) |
+
+| 简历深度优化 |
+|--------------|
+| ![简历深度优化](docs/images/resumedeep.png) |
 
 > 完整 12 页面设计稿（Warm Tech 设计系统）：在浏览器中打开 `docs/superpowers/specs/2026-05-16-mianmian-design.html`
 
