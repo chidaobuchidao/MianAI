@@ -14,13 +14,13 @@
 interface Props {
   lines?: number
   widths?: string[]
-  height?: string
+  height?: string | number
   gap?: string
 }
 
 withDefaults(defineProps<Props>(), {
   lines: 3,
-  width: () => ['80%', '55%', '65%'],
+  widths: () => ['80%', '55%', '65%'],
   height: '12px',
   gap: '8px'
 })
