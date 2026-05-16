@@ -11,6 +11,7 @@
         <div class="model-bar">
           <span class="model-label">模型</span>
           <div class="capsule-toggle">
+            <div class="capsule-slider" :class="{ right: interviewModel === 'deepseek-v4-pro' }" />
             <button class="capsule-opt" :class="{ active: interviewModel === 'deepseek-v4-flash' }" @click="interviewModel = 'deepseek-v4-flash'">Flash</button>
             <button class="capsule-opt" :class="{ active: interviewModel === 'deepseek-v4-pro' }" @click="interviewModel = 'deepseek-v4-pro'">Pro</button>
           </div>
@@ -802,21 +803,35 @@ function renderContent(text: string): string {
 }
 .model-label { font-size: 13px; color: var(--text-light); }
 .capsule-toggle {
+  position: relative;
   display: inline-flex;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-full);
   overflow: hidden;
   background: var(--bg-surface);
 }
+.capsule-slider {
+  position: absolute;
+  top: 0; left: 0;
+  width: 50%; height: 100%;
+  background: var(--bg-dark);
+  border-radius: var(--radius-full);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 0;
+}
+.capsule-slider.right {
+  transform: translateX(100%);
+}
 .capsule-opt {
+  position: relative; z-index: 1;
   padding: 6px 18px;
   font-size: 13px; font-weight: 500;
   border: none; background: transparent;
   color: var(--text-muted); cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.25s;
 }
 .capsule-opt.active {
-  background: var(--bg-dark); color: #fff;
+  color: #fff;
 }
 .pos-grid {
   display: flex; flex-direction: column; gap: 10px;
