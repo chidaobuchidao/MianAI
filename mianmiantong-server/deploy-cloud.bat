@@ -1,5 +1,10 @@
 @echo off
-echo === 面面通后端 - 云托管部署脚本 ===
+chcp 65001 >nul
+echo === 面面通后端 - 阿里云 ECS 部署工具 ===
+echo.
+
+set SERVER_IP=8.148.15.228
+set SERVER_DIR=/opt/mianmiantong
 
 echo [1/3] 编译项目...
 call mvn clean package -DskipTests -q
@@ -9,30 +14,24 @@ if %ERRORLEVEL% neq 0 (
 )
 echo 编译成功！
 
-echo [2/3] 构建 Docker 镜像...
-docker build -t mianmiantong-server:latest .
+echo.
+echo [2/3] 上传 JAR 到服务器...
+scp target\mianmiantong.jar root@%SERVER_IP%:%SERVER_DIR%/mianmiantong.jar
 if %ERRORLEVEL% neq 0 (
-    echo 镜像构建失败！
+    echo 上传失败！请检查服务器 IP 和 SSH 连接
     exit /b 1
 )
-echo 镜像构建成功！
+echo JAR 上传成功！
 
-echo [3/3] 本地测试启动（可选）...
-echo 运行: docker run -p 8080:80 ^
-  -e DB_USERNAME=root ^
-  -e DB_PASSWORD=你的密码 ^
-  -e CLOUD_MYSQL_HOST=你的云MySQL地址 ^
-  -e DEEPSEEK_API_KEY=你的key ^
-  -e JWT_SECRET=你的secret ^
-  -e ALIBABA_CLOUD_ACCESS_KEY_ID=你的key ^
-  -e ALIBABA_CLOUD_ACCESS_KEY_SECRET=你的secret ^
-  mianmiantong-server:latest
 echo.
-echo === 镜像构建完成 ===
+echo [3/3] 重启服务...
+ssh root@%SERVER_IP% "systemctl restart mianmiantong && systemctl status mianmiantong --no-pager"
+if %ERRORLEVEL% neq 0 (
+    echo 服务重启失败！请检查服务器配置
+    exit /b 1
+)
+
 echo.
-echo 下一步: 将镜像推送至腾讯云容器镜像仓库:
-echo   docker tag mianmiantong-server:latest ccr.ccs.tencentyun.com/你的仓库/mianmiantong:latest
-echo   docker push ccr.ccs.tencentyun.com/你的仓库/mianmiantong:latest
-echo.
-echo 然后在云托管管理后台选择「镜像部署」即可
+echo === 部署完成 ===
+echo 查看日志: ssh root@%SERVER_IP% "journalctl -u mianmiantong -f"
 pause

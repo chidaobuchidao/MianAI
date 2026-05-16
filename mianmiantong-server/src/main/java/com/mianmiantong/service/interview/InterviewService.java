@@ -569,22 +569,20 @@ public class InterviewService {
     // ===== 编程环节专用 =====
 
     private static final String CODING_PROMPT = """
-        你是一个编程题库生成器。请根据以下要求生成一道编程题：
+        你是一个编程题库。只生成一道简洁的编程题。
 
-        【题目类型】%s
-        【目标岗位】%s
-        【难度】LeetCode Easy 到 Medium
+        【类型】%s（algorithm=算法题/complete=补全代码）
+        【岗位】%s
+        【难度】LeetCode Easy
 
-        【输出格式】只输出下面这1行JSON，不要有任何其他内容：
-        [编程题目]{"type":"%s","title":"题目标题","description":"题目描述(含输入输出示例)","template":"代码模板(含函数签名)","language":"java"}
+        只输出1行JSON：
+        [编程题目]{"type":"%s","title":"简短标题(10字内)","description":"一句话描述+输入输出示例","template":"class Solution {\\n    // 方法签名\\n}","language":"java"}
 
-        【要求】
-        - type=algorithm：LeetCode风格算法题，给出函数签名+示例
-        - type=complete：给完整代码挖掉关键逻辑3-8行，空位标注// TODO
-        - 题目参考：二分查找、链表反转、二叉树遍历、快速排序、接雨水、有效的括号、最长公共前缀、两数之和、LRU缓存等
-        - template必须是可以直接编辑的有效Java代码
-        - JSON必须是一整行，description中的换行用\\n表示
-        - 绝对不要输出JSON之外的任何文字
+        规则：
+        - 每次只出一道题，不要多问
+        - template是可直接编辑的Java代码
+        - description 30-80字
+        - 绝对不要JSON之外的任何文字
         """;
 
     private Map<String, Object> handleCodingRound(InterviewSession session, String answer) {
@@ -592,7 +590,7 @@ public class InterviewService {
         String prompt = String.format(CODING_PROMPT, type, session.getPosition(), type);
 
         List<Map<String, String>> aiMessages = List.of(
-            Map.of("role", "user", "content", "请出一道" + session.getPosition() + "岗位的编程题")
+            Map.of("role", "user", "content", "出题")
         );
 
         String aiResponse = aiService.chat(prompt, aiMessages, getUserApiKey(), session.getModel());
@@ -616,16 +614,14 @@ public class InterviewService {
         String prompt = String.format(CODING_PROMPT, type, session.getPosition(), type);
 
         List<Map<String, String>> aiMessages = List.of(
-            Map.of("role", "user", "content", "请出一道" + session.getPosition() + "岗位的编程题")
+            Map.of("role", "user", "content", "出题")
         );
 
-        // Save the trigger message
         List<Map<String, Object>> messages = parseMessages(session.getMessages());
         messages.add(Map.of("role", "user", "content", "[进入编程环节]", "time", LocalDateTime.now().toString()));
         session.setMessages(toJson(messages));
         sessionMapper.updateById(session);
 
-        // Stream the response token by token
         new Thread(() -> {
             try {
                 aiService.streamChat(prompt, aiMessages, getUserApiKey(),
@@ -636,14 +632,12 @@ public class InterviewService {
                         throw new RuntimeException("SSE发送失败", e);
                     }
                 });
-
-                // Save final response
                 emitter.send(SseEmitter.event().name("finish")
                     .data("{\"finished\":false,\"coding\":true}"));
                 emitter.complete();
             } catch (Exception e) {
                 try {
-                    emitter.send(SseEmitter.event().name("error").data("编程题生成失败: " + e.getMessage()));
+                    emitter.send(SseEmitter.event().name("error").data("编程题生成失败"));
                     emitter.complete();
                 } catch (Exception ex) { /* ignore */ }
             }
