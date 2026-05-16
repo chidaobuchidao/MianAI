@@ -293,27 +293,33 @@ onMounted(async () => {
 }
 .action-pri:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* Slide transitions */
+/* Slide transitions — PPT-style push */
 .slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: all 0.25s var(--ease-out-expo);
+.slide-right-enter-active {
+  transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
 }
+.slide-left-leave-active,
+.slide-right-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* Next question: content enters from right, old exits left */
 .slide-left-enter-from {
   opacity: 0;
-  transform: translateX(40px);
+  transform: translateX(48px);
 }
 .slide-left-leave-to {
   opacity: 0;
-  transform: translateX(-40px);
+  transform: translateX(-48px);
 }
+
+/* Prev question: content enters from left, old exits right */
 .slide-right-enter-from {
   opacity: 0;
-  transform: translateX(-40px);
+  transform: translateX(-48px);
 }
 .slide-right-leave-to {
   opacity: 0;
-  transform: translateX(40px);
+  transform: translateX(48px);
 }
 </style>
