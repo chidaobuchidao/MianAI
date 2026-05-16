@@ -373,15 +373,15 @@ async function sendAnswer() {
               if (aiContent.includes('[面试结束]')) {
                 const match = aiContent.match(/\[面试结束\]\s*(\{.*\})/s)
                 if (match) {
+                  let endJson: any = {}
                   try {
-                    const endJson = JSON.parse(match[1])
+                    endJson = JSON.parse(match[1])
                     if (endJson.score) {
                       sessionStorage.setItem('interviewScore', String(endJson.score || ''))
                       sessionStorage.setItem('interviewFeedback', endJson.feedback || '')
                       reportScore.value = endJson.score
                     }
                   } catch {}
-                  // Save report data for the report page
                   if (endJson.dimensions) sessionStorage.setItem('interviewDims', JSON.stringify(endJson.dimensions))
                   if (endJson.suggestion) sessionStorage.setItem('interviewSuggestion', endJson.suggestion)
                   // Strip marker from display and trigger navigation
