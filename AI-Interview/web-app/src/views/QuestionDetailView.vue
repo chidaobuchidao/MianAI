@@ -12,7 +12,7 @@
       </div>
 
       <div class="detail-stage">
-        <Transition :name="slideDirection" mode="out-in">
+        <Transition :name="slideDirection">
           <div class="detail-panel" v-if="question" :key="questionId">
 
             <div class="question-card">
@@ -213,6 +213,7 @@ onMounted(async () => {
 .page-head__cat { font-size: 12px; color: var(--text-light); }
 
 .detail-stage {
+  position: relative;
   perspective: 800px;
 }
 .detail-panel {
