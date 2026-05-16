@@ -9,11 +9,11 @@
           v-for="opt in parseOptions(q.options)"
           :key="opt.label"
           class="option-btn"
-          :class="{ correct: opt.label === q.answer }"
+          :class="{ correct: isCorrect(opt.label, q.answer, q.type) }"
         >
           <span class="option-letter">{{ opt.label }}</span>
           <span class="option-text">{{ opt.content }}</span>
-          <svg v-if="opt.label === q.answer" class="option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <svg v-if="isCorrect(opt.label, q.answer, q.type)" class="option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
@@ -60,6 +60,18 @@ defineProps<{ q: Question }>()
 function parseOptions(o: string): Option[] {
   if (!o) return []
   try { return JSON.parse(o) } catch { return [] }
+}
+
+function isCorrect(optLabel: string, answer: string, type: number): boolean {
+  if (!answer) return false
+  if (type === 2) {
+    // Multiple choice: answer may be "AB", "A,B", "A|B"
+    const labels = answer.includes(',') ? answer.split(',')
+      : answer.includes('|') ? answer.split('|')
+      : answer.split('')
+    return labels.map(l => l.trim()).includes(optLabel)
+  }
+  return optLabel === answer
 }
 
 function typeLabel(t: number) {
