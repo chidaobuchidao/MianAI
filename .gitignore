@@ -36,3 +36,9 @@ logs/
 *.tmp
 *.temp
 application-local.yml
+
+# Tool configs (local only)
+.claude/
+.playwright-mcp/
+.mcp.json
+.superpowers/
