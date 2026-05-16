@@ -56,9 +56,21 @@ IntervVault/
         └── 2026-05-16-mianmian-design.html  # 全页面设计稿
 ```
 
-## 设计稿
+## 界面展示
 
-完整 UI 设计稿（Warm Tech 设计系统）：在浏览器中打开 `docs/superpowers/specs/2026-05-16-mianmian-design.html` 查看全部 12 个页面的设计稿，包括首页、面试、题库、刷题、简历优化、报告等模块。
+| 首页 | 查看题库 |
+|------|----------|
+| ![首页](docs/images/homepage.png) | ![查看题库](docs/images/questions.png) |
+
+| 自由刷题 | AI 面试 |
+|----------|---------|
+| ![自由刷题](docs/images/practice.png) | ![AI面试](docs/images/interview.png) |
+
+| 简历优化 |
+|----------|
+| ![简历优化](docs/images/resume.png) |
+
+> 完整 12 页面设计稿（Warm Tech 设计系统）：在浏览器中打开 `docs/superpowers/specs/2026-05-16-mianmian-design.html`
 
 ## 快速开始
 
