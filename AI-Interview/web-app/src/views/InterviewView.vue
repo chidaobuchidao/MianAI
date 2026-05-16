@@ -155,9 +155,9 @@
             placeholder="输入你的回答..."
             :disabled="loading"
             rows="1"
-            @keydown.enter.exact.prevent="sendAnswer()"
+            @keydown.enter.exact.prevent="sendTextAnswer()"
           />
-          <button class="pill-send" @click="sendAnswer()" :disabled="loading || !inputText.trim()" title="发送">
+          <button class="pill-send" @click="sendTextAnswer()" :disabled="loading || !inputText.trim()" title="发送">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
@@ -221,20 +221,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { get, post } from '@/utils/request'
+import { post } from '@/utils/request'
 import { marked } from 'marked'
 import CodeBlock from '@/components/CodeBlock.vue'
 import SkeletonBar from '@/components/SkeletonBar.vue'
-
-interface Message {
-  role: 'ai' | 'user'
-  content: string
-  code?: string
-  codeFile?: string
-  codeLang?: string
-}
+import { getPosIcon } from '@/utils/positionIcons'
+import { useInterviewStream, type InterviewMessage, type ReportData } from '@/composables/useInterviewStream'
 
 interface ProgressItem {
   name: string
@@ -256,7 +250,7 @@ interface InterviewSession {
 const router = useRouter()
 const isDesktop = ref(window.innerWidth > 768)
 const started = ref(false)
-const messages = ref<Message[]>([])
+const messages = ref<InterviewMessage[]>([])
 const loading = ref(false)
 const recording = ref(false)
 const finished = ref(false)
@@ -270,17 +264,6 @@ const positions = ['Java 后端开发', '前端开发工程师', '算法工程�
 const interviewModel = ref('deepseek-v4-flash')
 const selectedPosition = ref('')
 const progressItems = ref<ProgressItem[]>([])
-
-function getPosIcon(p: string): string {
-  const icons: Record<string, string> = {
-    'Java 后端开发': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>',
-    '前端开发工程师': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
-    '算法工程师': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="6" x2="8" y2="3"/></svg>',
-    '数据分析师': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-    'DevOps 工程师': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-  }
-  return icons[p] || icons['DevOps 工程师']
-}
 
 // ===== Interview flow =====
 async function startInterview(position: string) {
@@ -326,123 +309,36 @@ async function startInterview(position: string) {
   }
 }
 
-async function sendAnswer() {
-  const text = inputText.value.trim()
-  if (!text || loading.value) return
-  messages.value.push({ role: 'user', content: text })
-  inputText.value = ''
-  loading.value = true
-
-  try {
-    const token = localStorage.getItem('token') || ''
-    const response = await fetch(`/api/interview/${sessionId.value}/answer/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ answer: text })
-    })
-
-    const reader = response.body?.getReader()
-    if (!reader) throw new Error('No stream')
-
-    const decoder = new TextDecoder()
-    let aiContent = ''
-    let currentEvent = ''
-    let buffer = ''
-    let endDetected = false
-
-    // Add placeholder AI message
-    const aiMsgIdx = messages.value.length
-    messages.value.push({ role: 'ai', content: '' })
-
-    const processSSE = async () => {
-      const parts = buffer.split('\n\n')
-      buffer = parts.pop() || ''
-      for (const part of parts) {
-        const lines = part.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            currentEvent = line.slice(6).trim()
-          } else if (line.startsWith('data:')) {
-            const data = line.slice(5).trim()
-            if (currentEvent === 'token') {
-              aiContent += data
-              // Detect [面试结束] inline — backup trigger
-              if (aiContent.includes('[面试结束]')) {
-                const match = aiContent.match(/\[面试结束\]\s*(\{.*\})/s)
-                if (match) {
-                  let endJson: any = {}
-                  try {
-                    // Fix AI-generated JSON: remove trailing commas before } or ]
-                    const fixed = match[1].replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']')
-                    endJson = JSON.parse(fixed)
-                  } catch { /* AI output may have malformed JSON, use partial data */ }
-                  if (endJson.score) {
-                    sessionStorage.setItem('interviewScore', String(endJson.score || ''))
-                    sessionStorage.setItem('interviewFeedback', endJson.feedback || '')
-                    reportScore.value = endJson.score
-                  }
-                  if (endJson.dimensions) sessionStorage.setItem('interviewDims', JSON.stringify(endJson.dimensions))
-                  if (endJson.suggestion) sessionStorage.setItem('interviewSuggestion', endJson.suggestion)
-                  // Strip marker from display and trigger navigation
-                  const clean = aiContent.replace(/\[面试结束\].*/s, '').trim()
-                  messages.value[aiMsgIdx] = { role: 'ai', content: clean || '面试已结束' }
-                  loading.value = false
-                  // Fire-and-forget: don't block navigation on the /end API
-                  post(`/api/interview/${sessionId.value}/end`).catch(() => {})
-                  router.push(`/interview/report?id=${sessionId.value}`)
-                  endDetected = true
-                  return
-                }
-              }
-              const displayContent = aiContent.replace(/\[面试结束\].*/s, '').trim()
-              messages.value[aiMsgIdx] = { role: 'ai', content: displayContent }
-            } else if (currentEvent === 'finish') {
-              try {
-                const json = JSON.parse(data)
-                if (json.report) {
-                  sessionStorage.setItem('interviewScore', String(json.report.score || ''))
-                  sessionStorage.setItem('interviewFeedback', json.report.feedback || '')
-                  if (json.report.dimensions) sessionStorage.setItem('interviewDims', JSON.stringify(json.report.dimensions))
-                  if (json.report.suggestion) sessionStorage.setItem('interviewSuggestion', json.report.suggestion)
-                  reportScore.value = json.report.score
-                }
-                if (json.finished) {
-                  loading.value = false
-                  post(`/api/interview/${sessionId.value}/end`).catch(() => {})
-                  const cleanContent = aiContent.replace(/\[面试结束\].*/s, '').trim()
-                  messages.value[aiMsgIdx] = { role: 'ai', content: cleanContent || '面试已结束' }
-                  router.push(`/interview/report?id=${sessionId.value}`)
-                  endDetected = true
-                }
-              } catch { /* ignore */ }
-            } else if (currentEvent === 'error') {
-              messages.value.push({ role: 'ai', content: '⚠️ ' + data })
-            }
-          }
-        }
-      }
-    }
-
-    while (true) {
-      if (endDetected) break
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      await processSSE()
-      await nextTick()
-      if (endDetected) break
-    }
-    // Flush remaining buffer
-    if (!endDetected) await processSSE()
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '请求失败'
-    messages.value.push({ role: 'ai', content: '抱歉，请求出错了：' + msg })
-  } finally {
-    loading.value = false
+// ===== SSE stream (composable) =====
+function handleFinish(data: ReportData) {
+  if (data.score != null) {
+    sessionStorage.setItem('interviewScore', String(data.score))
   }
+  if (data.feedback) {
+    sessionStorage.setItem('interviewFeedback', data.feedback)
+  }
+  if (data.dimensions) {
+    sessionStorage.setItem('interviewDims', JSON.stringify(data.dimensions))
+  }
+  if (data.suggestion) {
+    sessionStorage.setItem('interviewSuggestion', data.suggestion)
+  }
+  router.push(`/interview/report?id=${sessionId.value}`)
+}
+
+const { sendAnswer, reportScore } = useInterviewStream({
+  sessionId,
+  messages,
+  loading,
+  onFinish: handleFinish
+})
+
+// Thin wrapper: extract and trim text, then delegate to composable
+function sendTextAnswer() {
+  const text = inputText.value.trim()
+  if (!text) return
+  inputText.value = ''
+  sendAnswer(text)
 }
 
 async function endInterview() {
@@ -467,8 +363,18 @@ marked.setOptions({
   gfm: true
 })
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s\S]*?>/gi, '')
+    .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\s+on\w+\s*=\s*'[^']*'/gi, '')
+}
+
 function renderContent(text: string): string {
-  return marked.parse(text) as string
+  return sanitizeHtml(marked.parse(text) as string)
 }
 </script>
 

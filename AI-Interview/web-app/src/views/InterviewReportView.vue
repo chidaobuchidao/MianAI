@@ -62,13 +62,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { get } from '@/utils/request'
 import SkeletonBar from '@/components/SkeletonBar.vue'
+import { sanitizeEndMarker, safeParseDims, type DimItem } from '@/utils/sanitize'
 
-interface Dim { name: string; score: number; comment: string }
 interface Report {
   overallScore: number | null
   feedback: string
   suggestion?: string
-  dimensions: Dim[] | string
+  dimensions: DimItem[] | string
   position?: string
   createTime?: string
 }
@@ -77,30 +77,14 @@ const route = useRoute()
 const report = ref<Report | null>(null)
 const loading = ref(true)
 
-function sanitize(s: string) {
-  return s.replace(/\[面试结束\]\s*\{.*\}/s, '').trim()
-}
-
-function safeParseDims(raw: any): Dim[] {
-  if (Array.isArray(raw)) return raw
-  if (typeof raw === 'string') {
-    try {
-      // Fix trailing commas in JSON objects: ,"  →  "
-      const fixed = raw.replace(/,"\s*}/g, '"}').replace(/,"\s*\]/g, '"]')
-      return JSON.parse(fixed)
-    } catch { return [] }
-  }
-  return []
-}
-
 function loadFromStorage() {
   const score = sessionStorage.getItem('interviewScore')
   const feedback = sessionStorage.getItem('interviewFeedback')
   if (!score && !feedback) return null
   return {
     overallScore: Number(score) || 0,
-    feedback: sanitize(feedback || ''),
-    suggestion: sanitize(sessionStorage.getItem('interviewSuggestion') || ''),
+    feedback: sanitizeEndMarker(feedback || ''),
+    suggestion: sanitizeEndMarker(sessionStorage.getItem('interviewSuggestion') || ''),
     dimensions: safeParseDims(sessionStorage.getItem('interviewDims'))
   } as Report
 }
@@ -125,8 +109,8 @@ async function fetchReport() {
       if (raw && (raw.feedback || raw.overallScore != null)) {
         report.value = {
           overallScore: raw.overallScore ?? 0,
-          feedback: sanitize(raw.feedback || ''),
-          suggestion: sanitize(raw.suggestion || raw.feedback || ''),
+          feedback: sanitizeEndMarker(raw.feedback || ''),
+          suggestion: sanitizeEndMarker(raw.suggestion || raw.feedback || ''),
           dimensions: safeParseDims(raw.dimensions),
           position: raw.position,
           createTime: raw.createTime
@@ -146,7 +130,7 @@ async function fetchReport() {
 onMounted(() => { fetchReport() })
 
 const dimArray = computed(() => {
-  if (!report.value) return [] as Dim[]
+  if (!report.value) return [] as DimItem[]
   const d = report.value.dimensions
   return Array.isArray(d) ? d : []
 })
