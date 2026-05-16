@@ -36,7 +36,7 @@
       </view>
       <view class="menu-item" @click="goExam">
         <view class="mi-left">
-          <text class="mi-text">在线试卷</text>
+          <text class="mi-text">自由刷题</text>
         </view>
         <text class="mi-arrow">→</text>
       </view>
@@ -168,7 +168,7 @@ onShow(() => {
 });
 
 function goInterviewHistory() { uni.navigateTo({ url: '/pages/interview/history' }); }
-function goExam() { uni.navigateTo({ url: '/pages/exam/index' }); }
+function goExam() { uni.navigateTo({ url: '/pages/practice-entry/index' }); }
 function goWrongBook() { uni.switchTab({ url: '/pages/wrong-book/wrong-book' }); }
 function handleLogout() {
   uni.showModal({ title:'提示', content:'确定要退出吗？', success: r => { if (r.confirm) userStore.logout(); } });

@@ -70,8 +70,8 @@
             <uni-icons type="calendar" size="20" color="#4A4A4A" />
           </view>
         </view>
-        <text class="func-card-title">在线试卷</text>
-        <text class="func-card-desc">限时模拟考试，查漏补缺</text>
+        <text class="func-card-title">自主刷题</text>
+        <text class="func-card-desc">随机组卷或按专题专项突破</text>
       </view>
 
       <view class="func-card" @click="goPractice">
@@ -147,7 +147,7 @@ function goCategory(c: Category) {
   uni.navigateTo({ url: `/pages/question/list?categoryId=${c.id}&categoryName=${encodeURIComponent(c.name)}` });
 }
 function goInterview() { uni.navigateTo({ url: '/pages/interview/chat' }); }
-function goExam() { uni.navigateTo({ url: '/pages/exam/index' }); }
+function goExam() { uni.navigateTo({ url: '/pages/practice-entry/index' }); }
 function goPractice() { uni.switchTab({ url: '/pages/practice/practice' }); }
 function goWrongBook() { uni.switchTab({ url: '/pages/wrong-book/wrong-book' }); }
 function goResume() { uni.navigateTo({ url: '/pages/resume/upload' }); }
