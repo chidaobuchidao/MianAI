@@ -85,7 +85,7 @@
           </PixelCard>
 
           <PixelCard :gap="10" :dotRadius="1.0" colors="#e0f2fe,#7dd3fc,#0ea5e9" :opacityMin="0.15" :opacityMax="0.5"
-            className="func-card" @click="$router.push('/exam')">
+            className="func-card" @click="$router.push('/practice')">
             <div class="func-card__top">
               <div class="func-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5">
@@ -95,12 +95,12 @@
                 </svg>
               </div>
             </div>
-            <span class="func-card__title">在线试卷</span>
-            <span class="func-card__desc">限时模拟考试，查漏补缺</span>
+            <span class="func-card__title">自由刷题</span>
+            <span class="func-card__desc">随机组卷 · 按专题练习</span>
           </PixelCard>
 
           <PixelCard :gap="10" :dotRadius="1.0" colors="#f8fafc,#f1f5f9,#cbd5e1" :opacityMin="0.12" :opacityMax="0.4"
-            className="func-card" @click="$router.push('/practice')">
+            className="func-card" @click="$router.push('/questions')">
             <div class="func-card__top">
               <div class="func-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5">
@@ -111,8 +111,8 @@
                 </svg>
               </div>
             </div>
-            <span class="func-card__title">自由刷题</span>
-            <span class="func-card__desc">按分类随机练习</span>
+            <span class="func-card__title">查看题库</span>
+            <span class="func-card__desc">分类浏览 · 逐题精学</span>
           </PixelCard>
 
           <PixelCard :gap="10" :dotRadius="1.0" colors="#fecdd3,#fda4af,#e11d48" :opacityMin="0.15" :opacityMax="0.5"
@@ -196,10 +196,10 @@ onMounted(async () => {
 })
 
 function goTopic(t: string) {
-  router.push(`/practice?tag=${encodeURIComponent(t)}`)
+  router.push(`/questions?tag=${encodeURIComponent(t)}`)
 }
 function goCategory(c: Category) {
-  router.push(`/practice?categoryId=${c.id}&categoryName=${encodeURIComponent(c.name)}`)
+  router.push(`/questions?categoryId=${c.id}&categoryName=${encodeURIComponent(c.name)}`)
 }
 </script>
 

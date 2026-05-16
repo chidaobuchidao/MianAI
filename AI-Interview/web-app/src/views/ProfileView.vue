@@ -35,8 +35,8 @@
             <polyline points="9 18 15 12 9 6"/>
           </svg>
         </button>
-        <button class="menu-item" @click="$router.push('/exam')">
-          <span class="menu-item__label">在线试卷</span>
+        <button class="menu-item" @click="$router.push('/practice')">
+          <span class="menu-item__label">自由刷题</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
