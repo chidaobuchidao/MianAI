@@ -11,9 +11,9 @@
         <span class="page-head__cat">{{ categoryName || '' }}</span>
       </div>
 
-      <div class="detail-body">
-        <Transition :name="slideDirection" mode="out-in">
-          <div class="detail-content" v-if="question" :key="questionId">
+      <div class="detail-body" v-if="question">
+        <Transition :name="slideDirection">
+          <div class="detail-content" :key="questionId">
 
             <!-- Question card -->
             <div class="question-card">
@@ -68,11 +68,11 @@
             </div>
 
           </div>
-
-          <div class="detail-content" v-else :key="'skeleton-' + questionId">
-            <SkeletonBar :height="200" />
-          </div>
         </Transition>
+      </div>
+
+      <div class="detail-body" v-else>
+        <SkeletonBar :height="200" />
       </div>
     </div>
 
@@ -125,9 +125,6 @@ function difficultyLabel(d: number) {
 }
 
 async function fetchDetail(id: number) {
-  question.value = null
-  // Small delay so the skeleton/leave animation can render
-  await new Promise(r => setTimeout(r, 50))
   try {
     const res = await get<Question>(`/api/questions/${id}`)
     question.value = res.data
@@ -197,7 +194,7 @@ onMounted(async () => {
 .page-head__title { font-family: var(--font-serif); font-size: 18px; font-weight: 600; }
 .page-head__cat { font-size: 12px; color: var(--text-light); }
 
-.detail-body { padding-bottom: 20px; }
+.detail-body { padding-bottom: 20px; position: relative; }
 
 /* Question card */
 .question-card {
@@ -295,33 +292,36 @@ onMounted(async () => {
 }
 .action-pri:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* Slide transitions — PPT-style push */
-.slide-left-enter-active,
-.slide-right-enter-active {
-  transition: all 0.5s cubic-bezier(0.2, 0, 0, 1);
-}
-.slide-left-leave-active,
-.slide-right-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.6, 1);
+/* Slide transitions — simultaneous push (翻页) */
+.detail-content {
+  transition: all 0.45s cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Next question: content enters from right, old exits left */
+.slide-left-leave-active,
+.slide-right-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+/* Next: new slides in from right, old slides out to left */
 .slide-left-enter-from {
   opacity: 0;
-  transform: translateX(72px);
+  transform: translateX(60px);
 }
 .slide-left-leave-to {
   opacity: 0;
-  transform: translateX(-72px);
+  transform: translateX(-60px);
 }
 
-/* Prev question: content enters from left, old exits right */
+/* Prev: new slides in from left, old slides out to right */
 .slide-right-enter-from {
   opacity: 0;
-  transform: translateX(-72px);
+  transform: translateX(-60px);
 }
 .slide-right-leave-to {
   opacity: 0;
-  transform: translateX(72px);
+  transform: translateX(60px);
 }
 </style>
