@@ -19,9 +19,15 @@
             }
         },
         {
-            "path": "pages/practice/practice",
+            "path": "pages/question-bank/index",
             "style": {
-                "navigationBarTitleText": "自由刷题"
+                "navigationBarTitleText": "查看题库"
+            }
+        },
+        {
+            "path": "pages/question-bank/detail",
+            "style": {
+                "navigationBarTitleText": "题目详情"
             }
         },
         {
@@ -61,18 +67,18 @@
             ]
         },
         {
-            "root": "pages/exam",
+            "root": "pages/practice-entry",
             "pages": [
                 {
                     "path": "index",
                     "style": {
-                        "navigationBarTitleText": "在线试卷"
+                        "navigationBarTitleText": "自由刷题"
                     }
                 },
                 {
                     "path": "do",
                     "style": {
-                        "navigationBarTitleText": "答题中"
+                        "navigationBarTitleText": "刷题中"
                     }
                 }
             ]
@@ -135,8 +141,8 @@
                 "text": "首页"
             },
             {
-                "pagePath": "pages/practice/practice",
-                "text": "刷题"
+                "pagePath": "pages/question-bank/index",
+                "text": "题库"
             },
             {
                 "pagePath": "pages/wrong-book/wrong-book",
