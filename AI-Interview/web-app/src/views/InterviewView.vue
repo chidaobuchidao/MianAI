@@ -239,7 +239,7 @@ import { marked } from 'marked'
 import CodeBlock from '@/components/CodeBlock.vue'
 import SkeletonBar from '@/components/SkeletonBar.vue'
 import { getPosIcon } from '@/utils/positionIcons'
-import { useInterviewStream, type InterviewMessage, type ReportData } from '@/composables/useInterviewStream'
+import { useInterviewStream, type InterviewMessage, type ReportData, type CodeProblem } from '@/composables/useInterviewStream'
 
 interface ProgressItem {
   name: string
@@ -378,11 +378,23 @@ function handleFinish(data: ReportData) {
   router.push(`/interview/report?id=${sessionId.value}`)
 }
 
+function handleCodeProblem(data: CodeProblem) {
+  showCodePanel.value = true
+  currentCode.value = data.template
+  codeFilename.value = data.title
+  // Show description as a system message in chat
+  messages.value = [...messages.value, {
+    role: 'ai',
+    content: `**${data.title}**\n\n${data.description}`
+  }]
+}
+
 const { sendAnswer, reportScore } = useInterviewStream({
   sessionId,
   messages,
   loading,
-  onFinish: handleFinish
+  onFinish: handleFinish,
+  onCodeProblem: handleCodeProblem
 })
 
 // Detect coding round triggers in user messages

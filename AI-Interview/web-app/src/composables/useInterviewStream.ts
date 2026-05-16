@@ -17,11 +17,20 @@ export interface ReportData {
   suggestion?: string
 }
 
+export interface CodeProblem {
+  type: 'complete' | 'algorithm'
+  title: string
+  description: string
+  template: string
+  language: string
+}
+
 interface UseInterviewStreamOptions {
   sessionId: Ref<number>
   messages: Ref<InterviewMessage[]>
   loading: Ref<boolean>
   onFinish: (data: ReportData) => void
+  onCodeProblem?: (data: CodeProblem) => void
 }
 
 interface SSEParseResult {
@@ -56,7 +65,7 @@ function parseSSEBuffer(
 }
 
 export function useInterviewStream(options: UseInterviewStreamOptions) {
-  const { sessionId, messages, loading, onFinish } = options
+  const { sessionId, messages, loading, onFinish, onCodeProblem } = options
   const reportScore = ref(0)
 
   function buildFinishData(json: Record<string, unknown>): ReportData {
@@ -93,6 +102,27 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
       data: buildFinishData(json),
       cleanContent: sanitizeEndMarker(content)
     }
+  }
+
+  /** Try to parse [编程题目] inline marker from AI content */
+  function tryParseCodeMarker(content: string): { data: CodeProblem; cleanContent: string } | null {
+    if (!content.includes('[编程题目]')) return null
+    const match = content.match(/\[编程题目\]\s*(\{.*\})/s)
+    if (!match) return null
+    try {
+      const json = JSON.parse(fixJsonString(match[1]))
+      if (!json.title || !json.template) return null
+      return {
+        data: {
+          type: (json.type === 'algorithm' ? 'algorithm' : 'complete') as CodeProblem['type'],
+          title: json.title || '',
+          description: json.description || '',
+          template: json.template || '',
+          language: json.language || 'java'
+        },
+        cleanContent: content.replace(/\[编程题目\].*/s, '').trim()
+      }
+    } catch { return null }
   }
 
   function updateMessage(idx: number, content: string): void {
@@ -140,6 +170,15 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
 
         if (event === 'token') {
           streamState.aiContent += data
+
+          // Detect [编程题目] marker (before end marker check)
+          const codeResult = tryParseCodeMarker(streamState.aiContent)
+          if (codeResult && onCodeProblem) {
+            streamState.aiContent = codeResult.cleanContent
+            updateMessage(aiMsgIdx, codeResult.cleanContent)
+            onCodeProblem(codeResult.data)
+            return
+          }
 
           const endResult = tryParseEndMarker(streamState.aiContent)
           if (endResult) {
