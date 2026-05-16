@@ -47,18 +47,31 @@ import SkeletonBar from '@/components/SkeletonBar.vue'
 
 interface HistItem { id: number; position: string; createTime: string; overallScore: number | null; status: number }
 
-const list = ref<HistItem[]>([])
-const loading = ref(true)
+// Module-level cache survives route navigation
+let cachedList: HistItem[] | null = null
 
-onMounted(async () => {
+const list = ref<HistItem[]>(cachedList || [])
+const loading = ref(!cachedList)
+
+async function fetchList() {
   try {
     const res = await get<HistItem[]>('/api/interview/list')
     list.value = (res.data || []).map(item => ({
       ...item,
       position: item.position || '未命名岗位'
     }))
+    cachedList = list.value
   } catch { /* empty */ }
   loading.value = false
+}
+
+onMounted(() => {
+  if (cachedList) {
+    list.value = cachedList
+    loading.value = false
+  }
+  // Always refresh in background
+  fetchList()
 })
 
 function formatTime(t: string) {

@@ -80,16 +80,27 @@ function getDisplayScore(item: ResumeItem): string {
   return ''
 }
 
-const list = ref<ResumeItem[]>([])
-const loading = ref(true)
+let cachedList: ResumeItem[] | null = null
+
+const list = ref<ResumeItem[]>(cachedList || [])
+const loading = ref(!cachedList)
 const folderColors = ['#D9750A', '#4A90D9', '#16A34A', '#9333EA', '#E11D48']
 
-onMounted(async () => {
+async function fetchList() {
   try {
     const r = await get<ResumeItem[]>('/api/resume/list')
     list.value = r.data || []
+    cachedList = list.value
   } catch {}
   loading.value = false
+}
+
+onMounted(() => {
+  if (cachedList) {
+    list.value = cachedList
+    loading.value = false
+  }
+  fetchList()
 })
 
 function formatTime(t: string) {
