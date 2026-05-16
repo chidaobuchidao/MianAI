@@ -56,7 +56,7 @@
         </div>
       </div>
 
-      <SkeletonBar v-else :height="300" :radius="20" />
+      <SkeletonBar v-else :height="300" />
 
       <!-- Actions -->
       <div class="actions" v-if="!answered">
