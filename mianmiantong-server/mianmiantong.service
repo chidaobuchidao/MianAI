@@ -1,0 +1,21 @@
+[Unit]
+Description=面面通 AI模拟面试后端服务
+After=network.target mysql.service redis.service
+Wants=mysql.service redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mianmiantong
+ExecStart=/usr/bin/java -jar /opt/mianmiantong/mianmiantong.jar --spring.profiles.active=cloud --server.address=127.0.0.1
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mianmiantong
+
+# 环境变量（也可通过 /opt/mianmiantong/.env 加载）
+EnvironmentFile=-/opt/mianmiantong/.env
+
+[Install]
+WantedBy=multi-user.target
