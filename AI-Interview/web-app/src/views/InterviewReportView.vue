@@ -46,6 +46,14 @@
         </div>
       </div>
     </div>
+
+    <div class="page__inner" v-else>
+      <div class="empty">
+        <span class="empty__icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+        <span class="empty__title">报告加载失败</span>
+        <button class="empty__btn" @click="fetchReport">重新加载</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -97,11 +105,10 @@ function loadFromStorage() {
   } as Report
 }
 
-onMounted(async () => {
+async function fetchReport() {
   const id = route.query.id
   if (!id) { loading.value = false; return }
 
-  // Show cached data immediately from SSE-delivered sessionStorage
   const cached = loadFromStorage()
   if (cached) {
     report.value = cached
@@ -120,15 +127,37 @@ onMounted(async () => {
         position: raw.position,
         createTime: raw.createTime
       }
+      loading.value = false
+      sessionStorage.removeItem('interviewScore')
+      sessionStorage.removeItem('interviewFeedback')
+      sessionStorage.removeItem('interviewDims')
+      sessionStorage.removeItem('interviewSuggestion')
+      return
     }
-    // Clear cache after successful API load
-    sessionStorage.removeItem('interviewScore')
-    sessionStorage.removeItem('interviewFeedback')
-    sessionStorage.removeItem('interviewDims')
-    sessionStorage.removeItem('interviewSuggestion')
   } catch {}
-  if (!report.value) loading.value = false
-})
+
+  // API didn't return usable data — retry once after 1s
+  if (!report.value) {
+    await new Promise(r => setTimeout(r, 1000))
+    try {
+      const r2 = await get<Report>(`/api/interview/${id}`)
+      if (r2.data) {
+        const raw2 = r2.data as any
+        report.value = {
+          overallScore: raw2.overallScore ?? 0,
+          feedback: sanitize(raw2.feedback || ''),
+          suggestion: sanitize(raw2.suggestion || raw2.feedback || ''),
+          dimensions: safeParseDims(raw2.dimensions),
+          position: raw2.position,
+          createTime: raw2.createTime
+        }
+      }
+    } catch {}
+  }
+  loading.value = false
+}
+
+onMounted(() => { fetchReport() })
 
 const dimArray = computed(() => {
   if (!report.value) return [] as Dim[]
@@ -220,5 +249,16 @@ const ringColor = computed(() => {
 }
 .dim-card__comment {
   font-size: 13px; color: var(--text-muted); line-height: 1.6;
+}
+.empty {
+  text-align: center; padding-top: 160px;
+}
+.empty__icon { display: flex; justify-content: center; margin-bottom: 16px; }
+.empty__icon svg { display: block; }
+.empty__title { font-size: 16px; color: var(--text-light); display: block; margin-bottom: 24px; }
+.empty__btn {
+  background: var(--bg-dark); color: #fff; padding: 12px 32px;
+  border-radius: var(--radius-lg); font-size: 15px; font-weight: 500;
+  border: none; cursor: pointer;
 }
 </style>

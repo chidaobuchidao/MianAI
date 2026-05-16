@@ -388,8 +388,9 @@ async function sendAnswer() {
                   const clean = aiContent.replace(/\[面试结束\].*/s, '').trim()
                   messages.value[aiMsgIdx] = { role: 'ai', content: clean || '面试已结束' }
                   loading.value = false
-                  await post(`/api/interview/${sessionId.value}/end`).catch(() => {})
-                  setTimeout(() => { router.push(`/interview/report?id=${sessionId.value}`) }, 300)
+                  // Fire-and-forget: don't block navigation on the /end API
+                  post(`/api/interview/${sessionId.value}/end`).catch(() => {})
+                  router.push(`/interview/report?id=${sessionId.value}`)
                   endDetected = true
                   return
                 }
@@ -408,12 +409,10 @@ async function sendAnswer() {
                 }
                 if (json.finished) {
                   loading.value = false
-                  await post(`/api/interview/${sessionId.value}/end`).catch(() => {})
+                  post(`/api/interview/${sessionId.value}/end`).catch(() => {})
                   const cleanContent = aiContent.replace(/\[面试结束\].*/s, '').trim()
                   messages.value[aiMsgIdx] = { role: 'ai', content: cleanContent || '面试已结束' }
-                  setTimeout(() => {
-                    router.push(`/interview/report?id=${sessionId.value}`)
-                  }, 300)
+                  router.push(`/interview/report?id=${sessionId.value}`)
                   endDetected = true
                 }
               } catch { /* ignore */ }
