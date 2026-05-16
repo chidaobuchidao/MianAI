@@ -50,7 +50,12 @@
             </div>
             <div>
               <span class="progress-tree__name">{{ item.name }}</span>
-              <span class="progress-tree__status">{{ item.status }}</span>
+              <span class="progress-tree__status">
+                <template v-if="item.stage === 'coding' && item.active && !item.done">
+                  <button class="progress-tree__btn" @click="startCoding">进入</button>
+                </template>
+                <template v-else>{{ item.status }}</template>
+              </span>
             </div>
           </div>
         </div>
@@ -233,8 +238,53 @@ import { useInterviewStream, type InterviewMessage, type ReportData } from '@/co
 interface ProgressItem {
   name: string
   status: string
+  stage: string
   done: boolean
   active: boolean
+}
+
+const INTERVIEW_PIPELINE = [
+  { stage: 'intro', name: '自我介绍与破冰' },
+  { stage: 'technical', name: '项目/技术面考察' },
+  { stage: 'deepdive', name: '项目深度问答' },
+  { stage: 'coding', name: '笔试编程环节' },
+  { stage: 'summary', name: '面试总结' },
+]
+
+function initPipeline() {
+  return INTERVIEW_PIPELINE.map((p, i) => ({
+    ...p,
+    status: i === 0 ? '准备中...' : 'Pending',
+    done: false,
+    active: i === 0
+  }))
+}
+
+function advancePipeline(currentStage: string) {
+  const idx = INTERVIEW_PIPELINE.findIndex(p => p.stage === currentStage)
+  if (idx < 0) return
+  for (let i = 0; i < progressItems.value.length; i++) {
+    if (i < idx) {
+      progressItems.value[i].done = true
+      progressItems.value[i].active = false
+      progressItems.value[i].status = 'Completed'
+    } else if (i === idx) {
+      progressItems.value[i].done = false
+      progressItems.value[i].active = true
+      progressItems.value[i].status = 'In Progress...'
+    } else {
+      progressItems.value[i].done = false
+      progressItems.value[i].active = false
+      progressItems.value[i].status = 'Pending'
+    }
+  }
+}
+
+function startCoding() {
+  advancePipeline('coding')
+  // Activate code editor panel + notify AI
+  showCodePanel.value = true
+  sendAnswer('[进入编程环节]')
 }
 
 interface InterviewSession {
@@ -292,14 +342,7 @@ async function startInterview(position: string) {
       codeFile: session.codeFile,
       codeLang: session.codeLang
     }]
-    if (session.progress) {
-      progressItems.value = session.progress.map((p, i) => ({
-        name: p.stage,
-        status: p.completed ? 'Completed' : (i === 0 ? 'In Progress...' : 'Pending'),
-        done: p.completed,
-        active: i === 0 && !p.completed
-      }))
-    }
+    progressItems.value = initPipeline()
     started.value = true
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '启动失败'
@@ -311,6 +354,8 @@ async function startInterview(position: string) {
 
 // ===== SSE stream (composable) =====
 function handleFinish(data: ReportData) {
+  advancePipeline('summary')
+  for (const item of progressItems.value) { item.done = true; item.active = false; item.status = 'Completed' }
   if (data.score != null) {
     sessionStorage.setItem('interviewScore', String(data.score))
   }
@@ -447,6 +492,14 @@ function renderContent(text: string): string {
 .progress-tree__status { font-size: 11px; color: var(--text-light); display: block; margin-top: 2px; }
 .progress-tree__item--done .progress-tree__status { color: var(--text-light); }
 .progress-tree__item--active .progress-tree__status { color: var(--color-success); }
+.progress-tree__btn {
+  font-size: 11px; font-weight: 600; color: #fff;
+  background: var(--accent);
+  border: none; border-radius: 4px;
+  padding: 2px 10px; cursor: pointer;
+  margin-top: 2px;
+}
+.progress-tree__btn:hover { opacity: 0.85; }
 
 /* ===== Chat Main ===== */
 .chat-main {

@@ -81,7 +81,26 @@ interface Emits {
 - **oneDark 主题**（`@codemirror/theme-one-dark`），适配 Warm Tech 语法色
 - 动态 import 按需加载（~200KB gzipped）
 
-## 六、面试流程集成
+## 六、面试流程（PC 侧栏进度）
+
+
+进度树严格按 5 阶段展示：
+
+```
+● 自我介绍与破冰         Completed (4m)
+● 项目/技术面考察         In Progress...
+○ 项目深度问答            Pending
+○ 笔试编程环节 [进入]     Pending   ← 用户可自主选择
+○ 面试总结                Pending
+```
+
+第 4 阶段"笔试编程环节"旁有 **[进入]** 按钮：
+- 用户点击 → 激活右侧代码编辑器，通知 AI 进入编程模式
+- 用户不点击 → 正常进行到第 5 阶段，跳过编程
+
+仅 PC 端生效（`v-if="isDesktop"`），小程序端不受影响。
+
+## 七、面试流程集成
 
 1. AI 出编程题 → `messages[i].code` 非空 → 编辑器激活，加载初始代码
 2. 用户在编辑器中写代码 → 内容通过 `v-model` 绑定
