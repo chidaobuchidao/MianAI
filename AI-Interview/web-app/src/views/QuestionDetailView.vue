@@ -11,69 +11,68 @@
         <span class="page-head__cat">{{ categoryName || '' }}</span>
       </div>
 
-      <div class="detail-body" v-if="question">
+      <div class="detail-body">
         <Transition :name="slideDirection" mode="out-in">
-        <div class="detail-content" :key="questionId">
+          <div class="detail-content" v-if="question" :key="questionId">
 
-          <!-- Question card -->
-          <div class="question-card">
-            <span class="q-type">{{ typeLabel(question.type) }}</span>
-            <h3 class="q-text">{{ question.title }}</h3>
+            <!-- Question card -->
+            <div class="question-card">
+              <span class="q-type">{{ typeLabel(question.type) }}</span>
+              <h3 class="q-text">{{ question.title }}</h3>
 
-            <!-- Options for single/multi choice -->
-            <div v-if="question.type <= 2" class="options">
-              <div
-                v-for="opt in parseOptions(question.options)"
-                :key="opt.label"
-                class="option-btn"
-                :class="{ correct: opt.label === question.answer }"
-              >
-                <span class="option-letter">{{ opt.label }}</span>
-                <span class="option-text">{{ opt.content }}</span>
-                <svg v-if="opt.label === question.answer" class="option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
+              <!-- Options for single/multi choice -->
+              <div v-if="question.type <= 2" class="options">
+                <div
+                  v-for="opt in parseOptions(question.options)"
+                  :key="opt.label"
+                  class="option-btn"
+                  :class="{ correct: opt.label === question.answer }"
+                >
+                  <span class="option-letter">{{ opt.label }}</span>
+                  <span class="option-text">{{ opt.content }}</span>
+                  <svg v-if="opt.label === question.answer" class="option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- True/False -->
+              <div v-if="question.type === 3" class="options">
+                <div class="option-btn" :class="{ correct: question.answer === '正确' }">
+                  <span class="option-letter">&#10003;</span>
+                  <span class="option-text">正确</span>
+                </div>
+                <div class="option-btn" :class="{ correct: question.answer === '错误' }">
+                  <span class="option-letter">&#10007;</span>
+                  <span class="option-text">错误</span>
+                </div>
+              </div>
+
+              <!-- Fill-in-blank -->
+              <div v-if="question.type === 4" class="fill-answer">
+                <span class="fill-label">参考答案：</span>
+                <span class="fill-text">{{ question.answer }}</span>
               </div>
             </div>
 
-            <!-- True/False -->
-            <div v-if="question.type === 3" class="options">
-              <div class="option-btn" :class="{ correct: question.answer === '正确' }">
-                <span class="option-letter">&#10003;</span>
-                <span class="option-text">正确</span>
-              </div>
-              <div class="option-btn" :class="{ correct: question.answer === '错误' }">
-                <span class="option-letter">&#10007;</span>
-                <span class="option-text">错误</span>
-              </div>
+            <!-- Analysis card -->
+            <div class="analysis-card" v-if="question.analysis">
+              <span class="analysis-title">答案解析</span>
+              <p class="analysis-text">{{ question.analysis }}</p>
             </div>
 
-            <!-- Fill-in-blank -->
-            <div v-if="question.type === 4" class="fill-answer">
-              <span class="fill-label">参考答案：</span>
-              <span class="fill-text">{{ question.answer }}</span>
+            <!-- Tags -->
+            <div class="detail-tags">
+              <span class="detail-tag">{{ question.categoryName || '未分类' }}</span>
+              <span class="detail-tag">{{ difficultyLabel(question.difficulty) }}</span>
             </div>
+
           </div>
 
-          <!-- Analysis card -->
-          <div class="analysis-card" v-if="question.analysis">
-            <span class="analysis-title">答案解析</span>
-            <p class="analysis-text">{{ question.analysis }}</p>
+          <div class="detail-content" v-else :key="'skeleton-' + questionId">
+            <SkeletonBar :height="200" />
           </div>
-
-          <!-- Tags -->
-          <div class="detail-tags">
-            <span class="detail-tag">{{ question.categoryName || '未分类' }}</span>
-            <span class="detail-tag">{{ difficultyLabel(question.difficulty) }}</span>
-          </div>
-
-        </div>
         </Transition>
-      </div>
-
-      <!-- Skeleton -->
-      <div class="detail-body" v-else>
-        <SkeletonBar :height="200" />
       </div>
     </div>
 
@@ -126,6 +125,9 @@ function difficultyLabel(d: number) {
 }
 
 async function fetchDetail(id: number) {
+  question.value = null
+  // Small delay so the skeleton/leave animation can render
+  await new Promise(r => setTimeout(r, 50))
   try {
     const res = await get<Question>(`/api/questions/${id}`)
     question.value = res.data
