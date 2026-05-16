@@ -10,8 +10,10 @@
         <p class="pos-desc">选择目标岗位，AI 面试官将进行一场真实技术面试</p>
         <div class="model-bar">
           <span class="model-label">模型</span>
-          <button class="model-opt" :class="{ active: interviewModel === 'deepseek-v4-flash' }" @click="interviewModel = 'deepseek-v4-flash'">Flash</button>
-          <button class="model-opt" :class="{ active: interviewModel === 'deepseek-v4-pro' }" @click="interviewModel = 'deepseek-v4-pro'">Pro</button>
+          <div class="capsule-toggle">
+            <button class="capsule-opt" :class="{ active: interviewModel === 'deepseek-v4-flash' }" @click="interviewModel = 'deepseek-v4-flash'">Flash</button>
+            <button class="capsule-opt" :class="{ active: interviewModel === 'deepseek-v4-pro' }" @click="interviewModel = 'deepseek-v4-pro'">Pro</button>
+          </div>
         </div>
         <div class="pos-grid">
           <button class="pos-btn card-hover" v-for="p in positions" :key="p" @click="startInterview(p)" :disabled="loading">
@@ -796,17 +798,25 @@ function renderContent(text: string): string {
 }
 .model-bar {
   display: flex; align-items: center; justify-content: center;
-  gap: 8px; margin-bottom: 24px;
+  gap: 10px; margin-bottom: 24px;
 }
-.model-label { font-size: 13px; color: var(--text-light); margin-right: 4px; }
-.model-opt {
-  padding: 6px 14px; border-radius: var(--radius-full);
+.model-label { font-size: 13px; color: var(--text-light); }
+.capsule-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+.capsule-opt {
+  padding: 6px 18px;
   font-size: 13px; font-weight: 500;
-  border: 1px solid var(--border-medium); background: var(--bg-paper);
-  color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  border: none; background: transparent;
+  color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s;
 }
-.model-opt.active {
-  background: var(--bg-dark); color: #fff; border-color: var(--bg-dark);
+.capsule-opt.active {
+  background: var(--bg-dark); color: #fff;
 }
 .pos-grid {
   display: flex; flex-direction: column; gap: 10px;

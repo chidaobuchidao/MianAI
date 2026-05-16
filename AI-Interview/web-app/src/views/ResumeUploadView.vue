@@ -13,6 +13,14 @@
 
       <p class="page-desc">上传简历，AI 深度诊断项目薄弱点，给出具体优化建议</p>
 
+      <div class="model-bar">
+        <span class="model-label">模型</span>
+        <div class="capsule-toggle">
+          <button class="capsule-opt" :class="{ active: resumeModel === 'deepseek-v4-flash' }" @click="resumeModel = 'deepseek-v4-flash'">Flash</button>
+          <button class="capsule-opt" :class="{ active: resumeModel === 'deepseek-v4-pro' }" @click="resumeModel = 'deepseek-v4-pro'">Pro</button>
+        </div>
+      </div>
+
       <!-- Upload zone with drag & drop -->
       <GlareCard background="var(--bg-paper)" borderRadius="20px" glareColor="#D9750A" :glareOpacity="0.06"
         :glareSize="200">
@@ -93,6 +101,7 @@ const router = useRouter()
 const fileInput = ref<HTMLInputElement>()
 const file = ref<File | null>(null)
 const jobDescription = ref('')
+const resumeModel = ref('deepseek-v4-flash')
 const submitting = ref(false)
 const hasHistory = ref(false)
 
@@ -168,6 +177,7 @@ async function submitResume() {
     const fd = new FormData()
     fd.append('file', file.value)
     fd.append('jobDescription', jobDescription.value.trim() || '请分析这份简历')
+    fd.append('model', resumeModel.value)
 
     const res = await postForm<{ resumeId: number }>('/api/resume/upload', fd)
     const code = (res as any).code
@@ -223,8 +233,31 @@ async function submitResume() {
   font-size: 14px;
   color: var(--text-muted);
   line-height: 1.6;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   padding: 0 4px;
+}
+
+.model-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-bottom: 24px;
+}
+.model-label { font-size: 13px; color: var(--text-light); }
+.capsule-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+.capsule-opt {
+  padding: 6px 18px;
+  font-size: 13px; font-weight: 500;
+  border: none; background: transparent;
+  color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.capsule-opt.active {
+  background: var(--bg-dark); color: #fff;
 }
 
 /* Upload zone */
