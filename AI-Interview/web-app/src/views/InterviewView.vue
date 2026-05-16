@@ -388,9 +388,9 @@ async function sendAnswer() {
                   const clean = aiContent.replace(/\[面试结束\].*/s, '').trim()
                   messages.value[aiMsgIdx] = { role: 'ai', content: clean || '面试已结束' }
                   loading.value = false
-                  endDetected = true
                   await post(`/api/interview/${sessionId.value}/end`).catch(() => {})
                   setTimeout(() => { router.push(`/interview/report?id=${sessionId.value}`) }, 300)
+                  endDetected = true
                   return
                 }
               }
@@ -414,6 +414,7 @@ async function sendAnswer() {
                   setTimeout(() => {
                     router.push(`/interview/report?id=${sessionId.value}`)
                   }, 300)
+                  endDetected = true
                 }
               } catch { /* ignore */ }
             } else if (currentEvent === 'error') {
@@ -429,11 +430,12 @@ async function sendAnswer() {
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      processSSE()
+      await processSSE()
       await nextTick()
+      if (endDetected) break
     }
-    // Flush remaining buffer (catches the final finish event)
-    processSSE()
+    // Flush remaining buffer
+    if (!endDetected) await processSSE()
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '请求失败'
     messages.value.push({ role: 'ai', content: '抱歉，请求出错了：' + msg })
