@@ -115,42 +115,28 @@ async function fetchReport() {
     loading.value = false
   }
 
-  try {
-    const r = await get<Report>(`/api/interview/${id}`)
-    if (r.data) {
-      const raw = r.data as any
-      report.value = {
-        overallScore: raw.overallScore ?? 0,
-        feedback: sanitize(raw.feedback || ''),
-        suggestion: sanitize(raw.suggestion || raw.feedback || ''),
-        dimensions: safeParseDims(raw.dimensions),
-        position: raw.position,
-        createTime: raw.createTime
-      }
-      loading.value = false
-      sessionStorage.removeItem('interviewScore')
-      sessionStorage.removeItem('interviewFeedback')
-      sessionStorage.removeItem('interviewDims')
-      sessionStorage.removeItem('interviewSuggestion')
-      return
-    }
-  } catch {}
-
-  // API didn't return usable data — retry once after 1s
-  if (!report.value) {
-    await new Promise(r => setTimeout(r, 1000))
+  // Retry up to 3 times (backend may still be saving the report)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt))
     try {
-      const r2 = await get<Report>(`/api/interview/${id}`)
-      if (r2.data) {
-        const raw2 = r2.data as any
+      const r = await get<Report>(`/api/interview/${id}`)
+      const raw = r.data as any
+      // Check if report data is actually populated
+      if (raw && (raw.feedback || raw.overallScore != null)) {
         report.value = {
-          overallScore: raw2.overallScore ?? 0,
-          feedback: sanitize(raw2.feedback || ''),
-          suggestion: sanitize(raw2.suggestion || raw2.feedback || ''),
-          dimensions: safeParseDims(raw2.dimensions),
-          position: raw2.position,
-          createTime: raw2.createTime
+          overallScore: raw.overallScore ?? 0,
+          feedback: sanitize(raw.feedback || ''),
+          suggestion: sanitize(raw.suggestion || raw.feedback || ''),
+          dimensions: safeParseDims(raw.dimensions),
+          position: raw.position,
+          createTime: raw.createTime
         }
+        loading.value = false
+        sessionStorage.removeItem('interviewScore')
+        sessionStorage.removeItem('interviewFeedback')
+        sessionStorage.removeItem('interviewDims')
+        sessionStorage.removeItem('interviewSuggestion')
+        return
       }
     } catch {}
   }

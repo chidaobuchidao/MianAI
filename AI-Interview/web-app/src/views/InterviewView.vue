@@ -375,13 +375,15 @@ async function sendAnswer() {
                 if (match) {
                   let endJson: any = {}
                   try {
-                    endJson = JSON.parse(match[1])
-                    if (endJson.score) {
-                      sessionStorage.setItem('interviewScore', String(endJson.score || ''))
-                      sessionStorage.setItem('interviewFeedback', endJson.feedback || '')
-                      reportScore.value = endJson.score
-                    }
-                  } catch {}
+                    // Fix AI-generated JSON: remove trailing commas before } or ]
+                    const fixed = match[1].replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']')
+                    endJson = JSON.parse(fixed)
+                  } catch { /* AI output may have malformed JSON, use partial data */ }
+                  if (endJson.score) {
+                    sessionStorage.setItem('interviewScore', String(endJson.score || ''))
+                    sessionStorage.setItem('interviewFeedback', endJson.feedback || '')
+                    reportScore.value = endJson.score
+                  }
                   if (endJson.dimensions) sessionStorage.setItem('interviewDims', JSON.stringify(endJson.dimensions))
                   if (endJson.suggestion) sessionStorage.setItem('interviewSuggestion', endJson.suggestion)
                   // Strip marker from display and trigger navigation
