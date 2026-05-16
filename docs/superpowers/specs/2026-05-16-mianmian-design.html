@@ -840,6 +840,63 @@
     }
     .option-btn.sel { border-color: var(--accent); background: rgba(217,117,10,0.04); }
     .option-btn.sel .option-letter { background: var(--accent); color: #fff; }
+    .option-btn.correct { border-color: var(--color-success); background: rgba(34,197,94,0.04); }
+    .option-btn.correct .option-letter { background: var(--color-success); color: #fff; }
+
+    /* Analysis card */
+    .analysis-card {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      padding: 18px 16px;
+    }
+    .analysis-title {
+      font-size: 13px; font-weight: 600; color: var(--text-main);
+      display: block; margin-bottom: 8px;
+    }
+    .analysis-text { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
+
+    /* Detail tags */
+    .detail-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .detail-tag {
+      font-size: 11px; color: var(--text-muted);
+      background: var(--bg-surface);
+      padding: 5px 12px; border-radius: 100px;
+    }
+
+    /* === Practice entry cards === */
+    .entry-card {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 24px 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .entry-card-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: rgba(217,117,10,0.06);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .entry-card-title { font-size: 17px; font-weight: 500; display: block; margin-bottom: 4px; }
+    .entry-card-desc { font-size: 12px; color: var(--text-light); display: block; margin-bottom: 16px; }
+
+    /* Count selector */
+    .count-row { display: flex; gap: 8px; align-items: center; }
+    .count-chip {
+      width: 40px; height: 40px; border-radius: 10px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-paper);
+      font-size: 14px; font-weight: 500; color: var(--text-main);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .count-chip.active { border-color: var(--accent); background: rgba(217,117,10,0.06); color: var(--accent); font-weight: 600; }
+    .count-go {
+      margin-left: auto; height: 40px; padding: 0 24px;
+      background: var(--bg-dark); color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 500;
+    }
 
     .question-card {
       padding: 24px 20px;
@@ -1098,8 +1155,8 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
           </div>
         </div>
-        <span class="func-title">在线试卷</span>
-        <span class="func-desc">限时模拟考试，查漏补缺</span>
+        <span class="func-title">自由刷题</span>
+        <span class="func-desc">随机组卷 · 按专题练习</span>
       </div>
       <div class="func-card">
         <div class="func-card-top">
@@ -1107,8 +1164,8 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
           </div>
         </div>
-        <span class="func-title">自由刷题</span>
-        <span class="func-desc">按分类随机练习</span>
+        <span class="func-title">查看题库</span>
+        <span class="func-desc">分类浏览 · 逐题精学</span>
       </div>
       <div class="func-card">
         <div class="func-card-top">
@@ -1191,8 +1248,8 @@
               <div class="func-card-top"><div class="func-icon-box func-icon-amber"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="func-tag">推荐</span></div>
               <span class="func-title">简历深度诊断</span><span class="func-desc">上传 PDF，AI 定位项目薄弱点</span>
             </div>
-            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div></div><span class="func-title">在线试卷</span><span class="func-desc">限时模拟考试</span></div>
-            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div><span class="func-title">自由刷题</span><span class="func-desc">按分类随机练习</span></div>
+            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div></div><span class="func-title">自由刷题</span><span class="func-desc">随机组卷 · 按专题练习</span></div>
+            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div><span class="func-title">查看题库</span><span class="func-desc">分类浏览 · 逐题精学</span></div>
             <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div></div><span class="func-title">错题本</span><span class="func-desc">记录薄弱环节</span></div>
           </div>
         </div>
@@ -1621,7 +1678,7 @@
 
     <div class="menu-group">
       <div class="menu-item"><span class="menu-item-label">面试历史</span><span style="color:#CCC">›</span></div>
-      <div class="menu-item"><span class="menu-item-label">在线试卷</span><span style="color:#CCC">›</span></div>
+      <div class="menu-item"><span class="menu-item-label">自由刷题</span><span style="color:#CCC">›</span></div>
       <div class="menu-item"><span class="menu-item-label">错题本</span><span style="color:#CCC">›</span></div>
     </div>
 
@@ -1664,60 +1721,89 @@
 
 
 <!-- ============================================================ -->
-<!-- SECTION 7: 在线试卷 + 答题 -->
+<!-- SECTION 7: 自由刷题 + 答题 -->
 <!-- ============================================================ -->
-<h2 class="gallery-section">07 — 在线试卷</h2>
-<p class="gallery-section-desc">试卷列表 + 答题界面 + 选项交互</p>
+<h2 class="gallery-section">07 — 自由刷题</h2>
+<p class="gallery-section-desc">双入口：随机组卷 + 按专题刷题</p>
 
 <div class="mockup-gallery">
-  <!-- Exam list -->
+  <!-- Practice entry -->
   <div class="mockup-mobile">
     <div class="back-header">
       <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
-      <span class="page-title">在线试卷</span>
+      <span class="page-title">自由刷题</span>
     </div>
 
     <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 20px 40px;">
-      <span class="hero-label" style="margin-bottom:4px;">限时模拟</span>
-      <h2 style="font-family:var(--font-serif);font-size:28px;font-weight:600;margin-bottom:4px;">在线试卷</h2>
-      <p style="font-size:13px;color:var(--text-light);margin-bottom:24px;">模拟真实考试环境，限时作答，查漏补缺</p>
+      <span class="hero-label" style="margin-bottom:4px;">自由练</span>
+      <h2 style="font-family:var(--font-serif);font-size:28px;font-weight:600;margin-bottom:4px;">自由刷题</h2>
+      <p style="font-size:13px;color:var(--text-light);margin-bottom:24px;">随机组卷或按专题专项突破</p>
 
-      <div class="exam-grid" style="padding:0;">
-        <div class="exam-card">
-          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
-          <span class="exam-title">Java 基础卷</span>
-          <span class="exam-meta">20 题 · 30 分钟</span>
+      <!-- Entry 1: Random -->
+      <div class="entry-card" style="margin-bottom:16px;">
+        <div class="entry-card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8.5" cy="8.5" r="1.5" fill="#D9750A"/><circle cx="15.5" cy="8.5" r="1.5" fill="#D9750A"/><circle cx="8.5" cy="15.5" r="1.5" fill="#D9750A"/><circle cx="15.5" cy="15.5" r="1.5" fill="#D9750A"/></svg>
         </div>
-        <div class="exam-card">
-          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
-          <span class="exam-title">并发编程卷</span>
-          <span class="exam-meta">15 题 · 25 分钟</span>
+        <span class="entry-card-title">随机组卷</span>
+        <span class="entry-card-desc">从题库随机抽取，模拟真实考试</span>
+        <div class="count-row">
+          <div class="count-chip">5</div>
+          <div class="count-chip active">10</div>
+          <div class="count-chip">15</div>
+          <div class="count-chip">20</div>
+          <button class="count-go">开始</button>
         </div>
-        <div class="exam-card">
-          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
-          <span class="exam-title">综合模拟卷</span>
-          <span class="exam-meta">30 题 · 45 分钟</span>
+      </div>
+
+      <!-- Entry 2: Topic -->
+      <div class="entry-card" style="margin-bottom:28px;">
+        <div class="entry-card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         </div>
-        <div class="exam-card">
-          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
-          <span class="exam-title">算法专项卷</span>
-          <span class="exam-meta">10 题 · 20 分钟</span>
+        <span class="entry-card-title">按专题刷题</span>
+        <span class="entry-card-desc">选择分类，集中突破薄弱环节</span>
+        <div class="chip-row" style="margin-bottom:0;">
+          <span class="chip active">Java基础</span>
+          <span class="chip">并发编程</span>
+          <span class="chip">Redis</span>
+          <span class="chip">MySQL</span>
+        </div>
+      </div>
+
+      <!-- Recent history -->
+      <div style="margin-bottom:12px;">
+        <span style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:1px;">最近记录</span>
+      </div>
+      <div class="hist-list" style="padding:0;">
+        <div class="hist-item">
+          <div class="hist-info"><span class="hist-name">随机组卷 · 10题</span><span class="hist-time">正确 7 题</span></div>
+          <span class="hist-badge badge-high">70%</span>
+          <span style="color:#CCC;font-size:14px;">&#8250;</span>
+        </div>
+        <div class="hist-item">
+          <div class="hist-info"><span class="hist-name">并发编程 · 5题</span><span class="hist-time">正确 4 题</span></div>
+          <span class="hist-badge badge-high">80%</span>
+          <span style="color:#CCC;font-size:14px;">&#8250;</span>
+        </div>
+        <div class="hist-item">
+          <div class="hist-info"><span class="hist-name">MySQL · 8题</span><span class="hist-time">正确 5 题</span></div>
+          <span class="hist-badge badge-mid">63%</span>
+          <span style="color:#CCC;font-size:14px;">&#8250;</span>
         </div>
       </div>
     </div>
-    <div class="mockup-label">试卷列表</div>
+    <div class="mockup-label">自由刷题 · 入口</div>
   </div>
 
-  <!-- Exam do -->
+  <!-- Practice Do -->
   <div class="mockup-mobile">
     <div class="back-header">
       <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
-      <span class="page-title">答题</span>
-      <span style="font-size:13px;color:var(--text-light);">1/20</span>
+      <span class="page-title">刷题中</span>
+      <span style="font-size:13px;color:var(--text-light);">3/10</span>
     </div>
 
     <div class="progress-bar"></div>
-    <!-- Override progress fill -->
     <div style="height:3px;background:var(--accent);border-radius:2px;width:30%;margin-top:-27px;margin-left:20px;margin-bottom:24px;"></div>
 
     <div class="no-scrollbar" style="flex:1;overflow-y:auto;">
@@ -1725,18 +1811,19 @@
         <span class="q-type">单选题</span>
         <p class="q-text">在 Java 中，以下哪个集合类是线程安全的？</p>
         <div class="options">
-          <div class="option-btn" style="border-color:var(--border-light);background:var(--bg-paper);">
-            <span class="option-letter">A</span> ArrayList
+          <div class="option-btn"><span class="option-letter">A</span> ArrayList</div>
+          <div class="option-btn"><span class="option-letter">B</span> HashMap</div>
+          <div class="option-btn sel"><span class="option-letter">C</span> ConcurrentHashMap</div>
+          <div class="option-btn"><span class="option-letter">D</span> LinkedList</div>
+        </div>
+
+        <!-- Result -->
+        <div style="margin-top:20px;padding:16px;border-radius:12px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:18px;color:#22C55E;font-weight:700;">&#10003;</span>
+            <span style="font-size:14px;font-weight:600;color:#22C55E;">回答正确</span>
           </div>
-          <div class="option-btn">
-            <span class="option-letter">B</span> HashMap
-          </div>
-          <div class="option-btn sel">
-            <span class="option-letter">C</span> ConcurrentHashMap
-          </div>
-          <div class="option-btn">
-            <span class="option-letter">D</span> LinkedList
-          </div>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">ConcurrentHashMap 使用分段锁机制保证线程安全，而其他选项均不是线程安全的集合类。</p>
         </div>
       </div>
     </div>
@@ -1745,23 +1832,23 @@
       <button class="action-btn action-sec">上一题</button>
       <button class="action-btn action-pri">下一题</button>
     </div>
-    <div class="mockup-label">答题中</div>
+    <div class="mockup-label">刷题中 · 即时判分</div>
   </div>
 </div>
 
 
 <!-- ============================================================ -->
-<!-- SECTION 8: 自由刷题 + 错题本 -->
+<!-- SECTION 8: 查看题库 + 错题本 -->
 <!-- ============================================================ -->
-<h2 class="gallery-section">08 — 自由刷题 & 错题本</h2>
-<p class="gallery-section-desc">分类筛选 + 题目列表 + 空状态</p>
+<h2 class="gallery-section">08 — 查看题库</h2>
+<p class="gallery-section-desc">分类筛选 + 题目列表 + 详情查阅 + 错题本</p>
 
 <div class="mockup-gallery">
-  <!-- Practice -->
+  <!-- Question Bank List -->
   <div class="mockup-mobile">
     <div class="back-header">
       <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
-      <span class="page-title">自由刷题</span>
+      <span class="page-title">查看题库</span>
     </div>
 
     <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 20px 40px;">
@@ -1781,7 +1868,49 @@
         <div class="q-card"><span class="q-number">Q5</span><div><span class="q-title">AQS 中 CLH 队列的作用是什么？</span><span class="q-meta">并发编程 · 困难</span></div></div>
       </div>
     </div>
-    <div class="mockup-label">自由刷题</div>
+    <div class="mockup-label">查看题库 · 列表</div>
+  </div>
+
+  <!-- Question Detail -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">题目详情</span>
+      <span style="font-size:12px;color:var(--text-light);">并发编程</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 20px;">
+      <!-- Question -->
+      <div class="question-card" style="padding:24px 20px;margin-bottom:12px;">
+        <span class="q-type">单选题</span>
+        <p class="q-text">volatile 关键字的作用是什么？</p>
+        <div class="options">
+          <div class="option-btn"><span class="option-letter">A</span> 保证原子性</div>
+          <div class="option-btn correct"><span class="option-letter">B</span> 保证可见性，禁止指令重排序</div>
+          <div class="option-btn"><span class="option-letter">C</span> 保证线程安全</div>
+          <div class="option-btn"><span class="option-letter">D</span> 保证数据持久化</div>
+        </div>
+      </div>
+
+      <!-- Analysis -->
+      <div class="analysis-card" style="margin-bottom:12px;">
+        <span class="analysis-title">答案解析</span>
+        <p class="analysis-text">volatile 是 Java 中的轻量级同步机制，用于修饰变量。它确保变量的可见性（一个线程修改后其他线程立即可见）和有序性（通过内存屏障禁止指令重排序），但不保证原子性。</p>
+      </div>
+
+      <!-- Tags -->
+      <div class="detail-tags" style="margin-bottom:20px;">
+        <span class="detail-tag">并发编程</span>
+        <span class="detail-tag">中等</span>
+      </div>
+    </div>
+
+    <!-- Prev / Next -->
+    <div class="actions" style="padding:16px 20px 32px;">
+      <button class="action-btn action-sec">&lt; 上一题</button>
+      <button class="action-btn action-pri">下一题 &gt;</button>
+    </div>
+    <div class="mockup-label">查看题库 · 详情</div>
   </div>
 
   <!-- Wrong Book (empty) -->
