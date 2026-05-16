@@ -357,7 +357,7 @@ async function sendAnswer() {
     const aiMsgIdx = messages.value.length
     messages.value.push({ role: 'ai', content: '' })
 
-    const processSSE = () => {
+    const processSSE = async () => {
       const parts = buffer.split('\n\n')
       buffer = parts.pop() || ''
       for (const part of parts) {
@@ -381,13 +381,16 @@ async function sendAnswer() {
                       reportScore.value = endJson.score
                     }
                   } catch {}
+                  // Save report data for the report page
+                  if (endJson.dimensions) sessionStorage.setItem('interviewDims', JSON.stringify(endJson.dimensions))
+                  if (endJson.suggestion) sessionStorage.setItem('interviewSuggestion', endJson.suggestion)
                   // Strip marker from display and trigger navigation
                   const clean = aiContent.replace(/\[面试结束\].*/s, '').trim()
                   messages.value[aiMsgIdx] = { role: 'ai', content: clean || '面试已结束' }
                   loading.value = false
                   endDetected = true
-                  post(`/api/interview/${sessionId.value}/end`).catch(() => {})
-                  setTimeout(() => { router.push(`/interview/report?id=${sessionId.value}`) }, 800)
+                  await post(`/api/interview/${sessionId.value}/end`).catch(() => {})
+                  setTimeout(() => { router.push(`/interview/report?id=${sessionId.value}`) }, 300)
                   return
                 }
               }
@@ -399,17 +402,18 @@ async function sendAnswer() {
                 if (json.report) {
                   sessionStorage.setItem('interviewScore', String(json.report.score || ''))
                   sessionStorage.setItem('interviewFeedback', json.report.feedback || '')
+                  if (json.report.dimensions) sessionStorage.setItem('interviewDims', JSON.stringify(json.report.dimensions))
+                  if (json.report.suggestion) sessionStorage.setItem('interviewSuggestion', json.report.suggestion)
                   reportScore.value = json.report.score
                 }
                 if (json.finished) {
-                  // AI主动结束: 标记完成, 清理显示, 跳转报告
                   loading.value = false
-                  post(`/api/interview/${sessionId.value}/end`).catch(() => {})
+                  await post(`/api/interview/${sessionId.value}/end`).catch(() => {})
                   const cleanContent = aiContent.replace(/\[面试结束\].*/s, '').trim()
                   messages.value[aiMsgIdx] = { role: 'ai', content: cleanContent || '面试已结束' }
                   setTimeout(() => {
                     router.push(`/interview/report?id=${sessionId.value}`)
-                  }, 1000)
+                  }, 300)
                 }
               } catch { /* ignore */ }
             } else if (currentEvent === 'error') {

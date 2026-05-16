@@ -69,14 +69,38 @@ const route = useRoute()
 const report = ref<Report | null>(null)
 const loading = ref(true)
 
+function loadFromStorage() {
+  const score = sessionStorage.getItem('interviewScore')
+  const feedback = sessionStorage.getItem('interviewFeedback')
+  if (!score && !feedback) return null
+  let dims: Dim[] = []
+  try {
+    const raw = sessionStorage.getItem('interviewDims')
+    if (raw) dims = JSON.parse(raw)
+  } catch {}
+  return {
+    overallScore: Number(score) || 0,
+    feedback: feedback || '',
+    suggestion: sessionStorage.getItem('interviewSuggestion') || '',
+    dimensions: dims
+  } as Report
+}
+
 onMounted(async () => {
   const id = route.query.id
   if (!id) { loading.value = false; return }
+
+  // Show cached data immediately from SSE-delivered sessionStorage
+  const cached = loadFromStorage()
+  if (cached) {
+    report.value = cached
+    loading.value = false
+  }
+
   try {
     const r = await get<Report>(`/api/interview/${id}`)
     if (r.data) {
       const raw = r.data as any
-      // dimensions may be a JSON string from backend
       let dims: Dim[] = []
       if (typeof raw.dimensions === 'string') {
         try { dims = JSON.parse(raw.dimensions) } catch {}
@@ -92,8 +116,13 @@ onMounted(async () => {
         createTime: raw.createTime
       }
     }
+    // Clear cache after successful API load
+    sessionStorage.removeItem('interviewScore')
+    sessionStorage.removeItem('interviewFeedback')
+    sessionStorage.removeItem('interviewDims')
+    sessionStorage.removeItem('interviewSuggestion')
   } catch {}
-  loading.value = false
+  if (!report.value) loading.value = false
 })
 
 const dimArray = computed(() => {
