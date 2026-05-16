@@ -214,11 +214,10 @@ onMounted(async () => {
 
 .detail-stage {
   position: relative;
-  perspective: 800px;
+  overflow: hidden;
 }
 .detail-panel {
   padding-bottom: 20px;
-  backface-visibility: hidden;
 }
 
 /* Question card */
@@ -317,35 +316,24 @@ onMounted(async () => {
 }
 .action-pri:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* === Spring push transition (ref: stiffness=300 damping=30) === */
+/* === Continuous push transition (conveyor-belt style) === */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.4s cubic-bezier(0.22, 0.1, 0.1, 1);
+}
+
 .slide-left-leave-active,
 .slide-right-leave-active {
   position: absolute; top: 0; left: 0; width: 100%;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.6, 1);
 }
 
-.slide-left-enter-active,
-.slide-right-enter-active {
-  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+/* Next: both panels move left together */
+.slide-left-enter-from { transform: translateX(100%); }
+.slide-left-leave-to   { transform: translateX(-100%); }
 
-/* Next: enters from right with 3D page-turn */
-.slide-left-enter-from {
-  opacity: 0;
-  transform: translateX(80px) rotateY(-8deg);
-}
-.slide-left-leave-to {
-  opacity: 0;
-  transform: translateX(-60px) rotateY(6deg);
-}
-
-/* Prev: enters from left with 3D page-turn */
-.slide-right-enter-from {
-  opacity: 0;
-  transform: translateX(-80px) rotateY(8deg);
-}
-.slide-right-leave-to {
-  opacity: 0;
-  transform: translateX(60px) rotateY(-6deg);
-}
+/* Prev: both panels move right together */
+.slide-right-enter-from { transform: translateX(-100%); }
+.slide-right-leave-to   { transform: translateX(100%); }
 </style>
