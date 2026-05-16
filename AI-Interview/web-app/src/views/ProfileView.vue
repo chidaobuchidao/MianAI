@@ -68,14 +68,29 @@
           </svg>
         </button>
       </div>
+
+      <!-- AI Key Modal -->
+      <div class="modal-overlay" v-if="showAiKey" @click.self="showAiKey = false">
+        <div class="modal-card animate-scale-in">
+          <span class="modal-title">配置 AI API Key</span>
+          <input class="modal-input" v-model="aiProvider" placeholder="Provider (deepseek / qwen)" />
+          <input class="modal-input" v-model="apiKey" placeholder="API Key" type="password" />
+          <input class="modal-input" v-model="apiModel" placeholder="Model (如 deepseek-v4-flash)" />
+          <div class="modal-actions">
+            <button class="btn btn--ghost" @click="showAiKey = false">取消</button>
+            <button class="btn btn--dark" @click="saveAiKey">保存</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { get, put } from '@/utils/request'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -83,12 +98,38 @@ const userStore = useUserStore()
 const showAiKey = ref(false)
 const aiKeyConfigured = ref(false)
 const aiProvider = ref('')
+const apiKey = ref('')
+const apiModel = ref('')
 
-const stats = ref({
-  practiceCount: 0,
-  interviewCount: 0,
-  wrongCount: 0
+interface Stats { practiceCount: number; interviewCount: number; wrongCount: number }
+const stats = ref<Stats>({ practiceCount: 0, interviewCount: 0, wrongCount: 0 })
+
+onMounted(async () => {
+  try {
+    const [sRes, aRes] = await Promise.all([
+      get<Stats>('/api/user/stats'),
+      get<{ provider: string; model: string }>('/api/user/ai-config')
+    ])
+    if (sRes.data) stats.value = sRes.data
+    if (aRes.data) {
+      aiKeyConfigured.value = true
+      aiProvider.value = aRes.data.provider || ''
+      apiModel.value = aRes.data.model || ''
+    }
+  } catch {}
 })
+
+async function saveAiKey() {
+  try {
+    await put('/api/user/ai-config', {
+      provider: aiProvider.value || 'deepseek',
+      apiKey: apiKey.value,
+      model: apiModel.value || 'deepseek-v4-flash'
+    })
+    aiKeyConfigured.value = true
+    showAiKey.value = false
+  } catch { alert('保存失败') }
+}
 
 function handleLogout() {
   userStore.clearUser()
@@ -170,4 +211,31 @@ function handleLogout() {
 .menu-item--danger .menu-item__label { color: var(--color-danger); }
 
 .menu-item svg:last-child { flex-shrink: 0; }
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(20,20,19,0.5);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-card {
+  background: var(--bg-paper); border-radius: var(--radius-xl);
+  padding: 32px 28px; max-width: 380px; width: calc(100% - 40px);
+  box-shadow: var(--shadow-xl);
+}
+.modal-title {
+  font-family: var(--font-serif); font-size: 18px; font-weight: 600;
+  display: block; margin-bottom: 20px;
+}
+.modal-input {
+  width: 100%; padding: 12px 14px; margin-bottom: 12px;
+  border: 1px solid var(--border-light); border-radius: var(--radius-md);
+  font-size: 14px; outline: none; font-family: inherit;
+  background: var(--bg-surface); transition: border-color 0.15s;
+}
+.modal-input:focus { border-color: var(--text-main); }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.modal-actions .btn { padding: 10px 24px; border-radius: 100px; font-size: 14px; cursor: pointer; border: none; }
+.modal-actions .btn--ghost { background: var(--bg-surface); color: var(--text-muted); }
+.modal-actions .btn--dark { background: var(--bg-dark); color: #fff; }
+
 </style>
