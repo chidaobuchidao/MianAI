@@ -296,30 +296,30 @@ onMounted(async () => {
 /* Slide transitions — PPT-style push */
 .slide-left-enter-active,
 .slide-right-enter-active {
-  transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
+  transition: all 0.5s cubic-bezier(0.2, 0, 0, 1);
 }
 .slide-left-leave-active,
 .slide-right-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.6, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 /* Next question: content enters from right, old exits left */
 .slide-left-enter-from {
   opacity: 0;
-  transform: translateX(48px);
+  transform: translateX(72px);
 }
 .slide-left-leave-to {
   opacity: 0;
-  transform: translateX(-48px);
+  transform: translateX(-72px);
 }
 
 /* Prev question: content enters from left, old exits right */
 .slide-right-enter-from {
   opacity: 0;
-  transform: translateX(-48px);
+  transform: translateX(-72px);
 }
 .slide-right-leave-to {
   opacity: 0;
-  transform: translateX(48px);
+  transform: translateX(72px);
 }
 </style>
