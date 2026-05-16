@@ -8,7 +8,7 @@
           </svg>
         </button>
         <span class="page-head__title">题目详情</span>
-        <span class="page-head__cat">{{ categoryName || '' }}</span>
+        <span class="page-head__cat">{{ currentQ?.categoryName || '' }}</span>
       </div>
 
       <div class="detail-stage" v-if="currentQ">
@@ -33,8 +33,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { get } from '@/utils/request'
 import SkeletonBar from '@/components/SkeletonBar.vue'
 import QuestionContent from '@/components/QuestionContent.vue'
@@ -45,11 +45,6 @@ interface Question {
 }
 
 const route = useRoute()
-const router = useRouter()
-
-const questionId = computed(() => Number(route.params.id))
-const categoryId = computed(() => route.query.categoryId as string || '')
-const categoryName = computed(() => route.query.categoryName as string || '')
 
 const currentQ = ref<Question | null>(null)
 const slideQ = ref<Question | null>(null)
@@ -86,21 +81,17 @@ function preloadAdjacent() {
   }
 }
 
-async function fetchAndShow(id: number) {
-  if (cache.has(id)) {
-    currentQ.value = cache.get(id)!
-    return
-  }
-  try {
-    const res = await get<Question>(`/api/questions/${id}`)
-    currentQ.value = res.data
-    if (res.data) cache.set(id, res.data)
-  } catch { currentQ.value = null }
+async function loadQuestion(id: number) {
+  if (cache.has(id)) return cache.get(id)!
+  const res = await get<Question>(`/api/questions/${id}`)
+  if (res.data) cache.set(id, res.data)
+  return res.data
 }
 
 function goPrev() {
   if (!hasPrev.value || animating.value) return
-  const prevQ = cache.get(questionIds.value[currentIndex.value - 1])!
+  const idx = currentIndex.value - 1
+  const prevQ = cache.get(questionIds.value[idx])!
   slideQ.value = prevQ
   animating.value = true
   slideX.value = -100
@@ -108,21 +99,13 @@ function goPrev() {
     mainX.value = 100
     slideX.value = 0
   })
-  const newId = prevQ.id
-  setTimeout(() => {
-    currentQ.value = prevQ
-    currentIndex.value--
-    slideQ.value = null
-    animating.value = false
-    mainX.value = 0
-    slideX.value = -100
-    router.replace({ path: `/questions/${newId}`, query: route.query }).then(() => preloadAdjacent())
-  }, 410)
+  setTimeout(() => commitSlide(prevQ, idx), 410)
 }
 
 function goNext() {
   if (!hasNext.value || animating.value) return
-  const nextQ = cache.get(questionIds.value[currentIndex.value + 1])!
+  const idx = currentIndex.value + 1
+  const nextQ = cache.get(questionIds.value[idx])!
   slideQ.value = nextQ
   animating.value = true
   slideX.value = 100
@@ -130,33 +113,37 @@ function goNext() {
     mainX.value = -100
     slideX.value = 0
   })
-  const newId = nextQ.id
-  setTimeout(() => {
-    currentQ.value = nextQ
-    currentIndex.value++
-    slideQ.value = null
-    animating.value = false
-    mainX.value = 0
-    slideX.value = 100
-    router.replace({ path: `/questions/${newId}`, query: route.query }).then(() => preloadAdjacent())
-  }, 410)
+  setTimeout(() => commitSlide(nextQ, idx), 410)
 }
 
-watch(questionId, async (id) => {
-  if (!id || animating.value) return
-  await fetchAndShow(id)
-  currentIndex.value = questionIds.value.indexOf(id)
+function commitSlide(q: Question, idx: number) {
+  currentQ.value = q
+  currentIndex.value = idx
+  slideQ.value = null
+  animating.value = false
+  mainX.value = 0
+  slideX.value = idx > currentIndex.value ? 100 : -100
   preloadAdjacent()
-}, { immediate: true })
+}
 
 onMounted(async () => {
+  const categoryId = route.query.categoryId as string || ''
+  const initialId = Number(route.params.id) || 0
+
   try {
     const params: Record<string, unknown> = { size: 200 }
-    if (categoryId.value) params.categoryId = categoryId.value
+    if (categoryId) params.categoryId = categoryId
     const res = await get<{ records: Question[] }>('/api/questions', params)
     const data = (res.data as any)
     const records: Question[] = data.records || data || []
     questionIds.value = records.map(q => q.id)
+
+    if (initialId) {
+      const q = await loadQuestion(initialId)
+      currentQ.value = q
+      currentIndex.value = questionIds.value.indexOf(initialId)
+      preloadAdjacent()
+    }
   } catch { /* ignore */ }
 })
 </script>
@@ -195,7 +182,6 @@ onMounted(async () => {
   position: absolute; top: 0; left: 0; width: 100%;
 }
 
-/* Actions */
 .detail-actions {
   display: flex; gap: 12px; padding: 16px 20px 32px;
   max-width: 700px; margin: 0 auto; width: 100%;
