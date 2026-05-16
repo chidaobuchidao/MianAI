@@ -194,20 +194,26 @@
     </main>
 
     <!-- ====== PC: Right Code Editor ====== -->
-    <aside class="code-panel" v-if="isDesktop && currentCode">
+    <aside class="code-panel" v-if="isDesktop && showCodePanel">
       <div class="code-panel__head">
         <div class="code-panel__dots">
           <span class="code-panel__dot code-panel__dot--red" />
           <span class="code-panel__dot code-panel__dot--yellow" />
           <span class="code-panel__dot code-panel__dot--green" />
         </div>
-        <span class="code-panel__filename">AQS_Source.java</span>
+        <span class="code-panel__filename">{{ codeFilename || (currentCode ? 'code' : '编辑器已就绪') }}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/>
         </svg>
       </div>
       <div class="code-panel__body no-scrollbar">
-<pre><code>{{ currentCode }}</code></pre>
+<pre v-if="currentCode"><code>{{ currentCode }}</code></pre>
+        <div class="code-panel__placeholder" v-else>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <p>等待 AI 面试官出编程题...</p>
+        </div>
       </div>
     </aside>
 
@@ -282,6 +288,7 @@ function advancePipeline(currentStage: string) {
 
 function startCoding() {
   advancePipeline('coding')
+  showCodePanel.value = true
   sendAnswer('[进入编程环节]')
 }
 
@@ -304,6 +311,8 @@ const recording = ref(false)
 const finished = ref(false)
 const sessionId = ref(0)
 const currentCode = ref('')
+const codeFilename = ref('')
+const showCodePanel = ref(false)
 const inputText = ref('')
 const inputMode = ref<'keyboard' | 'voice'>('keyboard')
 const msgContainer = ref<HTMLElement>()
@@ -723,6 +732,12 @@ function renderContent(text: string): string {
   white-space: pre-wrap;
 }
 .code-panel__body code { font-family: inherit; }
+.code-panel__placeholder {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; gap: 12px;
+  color: #666; font-size: 13px;
+}
+.code-panel__placeholder p { margin: 0; }
 
 /* ===== Finished ===== */
 .finish-overlay {
