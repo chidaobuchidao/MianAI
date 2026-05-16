@@ -188,6 +188,11 @@ public class InterviewService {
             throw new IllegalArgumentException("面试已结束");
         }
 
+        // 编程环节拦截：不经过面试AI，单独调用出题AI
+        if (answer.contains("[进入编程环节]")) {
+            return handleCodingRound(session, answer);
+        }
+
         List<Map<String, Object>> messages = parseMessages(session.getMessages());
         String systemPrompt = String.format(SYSTEM_PROMPT, session.getPosition());
 
@@ -293,6 +298,11 @@ public class InterviewService {
         }
         if (session.getStatus() == 1) {
             throw new IllegalArgumentException("面试已结束");
+        }
+
+        // 编程环节拦截：用独立prompt出题，不走面试对话流
+        if (answer.contains("[进入编程环节]")) {
+            return handleCodingRoundStream(session, answer);
         }
 
         List<Map<String, Object>> messages = parseMessages(session.getMessages());
@@ -554,6 +564,92 @@ public class InterviewService {
             throw new IllegalArgumentException("面试记录不存在");
         }
         return session;
+    }
+
+    // ===== 编程环节专用 =====
+
+    private static final String CODING_PROMPT = """
+        你是一个编程题库生成器。请根据以下要求生成一道编程题：
+
+        【题目类型】%s
+        【目标岗位】%s
+        【难度】LeetCode Easy 到 Medium
+
+        【输出格式】只输出下面这1行JSON，不要有任何其他内容：
+        [编程题目]{"type":"%s","title":"题目标题","description":"题目描述(含输入输出示例)","template":"代码模板(含函数签名)","language":"java"}
+
+        【要求】
+        - type=algorithm：LeetCode风格算法题，给出函数签名+示例
+        - type=complete：给完整代码挖掉关键逻辑3-8行，空位标注// TODO
+        - 题目参考：二分查找、链表反转、二叉树遍历、快速排序、接雨水、有效的括号、最长公共前缀、两数之和、LRU缓存等
+        - template必须是可以直接编辑的有效Java代码
+        - JSON必须是一整行，description中的换行用\\n表示
+        - 绝对不要输出JSON之外的任何文字
+        """;
+
+    private Map<String, Object> handleCodingRound(InterviewSession session, String answer) {
+        String type = answer.contains("补全") ? "complete" : "algorithm";
+        String prompt = String.format(CODING_PROMPT, type, session.getPosition(), type);
+
+        List<Map<String, String>> aiMessages = List.of(
+            Map.of("role", "user", "content", "请出一道" + session.getPosition() + "岗位的编程题")
+        );
+
+        String aiResponse = aiService.chat(prompt, aiMessages, getUserApiKey(), session.getModel());
+
+        List<Map<String, Object>> messages = parseMessages(session.getMessages());
+        messages.add(Map.of("role", "user", "content", "[进入编程环节]", "time", LocalDateTime.now().toString()));
+        messages.add(Map.of("role", "assistant", "content", aiResponse, "time", LocalDateTime.now().toString()));
+        session.setMessages(toJson(messages));
+        session.setCurrentQuestionIndex(session.getCurrentQuestionIndex() + 1);
+        sessionMapper.updateById(session);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("sessionId", session.getId());
+        result.put("content", aiResponse);
+        return result;
+    }
+
+    private SseEmitter handleCodingRoundStream(InterviewSession session, String answer) {
+        SseEmitter emitter = new SseEmitter(120_000L);
+        String type = answer.contains("补全") ? "complete" : "algorithm";
+        String prompt = String.format(CODING_PROMPT, type, session.getPosition(), type);
+
+        List<Map<String, String>> aiMessages = List.of(
+            Map.of("role", "user", "content", "请出一道" + session.getPosition() + "岗位的编程题")
+        );
+
+        // Save the trigger message
+        List<Map<String, Object>> messages = parseMessages(session.getMessages());
+        messages.add(Map.of("role", "user", "content", "[进入编程环节]", "time", LocalDateTime.now().toString()));
+        session.setMessages(toJson(messages));
+        sessionMapper.updateById(session);
+
+        // Stream the response token by token
+        new Thread(() -> {
+            try {
+                aiService.streamChat(prompt, aiMessages, getUserApiKey(),
+                    session.getModel(), token -> {
+                    try {
+                        emitter.send(SseEmitter.event().name("token").data(token));
+                    } catch (Exception e) {
+                        throw new RuntimeException("SSE发送失败", e);
+                    }
+                });
+
+                // Save final response
+                emitter.send(SseEmitter.event().name("finish")
+                    .data("{\"finished\":false,\"coding\":true}"));
+                emitter.complete();
+            } catch (Exception e) {
+                try {
+                    emitter.send(SseEmitter.event().name("error").data("编程题生成失败: " + e.getMessage()));
+                    emitter.complete();
+                } catch (Exception ex) { /* ignore */ }
+            }
+        }).start();
+
+        return emitter;
     }
 
     @SuppressWarnings("unchecked")
