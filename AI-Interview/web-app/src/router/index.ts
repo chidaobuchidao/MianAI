@@ -51,21 +51,27 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/exam',
-      name: 'exam',
-      component: () => import('@/views/ExamView.vue'),
+      path: '/questions',
+      name: 'questions',
+      component: () => import('@/views/QuestionsView.vue'),
       meta: { requiresAuth: true }
     },
     {
-      path: '/exam/do',
-      name: 'exam-do',
-      component: () => import('@/views/ExamDoView.vue'),
+      path: '/questions/:id',
+      name: 'question-detail',
+      component: () => import('@/views/QuestionDetailView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/practice',
       name: 'practice',
       component: () => import('@/views/PracticeView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/practice/do',
+      name: 'practice-do',
+      component: () => import('@/views/PracticeDoView.vue'),
       meta: { requiresAuth: true }
     },
     {
