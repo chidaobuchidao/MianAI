@@ -8,77 +8,86 @@
           </svg>
         </button>
         <span class="page-head__title">题目详情</span>
-        <span class="page-head__cat">{{ categoryName || '' }}</span>
+        <span class="page-head__cat">{{ currentIndex >= 0 ? `${currentIndex + 1}/${questionIds.length}` : '' }}</span>
       </div>
 
-      <div class="detail-body" v-if="question">
-        <Transition :name="slideDirection">
-          <div class="detail-content" :key="questionId">
+      <div
+        class="detail-stage"
+        ref="stageRef"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointerleave="onPointerUp"
+        @pointercancel="onPointerUp"
+      >
+        <div
+          class="detail-panel"
+          :style="panelStyle"
+          v-if="question"
+        >
+          <!-- Question card -->
+          <div class="question-card">
+            <span class="q-type">{{ typeLabel(question.type) }}</span>
+            <h3 class="q-text">{{ question.title }}</h3>
 
-            <!-- Question card -->
-            <div class="question-card">
-              <span class="q-type">{{ typeLabel(question.type) }}</span>
-              <h3 class="q-text">{{ question.title }}</h3>
-
-              <!-- Options for single/multi choice -->
-              <div v-if="question.type <= 2" class="options">
-                <div
-                  v-for="opt in parseOptions(question.options)"
-                  :key="opt.label"
-                  class="option-btn"
-                  :class="{ correct: opt.label === question.answer }"
-                >
-                  <span class="option-letter">{{ opt.label }}</span>
-                  <span class="option-text">{{ opt.content }}</span>
-                  <svg v-if="opt.label === question.answer" class="option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                </div>
-              </div>
-
-              <!-- True/False -->
-              <div v-if="question.type === 3" class="options">
-                <div class="option-btn" :class="{ correct: question.answer === '正确' }">
-                  <span class="option-letter">&#10003;</span>
-                  <span class="option-text">正确</span>
-                </div>
-                <div class="option-btn" :class="{ correct: question.answer === '错误' }">
-                  <span class="option-letter">&#10007;</span>
-                  <span class="option-text">错误</span>
-                </div>
-              </div>
-
-              <!-- Fill-in-blank -->
-              <div v-if="question.type === 4" class="fill-answer">
-                <span class="fill-label">参考答案：</span>
-                <span class="fill-text">{{ question.answer }}</span>
+            <div v-if="question.type <= 2" class="options">
+              <div
+                v-for="opt in parseOptions(question.options)"
+                :key="opt.label"
+                class="option-btn"
+                :class="{ correct: opt.label === question.answer }"
+              >
+                <span class="option-letter">{{ opt.label }}</span>
+                <span class="option-text">{{ opt.content }}</span>
+                <svg v-if="opt.label === question.answer" class="option-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
               </div>
             </div>
 
-            <!-- Analysis card -->
-            <div class="analysis-card" v-if="question.analysis">
-              <span class="analysis-title">答案解析</span>
-              <p class="analysis-text">{{ question.analysis }}</p>
+            <div v-if="question.type === 3" class="options">
+              <div class="option-btn" :class="{ correct: question.answer === '正确' }">
+                <span class="option-letter">&#10003;</span>
+                <span class="option-text">正确</span>
+              </div>
+              <div class="option-btn" :class="{ correct: question.answer === '错误' }">
+                <span class="option-letter">&#10007;</span>
+                <span class="option-text">错误</span>
+              </div>
             </div>
 
-            <!-- Tags -->
-            <div class="detail-tags">
-              <span class="detail-tag">{{ question.categoryName || '未分类' }}</span>
-              <span class="detail-tag">{{ difficultyLabel(question.difficulty) }}</span>
+            <div v-if="question.type === 4" class="fill-answer">
+              <span class="fill-label">参考答案：</span>
+              <span class="fill-text">{{ question.answer }}</span>
             </div>
-
           </div>
-        </Transition>
-      </div>
 
-      <div class="detail-body" v-else>
-        <SkeletonBar :height="200" />
+          <div class="analysis-card" v-if="question.analysis">
+            <span class="analysis-title">答案解析</span>
+            <p class="analysis-text">{{ question.analysis }}</p>
+          </div>
+
+          <div class="detail-tags">
+            <span class="detail-tag">{{ question.categoryName || '未分类' }}</span>
+            <span class="detail-tag">{{ difficultyLabel(question.difficulty) }}</span>
+          </div>
+        </div>
+
+        <div class="detail-panel" v-else>
+          <SkeletonBar :height="200" />
+        </div>
+
+        <!-- Nav hint arrows -->
+        <div class="stage-arrow stage-arrow--left" v-if="hasPrev && dragX === 0">&#8249;</div>
+        <div class="stage-arrow stage-arrow--right" v-if="hasNext && dragX === 0">&#8250;</div>
       </div>
     </div>
 
-    <!-- Prev / Next -->
     <div class="detail-actions">
       <button class="action-btn action-sec" :disabled="!hasPrev" @click="goPrev">&lt; 上一题</button>
+      <div class="action-indicator">
+        <span v-for="i in questionIds.length" :key="i" class="dot" :class="{ active: i - 1 === currentIndex }" />
+      </div>
       <button class="action-btn action-pri" :disabled="!hasNext" @click="goNext">下一题 &gt;</button>
     </div>
   </div>
@@ -96,6 +105,9 @@ interface Question {
   options: string; answer: string; analysis: string; difficulty: number;
 }
 
+const DRAG_THRESHOLD = 60
+const VELOCITY_THRESHOLD = 0.5
+
 const route = useRoute()
 const router = useRouter()
 
@@ -106,10 +118,85 @@ const categoryName = computed(() => route.query.categoryName as string || '')
 const question = ref<Question | null>(null)
 const questionIds = ref<number[]>([])
 const currentIndex = ref(-1)
-const slideDirection = ref<'slide-left' | 'slide-right'>('slide-left')
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < questionIds.value.length - 1)
+
+// Drag state
+const stageRef = ref<HTMLElement | null>(null)
+const dragX = ref(0)
+const dragging = ref(false)
+const settling = ref(false)
+const ptrStart = ref(0)
+const ptrLast = ref(0)
+const ptrLastTime = ref(0)
+
+const panelStyle = computed(() => {
+  if (!dragging.value && !settling.value) return {}
+  return {
+    transform: `translateX(${dragX.value}px)`,
+    transition: settling.value
+      ? 'transform 0.45s cubic-bezier(0.2, 0.6, 0.35, 1)'
+      : 'none',
+    cursor: dragging.value ? 'grabbing' : 'grab'
+  }
+})
+
+function onPointerDown(e: PointerEvent) {
+  if (settling.value) return
+  stageRef.value?.setPointerCapture(e.pointerId)
+  dragging.value = true
+  ptrStart.value = e.clientX
+  ptrLast.value = e.clientX
+  ptrLastTime.value = Date.now()
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!dragging.value) return
+  ptrLast.value = e.clientX
+  ptrLastTime.value = Date.now()
+  const dx = e.clientX - ptrStart.value
+  // Resistance at edges
+  if ((dx > 0 && !hasPrev.value) || (dx < 0 && !hasNext.value)) {
+    dragX.value = dx * 0.25
+  } else {
+    dragX.value = dx
+  }
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (!dragging.value) return
+  stageRef.value?.releasePointerCapture(e.pointerId)
+  dragging.value = false
+
+  const dx = dragX.value
+  const dt = Date.now() - ptrLastTime.value || 16
+  const vx = (ptrLast.value - ptrStart.value) / dt
+
+  const shouldAdvance = Math.abs(dx) > DRAG_THRESHOLD || Math.abs(vx) > VELOCITY_THRESHOLD
+
+  if (shouldAdvance) {
+    if (dx > 0 && hasPrev.value) {
+      settling.value = true
+      dragX.value = (stageRef.value?.clientWidth || 375)
+      setTimeout(() => goPrev(), 120)
+    } else if (dx < 0 && hasNext.value) {
+      settling.value = true
+      dragX.value = -(stageRef.value?.clientWidth || 375)
+      setTimeout(() => goNext(), 120)
+    } else {
+      snapBack()
+    }
+  } else {
+    snapBack()
+  }
+}
+
+function snapBack() {
+  settling.value = true
+  dragX.value = 0
+  setTimeout(() => { settling.value = false; dragX.value = 0 }, 450)
+}
 
 function parseOptions(o: string): Option[] {
   if (!o) return []
@@ -143,24 +230,24 @@ async function fetchQuestionList() {
   } catch { /* ignore */ }
 }
 
-async function goPrev() {
+function goPrev() {
   if (!hasPrev.value) return
-  slideDirection.value = 'slide-right'
+  resetDrag()
   const prevId = questionIds.value[currentIndex.value - 1]
-  router.replace({
-    path: `/questions/${prevId}`,
-    query: route.query
-  })
+  router.replace({ path: `/questions/${prevId}`, query: route.query })
 }
 
-async function goNext() {
+function goNext() {
   if (!hasNext.value) return
-  slideDirection.value = 'slide-left'
+  resetDrag()
   const nextId = questionIds.value[currentIndex.value + 1]
-  router.replace({
-    path: `/questions/${nextId}`,
-    query: route.query
-  })
+  router.replace({ path: `/questions/${nextId}`, query: route.query })
+}
+
+function resetDrag() {
+  dragging.value = false
+  settling.value = false
+  dragX.value = 0
 }
 
 watch(questionId, async (id) => {
@@ -192,9 +279,29 @@ onMounted(async () => {
   background: none; border: none; cursor: pointer;
 }
 .page-head__title { font-family: var(--font-serif); font-size: 18px; font-weight: 600; }
-.page-head__cat { font-size: 12px; color: var(--text-light); }
+.page-head__cat { font-size: 13px; color: var(--text-light); }
 
-.detail-body { padding-bottom: 20px; position: relative; }
+/* Stage — drag container */
+.detail-stage {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+.detail-panel {
+  will-change: transform;
+  padding-bottom: 20px;
+}
+
+/* Nav hint arrows */
+.stage-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  font-size: 32px; color: var(--text-light); opacity: 0.3;
+  pointer-events: none; font-family: var(--font-serif);
+  transition: opacity 0.3s;
+}
+.stage-arrow--left { left: -8px; }
+.stage-arrow--right { right: -8px; }
 
 /* Question card */
 .question-card {
@@ -272,10 +379,10 @@ onMounted(async () => {
   padding: 6px 14px; border-radius: var(--radius-full);
 }
 
-/* Actions */
+/* Actions + dots */
 .detail-actions {
   display: flex; gap: 12px; padding: 16px 20px 32px;
-  max-width: 700px; margin: 0 auto; width: 100%;
+  max-width: 700px; margin: 0 auto; width: 100%; align-items: center;
 }
 .action-btn {
   flex: 1; padding: 14px; border-radius: var(--radius-lg);
@@ -292,36 +399,11 @@ onMounted(async () => {
 }
 .action-pri:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* Slide transitions — simultaneous push (翻页) */
-.detail-content {
-  transition: all 0.45s cubic-bezier(0.2, 0, 0, 1);
+.action-indicator { display: flex; gap: 6px; justify-content: center; }
+.dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border-medium);
+  transition: background 0.2s;
 }
-
-.slide-left-leave-active,
-.slide-right-leave-active {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-}
-
-/* Next: new slides in from right, old slides out to left */
-.slide-left-enter-from {
-  opacity: 0;
-  transform: translateX(60px);
-}
-.slide-left-leave-to {
-  opacity: 0;
-  transform: translateX(-60px);
-}
-
-/* Prev: new slides in from left, old slides out to right */
-.slide-right-enter-from {
-  opacity: 0;
-  transform: translateX(-60px);
-}
-.slide-right-leave-to {
-  opacity: 0;
-  transform: translateX(60px);
-}
+.dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
 </style>
