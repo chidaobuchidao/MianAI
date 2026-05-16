@@ -73,9 +73,15 @@
       <div class="modal-overlay" v-if="showAiKey" @click.self="showAiKey = false">
         <div class="modal-card animate-scale-in">
           <span class="modal-title">配置 AI API Key</span>
-          <input class="modal-input" v-model="aiProvider" placeholder="Provider (deepseek / qwen)" />
+
+          <div class="tab-row">
+            <button class="tab" :class="{ 'tab--active': aiTab === 'deepseek' }" @click="aiTab = 'deepseek'">DeepSeek</button>
+            <button class="tab" :class="{ 'tab--active': aiTab === 'qwen' }" @click="aiTab = 'qwen'">千问</button>
+          </div>
+
           <input class="modal-input" v-model="apiKey" placeholder="API Key" type="password" />
-          <input class="modal-input" v-model="apiModel" placeholder="Model (如 deepseek-v4-flash)" />
+          <p class="modal-hint">{{ aiTab === 'deepseek' ? '使用 DeepSeek API，模型 deepseek-chat' : '使用千问 API，模型 qwen-turbo' }}</p>
+
           <div class="modal-actions">
             <button class="btn btn--ghost" @click="showAiKey = false">取消</button>
             <button class="btn btn--dark" @click="saveAiKey">保存</button>
@@ -97,9 +103,8 @@ const userStore = useUserStore()
 
 const showAiKey = ref(false)
 const aiKeyConfigured = ref(false)
-const aiProvider = ref('')
+const aiTab = ref<'deepseek' | 'qwen'>('deepseek')
 const apiKey = ref('')
-const apiModel = ref('')
 
 interface Stats { practiceCount: number; interviewCount: number; wrongCount: number }
 const stats = ref<Stats>({ practiceCount: 0, interviewCount: 0, wrongCount: 0 })
@@ -113,18 +118,19 @@ onMounted(async () => {
     if (sRes.data) stats.value = sRes.data
     if (aRes.data) {
       aiKeyConfigured.value = true
-      aiProvider.value = aRes.data.provider || ''
-      apiModel.value = aRes.data.model || ''
+      aiTab.value = (aRes.data.provider === 'qwen' ? 'qwen' : 'deepseek')
     }
   } catch {}
 })
 
 async function saveAiKey() {
+  if (!apiKey.value.trim()) return
   try {
+    const isDeepseek = aiTab.value === 'deepseek'
     await put('/api/user/ai-config', {
-      provider: aiProvider.value || 'deepseek',
+      provider: isDeepseek ? 'deepseek' : 'qwen',
       apiKey: apiKey.value,
-      model: apiModel.value || 'deepseek-v4-flash'
+      model: isDeepseek ? 'deepseek-chat' : 'qwen-turbo'
     })
     aiKeyConfigured.value = true
     showAiKey.value = false
@@ -233,6 +239,10 @@ function handleLogout() {
   background: var(--bg-surface); transition: border-color 0.15s;
 }
 .modal-input:focus { border-color: var(--text-main); }
+.modal-hint { font-size: 12px; color: var(--text-light); margin-bottom: 4px; }
+.tab-row { display: flex; gap: 0; margin-bottom: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-light); overflow: hidden; }
+.tab { flex: 1; padding: 10px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: var(--bg-surface); color: var(--text-muted); transition: all 0.15s; }
+.tab--active { background: var(--bg-dark); color: #fff; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
 .modal-actions .btn { padding: 10px 24px; border-radius: 100px; font-size: 14px; cursor: pointer; border: none; }
 .modal-actions .btn--ghost { background: var(--bg-surface); color: var(--text-muted); }

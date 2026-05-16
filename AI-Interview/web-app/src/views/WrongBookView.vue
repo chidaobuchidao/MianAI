@@ -38,11 +38,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { get } from '@/utils/request'
 import ScrollReveal from '@/components/ScrollReveal.vue'
 
-interface WrongQ { title: string; category: string; wrongCount: number }
+interface WrongQ { questionId: number; title: string; category: string; wrongCount: number }
 const questions = ref<WrongQ[]>([])
+
+onMounted(async () => {
+  try {
+    const res = await get<WrongQ[]>('/api/wrong-questions')
+    questions.value = res.data || []
+  } catch { /* ignore */ }
+})
 </script>
 
 <style scoped>
