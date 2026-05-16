@@ -12,7 +12,7 @@
       </div>
 
       <div class="detail-stage">
-        <div class="panel" :class="{ 'panel--fading': fading }" v-if="currentQ" :key="currentQ.id">
+        <div class="panel" :style="panelStyle" v-if="currentQ" :key="currentQ.id">
           <QuestionContent :q="currentQ" />
         </div>
         <SkeletonBar v-else :height="200" />
@@ -44,11 +44,17 @@ const cache = new Map<number, Question>()
 const currentQ = ref<Question | null>(null)
 const questionIds = ref<number[]>([])
 const currentIndex = ref(-1)
-const fading = ref(false)
-const switching = ref(false)
+const panelX = ref(0)
+const sliding = ref(false)
+const slideDir = ref<'left' | 'right'>('left')
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < questionIds.value.length - 1)
+
+const panelStyle = computed(() => ({
+  transform: `translateX(${panelX.value}%)`,
+  transition: sliding.value ? 'transform 0.35s cubic-bezier(0.22, 0.1, 0.1, 1)' : 'none'
+}))
 
 function preload(id: number) {
   if (!id || cache.has(id)) return
@@ -64,34 +70,40 @@ function preloadAdjacent() {
   preload(questionIds.value[idx + 1])
 }
 
-function switchTo(idx: number) {
-  if (switching.value || idx < 0 || idx >= questionIds.value.length) return
-  switching.value = true
+function switchTo(idx: number, dir: 'left' | 'right') {
+  if (sliding.value || idx < 0 || idx >= questionIds.value.length) return
+  sliding.value = true
+  slideDir.value = dir
   const targetId = questionIds.value[idx]
 
-  // Step 1: fade out
-  fading.value = true
+  // Slide out: panel moves to off-screen
+  panelX.value = dir === 'left' ? -100 : 100
 
-  // Step 2: after fade out, swap content
+  // At mid-point: swap content, reposition to opposite side
   setTimeout(() => {
     currentQ.value = cache.get(targetId)!
     currentIndex.value = idx
+    panelX.value = dir === 'left' ? 100 : -100
 
-    // Step 3: fade in
+    // Slide in: panel moves back to center
     requestAnimationFrame(() => {
-      fading.value = false
-      switching.value = false
-      preloadAdjacent()
+      panelX.value = 0
     })
-  }, 150)
+  }, 180)
+
+  // After animation: clean up
+  setTimeout(() => {
+    sliding.value = false
+    preloadAdjacent()
+  }, 560)
 }
 
 function goPrev() {
-  switchTo(currentIndex.value - 1)
+  switchTo(currentIndex.value - 1, 'right')
 }
 
 function goNext() {
-  switchTo(currentIndex.value + 1)
+  switchTo(currentIndex.value + 1, 'left')
 }
 
 onMounted(async () => {
@@ -141,16 +153,13 @@ onMounted(async () => {
 .page-head__cat { font-size: 12px; color: var(--text-light); }
 
 .detail-stage {
+  overflow: hidden;
   min-height: 200px;
 }
 
 .panel {
   padding-bottom: 20px;
-  transition: opacity 0.15s ease;
-  opacity: 1;
-}
-.panel--fading {
-  opacity: 0;
+  will-change: transform;
 }
 
 .detail-actions {
