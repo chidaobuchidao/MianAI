@@ -195,6 +195,14 @@
 
     <!-- ====== PC: Right Code Editor ====== -->
     <aside class="code-panel" v-if="isDesktop && showCodePanel">
+      <CodeEditor
+        v-model="currentCode"
+        :filename="codeFilename || 'Solution.java'"
+        :language="codeLanguage"
+      />
+    </aside>
+    <!-- old code panel removed -->
+    <span v-if="false">
       <div class="code-panel__head">
         <div class="code-panel__dots">
           <span class="code-panel__dot code-panel__dot--red" />
@@ -215,7 +223,7 @@
           <p>等待 AI 面试官出编程题...</p>
         </div>
       </div>
-    </aside>
+    </span>
 
     <!-- Finished overlay -->
     <div class="finish-overlay" v-if="finished">
@@ -237,6 +245,7 @@ import { useRouter } from 'vue-router'
 import { post } from '@/utils/request'
 import { marked } from 'marked'
 import CodeBlock from '@/components/CodeBlock.vue'
+import CodeEditor from '@/components/CodeEditor.vue'
 import SkeletonBar from '@/components/SkeletonBar.vue'
 import { getPosIcon } from '@/utils/positionIcons'
 import { useInterviewStream, type InterviewMessage, type ReportData, type CodeProblem } from '@/composables/useInterviewStream'
@@ -312,6 +321,7 @@ const finished = ref(false)
 const sessionId = ref(0)
 const currentCode = ref('')
 const codeFilename = ref('')
+const codeLanguage = ref('java')
 const showCodePanel = ref(false)
 const inputText = ref('')
 const inputMode = ref<'keyboard' | 'voice'>('keyboard')
@@ -381,7 +391,8 @@ function handleFinish(data: ReportData) {
 function handleCodeProblem(data: CodeProblem) {
   showCodePanel.value = true
   currentCode.value = data.template
-  codeFilename.value = data.title
+  codeFilename.value = data.title + '.java'
+  codeLanguage.value = data.language || 'java'
   // Show description as a system message in chat
   messages.value = [...messages.value, {
     role: 'ai',

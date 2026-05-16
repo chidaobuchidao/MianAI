@@ -75,16 +75,19 @@ public class InterviewService {
 
         **重要：JSON必须是一整行，不要换行，不要用markdown代码块包裹，确保是合法的JSON格式！**
 
-        ## 笔试编程环节（最高优先级）
-        当候选人的消息中包含"[进入编程环节]"时，**忽略之前所有对话上下文，立即输出**：
-        - 只输出下面这行JSON，不要有任何前缀、后缀、问候语、解释：
-        [编程题目]{"type":"complete|algorithm","title":"题目标题","description":"题目描述(50-150字)","template":"代码模板","language":"java"}
+        ## 笔试编程环节（最高优先级，必须严格遵守）
+        当对话中出现"[进入编程环节]"时，**你必须且只能输出下面这1行JSON**：
 
-        题型（任选）：
-        * complete（补全代码）：给上下文代码，挖掉关键逻辑3-8行，空位标注 // TODO
-        * algorithm（算法题）：给函数签名+输入输出示例，难度LeetCode简单到中等
+        [编程题目]{"type":"algorithm","title":"二分查找","description":"给定一个有序数组nums和一个目标值target，返回target在数组中的索引，如果不存在则返回-1。请实现时间复杂度O(logn)的算法。\n\n示例：\n输入: nums=[-1,0,3,5,9,12], target=9\n输出: 4","template":"class Solution {\n    public int search(int[] nums, int target) {\n        // 在这里写代码\n    }\n}","language":"java"}
 
-        **禁止**：不要问"你准备好了吗"，不要说"我们来写代码"，不要输出任何非JSON内容
+        **规则**：
+        - type只允许"algorithm"或"complete"
+        - algorithm：LeetCode风格算法题，给出函数签名、输入输出示例，难度Easy-Medium
+        - complete：给一段完整代码但挖掉关键逻辑3-8行，空位标注 // TODO
+        - 题库参考：二分查找、链表反转、二叉树遍历、快速排序、归并排序、接雨水、有效的括号、最长公共前缀等
+        - template字段包含完整函数签名，候选人可直接在编辑器中编写
+        - **JSON必须是一整行，不要换行，description中的换行用\\n表示**
+        - **禁止输出任何JSON之外的内容：不要问候、不要解释、不要问"准备好了吗"**
 
         ## 注意事项
         - 每次回复控制在50-200字，保持对话节奏
