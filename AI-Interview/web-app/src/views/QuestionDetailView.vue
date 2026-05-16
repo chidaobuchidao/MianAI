@@ -11,17 +11,11 @@
         <span class="page-head__cat">{{ currentQ?.categoryName || '' }}</span>
       </div>
 
-      <div class="detail-stage" v-if="currentQ">
-        <div class="panel" :style="mainStyle">
+      <div class="detail-stage">
+        <div class="panel" :class="{ 'panel--fading': fading }" v-if="currentQ" :key="currentQ.id">
           <QuestionContent :q="currentQ" />
         </div>
-        <div class="panel panel--overlay" v-if="slideQ" :style="slideStyle">
-          <QuestionContent :q="slideQ" />
-        </div>
-      </div>
-
-      <div class="detail-stage" v-else>
-        <SkeletonBar :height="200" />
+        <SkeletonBar v-else :height="200" />
       </div>
     </div>
 
@@ -45,85 +39,59 @@ interface Question {
 }
 
 const route = useRoute()
+const cache = new Map<number, Question>()
 
 const currentQ = ref<Question | null>(null)
-const slideQ = ref<Question | null>(null)
 const questionIds = ref<number[]>([])
 const currentIndex = ref(-1)
-const animating = ref(false)
-const mainX = ref(0)
-const slideX = ref(100)
-const cache = new Map<number, Question>()
+const fading = ref(false)
+const switching = ref(false)
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < questionIds.value.length - 1)
 
-const mainStyle = computed(() => ({
-  transform: `translateX(${mainX.value}%)`,
-  transition: animating.value ? 'transform 0.4s cubic-bezier(0.22, 0.1, 0.1, 1)' : 'none'
-}))
-
-const slideStyle = computed(() => ({
-  transform: `translateX(${slideX.value}%)`,
-  transition: animating.value ? 'transform 0.4s cubic-bezier(0.22, 0.1, 0.1, 1)' : 'none'
-}))
+function preload(id: number) {
+  if (!id || cache.has(id)) return
+  get<Question>(`/api/questions/${id}`).then(res => {
+    if (res.data) cache.set(id, res.data)
+  }).catch(() => {})
+}
 
 function preloadAdjacent() {
   const idx = currentIndex.value
   if (idx < 0) return
-  for (const i of [idx - 1, idx + 1]) {
-    if (i < 0 || i >= questionIds.value.length) continue
-    const id = questionIds.value[i]
-    if (cache.has(id)) continue
-    get<Question>(`/api/questions/${id}`).then(res => {
-      if (res.data) cache.set(id, res.data)
-    }).catch(() => {})
-  }
+  preload(questionIds.value[idx - 1])
+  preload(questionIds.value[idx + 1])
 }
 
-async function loadQuestion(id: number) {
-  if (cache.has(id)) return cache.get(id)!
-  const res = await get<Question>(`/api/questions/${id}`)
-  if (res.data) cache.set(id, res.data)
-  return res.data
+function switchTo(idx: number) {
+  if (switching.value || idx < 0 || idx >= questionIds.value.length) return
+  switching.value = true
+  const targetId = questionIds.value[idx]
+
+  // Step 1: fade out
+  fading.value = true
+
+  // Step 2: after fade out, swap content
+  setTimeout(() => {
+    currentQ.value = cache.get(targetId)!
+    currentIndex.value = idx
+
+    // Step 3: fade in
+    requestAnimationFrame(() => {
+      fading.value = false
+      switching.value = false
+      preloadAdjacent()
+    })
+  }, 150)
 }
 
 function goPrev() {
-  if (!hasPrev.value || animating.value) return
-  const idx = currentIndex.value - 1
-  const prevQ = cache.get(questionIds.value[idx])!
-  slideQ.value = prevQ
-  animating.value = true
-  slideX.value = -100
-  requestAnimationFrame(() => {
-    mainX.value = 100
-    slideX.value = 0
-  })
-  setTimeout(() => commitSlide(prevQ, idx), 410)
+  switchTo(currentIndex.value - 1)
 }
 
 function goNext() {
-  if (!hasNext.value || animating.value) return
-  const idx = currentIndex.value + 1
-  const nextQ = cache.get(questionIds.value[idx])!
-  slideQ.value = nextQ
-  animating.value = true
-  slideX.value = 100
-  requestAnimationFrame(() => {
-    mainX.value = -100
-    slideX.value = 0
-  })
-  setTimeout(() => commitSlide(nextQ, idx), 410)
-}
-
-function commitSlide(q: Question, idx: number) {
-  currentQ.value = q
-  currentIndex.value = idx
-  slideQ.value = null
-  animating.value = false
-  mainX.value = 0
-  slideX.value = idx > currentIndex.value ? 100 : -100
-  preloadAdjacent()
+  switchTo(currentIndex.value + 1)
 }
 
 onMounted(async () => {
@@ -139,10 +107,14 @@ onMounted(async () => {
     questionIds.value = records.map(q => q.id)
 
     if (initialId) {
-      const q = await loadQuestion(initialId)
-      currentQ.value = q
-      currentIndex.value = questionIds.value.indexOf(initialId)
-      preloadAdjacent()
+      // Load initial + preload adjacent
+      const q = await get<Question>(`/api/questions/${initialId}`).then(r => r.data)
+      if (q) {
+        cache.set(initialId, q)
+        currentQ.value = q
+        currentIndex.value = questionIds.value.indexOf(initialId)
+        preloadAdjacent()
+      }
     }
   } catch { /* ignore */ }
 })
@@ -169,17 +141,16 @@ onMounted(async () => {
 .page-head__cat { font-size: 12px; color: var(--text-light); }
 
 .detail-stage {
-  position: relative;
-  overflow: hidden;
   min-height: 200px;
 }
 
 .panel {
   padding-bottom: 20px;
-  will-change: transform;
+  transition: opacity 0.15s ease;
+  opacity: 1;
 }
-.panel--overlay {
-  position: absolute; top: 0; left: 0; width: 100%;
+.panel--fading {
+  opacity: 0;
 }
 
 .detail-actions {
