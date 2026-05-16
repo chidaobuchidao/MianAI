@@ -1,27 +1,31 @@
 <template>
   <view class="login">
     <view class="login-card">
-      <view class="logo-wrap">
-        <text class="logo-txt">面</text>
+      <view class="brand-row">
+        <text class="brand">Mianmian.</text>
       </view>
-      <text class="app-name">面面通</text>
-      <text class="app-desc">AI模拟面试 · 智能刷题</text>
-      <button class="wx-btn" open-type="getUserInfo" @click="handleLogin">
+      <text class="desc">AI 模拟面试平台</text>
+      <text class="sub-desc">专为计算机学生打造 · 智能刷题 · 简历诊断</text>
+
+      <view class="login-btn" @click="handleLogin">
         <text>微信一键登录</text>
-      </button>
+      </view>
+
       <text class="privacy">登录即同意《用户协议》和《隐私政策》</text>
     </view>
+
+    <text class="bottom-text">让你的每一场面试都更有把握</text>
   </view>
 </template>
 
 <script setup lang="ts">
 import { useUserStore } from '@/store/user';
 const userStore = useUserStore();
+
 async function handleLogin() {
   uni.showLoading({ title: '登录中...' });
 
   try {
-    // 1. 获取微信临时 code
     let code = '';
     try {
       const r = await new Promise<{code:string}>((resolve, reject) => {
@@ -29,19 +33,17 @@ async function handleLogin() {
       });
       code = r.code || '';
     } catch {
-      // 非微信环境，用 mock code
+      // 非微信环境
     }
     if (!code || code.length < 3) {
       code = 'mock_' + Date.now();
     }
 
-    // 2. 用 code 换后端 JWT（等 10 秒）
     await userStore.login(code);
     uni.hideLoading();
     uni.showToast({ title: '登录成功', icon: 'success' });
     setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 500);
   } catch {
-    // 3. 后端不通 → 开发模式直接进去
     uni.hideLoading();
     userStore.devLogin();
     uni.showToast({ title: '开发模式(后端离线)', icon: 'none' });
@@ -51,12 +53,54 @@ async function handleLogin() {
 </script>
 
 <style lang="scss" scoped>
-.login { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(160deg, #1a3a6b 0%, #2b6ff2 40%, #4f8dff 100%); }
-.login-card { background: #fff; border-radius: 28rpx; padding: 80rpx 60rpx; width: 80vw; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.15); }
-.logo-wrap { width: 140rpx; height: 140rpx; border-radius: 36rpx; background: linear-gradient(135deg, #2b6ff2, #4f8dff); display: flex; align-items: center; justify-content: center; margin-bottom: 30rpx; }
-.logo-txt { font-size: 72rpx; font-weight: 900; color: #fff; }
-.app-name { font-size: 48rpx; font-weight: 900; color: #0f172a; letter-spacing: 4rpx; }
-.app-desc { font-size: 28rpx; color: #94a3b8; margin-top: 12rpx; margin-bottom: 80rpx; }
-.wx-btn { width: 100%; height: 96rpx; background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; font-size: 32rpx; font-weight: 700; border-radius: 48rpx; border: none; display: flex; align-items: center; justify-content: center; }
-.privacy { font-size: 24rpx; color: #cbd5e1; margin-top: 30rpx; }
+@import "@/styles/tokens.scss";
+
+.login {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100vh;
+  background: $bg-canvas; padding: 60rpx 40rpx;
+}
+
+.login-card {
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-xl; padding: 80rpx 56rpx;
+  width: 100%; max-width: 600rpx;
+  display: flex; flex-direction: column; align-items: center;
+  box-shadow: $shadow-md;
+}
+
+.brand-row { margin-bottom: 20rpx; }
+.brand {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 60rpx; font-weight: 600; color: $text-main;
+  letter-spacing: -1.5px;
+}
+
+.desc {
+  font-size: 30rpx; color: $text-main; font-weight: 500;
+  margin-bottom: 12rpx; text-align: center;
+}
+.sub-desc {
+  font-size: 24rpx; color: $text-light; margin-bottom: 64rpx;
+  text-align: center; line-height: 1.6;
+}
+
+.login-btn {
+  width: 100%; height: 100rpx;
+  background: $bg-dark; color: #fff;
+  font-size: 30rpx; font-weight: 600;
+  border-radius: $radius-lg; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.login-btn:active { opacity: 0.9; }
+
+.privacy {
+  font-size: 22rpx; color: $text-light;
+  margin-top: 32rpx; text-align: center;
+}
+
+.bottom-text {
+  font-size: 24rpx; color: $text-light;
+  margin-top: 60rpx; text-align: center;
+}
 </style>

@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mianmian. — 全页面设计稿</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==================== Design Tokens ==================== */
+    :root {
+      --bg-canvas: #F3EFE8;
+      --bg-paper: #FDFCFB;
+      --bg-surface: #F7F7F5;
+      --bg-dark: #141413;
+
+      --text-main: #141413;
+      --text-muted: #4A4A4A;
+      --text-light: #888888;
+
+      --accent: #D9750A;
+      --color-success: #22C55E;
+      --color-danger: #EF4444;
+
+      --border-light: rgba(0, 0, 0, 0.06);
+      --border-medium: rgba(0, 0, 0, 0.10);
+
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.02);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 16px 32px rgba(0,0,0,0.10);
+      --shadow-xl: 0 24px 48px rgba(0,0,0,0.12);
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      --font-serif: 'Georgia', 'Noto Serif SC', serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      padding: 60px 40px;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ==================== Gallery Layout ==================== */
+    .gallery-title {
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: 36px;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .gallery-subtitle {
+      text-align: center;
+      color: var(--text-light);
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .gallery-section {
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: 22px;
+      margin: 80px 0 12px;
+      letter-spacing: -0.5px;
+      color: var(--text-muted);
+    }
+    .gallery-section-desc {
+      text-align: center;
+      color: var(--text-light);
+      margin-bottom: 40px;
+      font-size: 13px;
+    }
+
+    /* ==================== Mockup Frames ==================== */
+    .mockup-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 36px;
+      justify-content: center;
+      margin-bottom: 80px;
+    }
+
+    /* Mobile frame: 375x812 */
+    .mockup-mobile {
+      width: 375px;
+      height: 812px;
+      background: var(--bg-paper);
+      border-radius: 40px;
+      box-shadow: var(--shadow-xl), 0 0 0 1px var(--border-light);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* Desktop frame */
+    .mockup-desktop {
+      width: 100%;
+      max-width: 1200px;
+      height: 700px;
+      margin: 0 auto 40px;
+      background: var(--bg-paper);
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.1);
+      border: 1px solid var(--border-light);
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Tablet frame */
+    .mockup-tablet {
+      width: 768px;
+      height: 1024px;
+      background: var(--bg-paper);
+      border-radius: 32px;
+      box-shadow: var(--shadow-xl), 0 0 0 1px var(--border-light);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      margin: 0 auto;
+    }
+
+    .mockup-label {
+      position: absolute;
+      bottom: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: var(--text-light);
+      white-space: nowrap;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* ==================== Shared Components ==================== */
+
+    /* Brand */
+    .brand {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    /* Header */
+    .header {
+      padding: 20px 20px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-medium);
+      background: var(--bg-paper);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .avatar-letter {
+      font-family: var(--font-serif);
+      font-size: 14px; font-weight: 600;
+    }
+
+    /* Hero */
+    .hero { padding: 8px 20px 24px; flex-shrink: 0; }
+    .hero-accent {
+      width: 28px; height: 4px;
+      background: var(--accent); border-radius: 2px;
+      margin-bottom: 12px;
+    }
+    .hero-label {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      letter-spacing: 3px; text-transform: uppercase;
+      display: block; margin-bottom: 8px;
+    }
+    .hero-title {
+      font-family: var(--font-serif);
+      font-size: 32px; line-height: 1.15; letter-spacing: -1px;
+      margin-bottom: 10px; font-weight: 600;
+    }
+    .hero-sub {
+      font-size: 13px; color: var(--text-muted);
+      line-height: 1.6; margin-bottom: 20px; display: block;
+    }
+
+    /* Dark Card */
+    .hero-card {
+      position: relative; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(20,20,19,0.12);
+      height: 280px;
+    }
+    .hero-card-bg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0.38; object-fit: cover;
+    }
+    .hero-card-gradient {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(20,20,19,0.15) 0%, rgba(20,20,19,0.93) 100%);
+    }
+    .hero-card-inner {
+      position: relative; z-index: 1; height: 100%;
+      padding: 24px; display: flex; flex-direction: column;
+    }
+    .hero-card-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero-card-spacer { flex: 1; }
+    .hero-card-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .hero-card-title {
+      font-size: 20px; font-weight: 500; color: #fff;
+      display: block; margin-bottom: 4px; letter-spacing: -0.5px;
+    }
+    .hero-card-desc {
+      font-size: 12px; color: rgba(255,255,255,0.45); display: block;
+    }
+    .hero-card-circle {
+      width: 32px; height: 32px; background: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Func Grid */
+    .func-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; padding: 0 20px; margin-bottom: 32px; flex-shrink: 0;
+    }
+    .func-card {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 20px 16px 18px;
+      box-shadow: var(--shadow-sm);
+      position: relative; overflow: hidden;
+    }
+    .func-card.accent::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent); border-radius: 0 0 2px 2px;
+    }
+    .func-card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .func-icon-box {
+      width: 40px; height: 40px;
+      background: var(--bg-surface); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .func-icon-amber { background: rgba(217,117,10,0.08); }
+    .func-tag {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      background: rgba(217,117,10,0.08);
+      padding: 3px 10px; border-radius: 100px;
+    }
+    .func-title {
+      font-size: 15px; font-weight: 500; display: block; margin-bottom: 2px;
+    }
+    .func-desc {
+      font-size: 12px; color: var(--text-light); line-height: 1.4;
+    }
+
+    /* Section */
+    .section { padding: 0 20px; margin-bottom: 28px; flex-shrink: 0; }
+    .section-head {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .section-line {
+      width: 4px; height: 16px; background: var(--text-main); border-radius: 2px;
+    }
+    .section-label {
+      font-size: 13px; font-weight: 600;
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid var(--border-light);
+      padding: 6px 14px; border-radius: 100px;
+      font-size: 12px; background: var(--bg-paper);
+    }
+    .chip.active { background: var(--bg-dark); color: #fff; border-color: var(--bg-dark); }
+
+    /* Back header */
+    .back-header {
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+    }
+    .back-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-main); flex-shrink: 0;
+    }
+    .page-title {
+      font-family: var(--font-serif); font-size: 17px; font-weight: 600;
+    }
+
+    /* Chat */
+    .chat-topbar {
+      padding: 12px 16px; border-bottom: 1px solid var(--border-light);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .chat-topbar-center { text-align: center; }
+    .chat-topbar-title { font-size: 14px; font-weight: 600; }
+    .chat-status {
+      font-size: 11px; color: var(--color-success);
+      display: flex; align-items: center; gap: 4px; justify-content: center;
+    }
+    .chat-status-dot {
+      width: 6px; height: 6px; background: var(--color-success); border-radius: 50%;
+    }
+    .chat-end {
+      font-size: 12px; color: var(--color-danger);
+      padding: 4px 10px; background: #fff;
+      border: 1px solid var(--border-medium); border-radius: 6px;
+    }
+
+    /* Messages */
+    .msg-area {
+      flex: 1; overflow-y: auto; padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    .msg-ai { display: flex; gap: 10px; }
+    .msg-avatar {
+      width: 28px; height: 28px; border-radius: 8px;
+      object-fit: cover; border: 1px solid var(--border-light); flex-shrink: 0;
+    }
+    .msg-body { flex: 1; min-width: 0; }
+    .msg-role { font-size: 12px; font-weight: 500; margin-bottom: 4px; color: var(--text-muted); }
+    .msg-text { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    /* Code block */
+    .code-block {
+      background: var(--bg-dark); border-radius: 10px; overflow: hidden;
+      margin-top: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    .code-header {
+      display: flex; align-items: center; padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .code-dots { display: flex; gap: 5px; }
+    .code-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .code-dot.red { background: #ED6A5E; }
+    .code-dot.yellow { background: #F4BF4F; }
+    .code-dot.green { background: #61C554; }
+    .code-fn {
+      margin-left: 10px; font-size: 10px;
+      color: #888; font-family: var(--font-mono);
+    }
+    .code-body {
+      padding: 12px 14px; overflow-x: auto;
+    }
+    .code-body pre {
+      margin: 0; font-family: var(--font-mono); font-size: 11px;
+      line-height: 1.6; color: #E4E4E4;
+    }
+    .code-keyword { color: #79C0FF; }
+    .code-func { color: #D2A8FF; }
+    .code-comment { color: #8B949E; font-style: italic; }
+    .code-string { color: #A5D6FF; }
+    .code-type { color: #FFA657; }
+
+    /* User message */
+    .msg-user {
+      display: flex; justify-content: flex-end;
+    }
+    .msg-user-bubble {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 14px 14px 4px 14px;
+      padding: 12px 14px; max-width: 85%;
+      font-size: 14px; line-height: 1.6;
+    }
+
+    /* Skeleton */
+    .skeleton-bar {
+      background: linear-gradient(90deg, #F0F0F0 25%, #E4E4E4 50%, #F0F0F0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite linear;
+      border-radius: 4px; height: 10px; margin-bottom: 6px;
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* Input */
+    .input-zone {
+      padding: 12px 16px 28px; flex-shrink: 0;
+    }
+    .input-row {
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .input-text {
+      flex: 1;
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 10px 14px; font-size: 13px;
+      outline: none; font-family: inherit; resize: none;
+    }
+    .send-btn {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: var(--bg-dark); border: none;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; flex-shrink: 0;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ==================== PC Desktop Layout ==================== */
+
+    /* Sidebar */
+    .pc-sidebar {
+      width: 260px; background: var(--bg-surface);
+      border-right: 1px solid var(--border-light);
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .pc-sidebar-head {
+      padding: 18px; border-bottom: 1px solid var(--border-light);
+    }
+    .pc-sidebar-sub { font-size: 11px; color: var(--text-light); display: block; margin-top: 2px; }
+    .pc-sidebar-body { flex: 1; padding: 20px 18px; overflow-y: auto; }
+    .pc-sidebar-label {
+      font-size: 10px; font-weight: 600; color: var(--text-light);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 16px; display: block;
+    }
+
+    /* Progress Tree */
+    .progress-tree { position: relative; display: flex; flex-direction: column; gap: 18px; }
+    .progress-line {
+      position: absolute; left: 7px; top: 8px; bottom: 8px;
+      width: 2px; background: var(--border-light);
+    }
+    .progress-item { display: flex; gap: 10px; align-items: flex-start; position: relative; z-index: 1; }
+    .progress-dot {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      background: #E4E4E4; border: 2px solid var(--bg-surface);
+      margin-top: 2px;
+    }
+    .progress-dot.done { background: var(--color-success); }
+    .progress-dot.active { background: var(--bg-dark); }
+    .progress-name { font-size: 12px; font-weight: 500; display: block; }
+    .progress-item.active .progress-name { font-weight: 600; }
+    .progress-status { font-size: 10px; color: var(--text-light); display: block; margin-top: 1px; }
+    .progress-item.active .progress-status { color: var(--color-success); }
+
+    /* Main chat */
+    .pc-chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    /* Code panel */
+    .pc-code {
+      width: 420px; background: var(--bg-dark);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      border-left: 1px solid var(--border-medium);
+    }
+    .pc-code-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .pc-code-fn {
+      font-size: 11px; color: #888; font-family: var(--font-mono);
+    }
+    .pc-code-body { flex: 1; padding: 16px; overflow-y: auto; }
+    .pc-code-body pre {
+      margin: 0; font-family: var(--font-mono); font-size: 12px;
+      line-height: 1.7; color: #E4E4E4;
+    }
+
+    /* ==================== Position Selection ==================== */
+    .pos-screen {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 24px; text-align: center;
+    }
+    .pos-icon { font-size: 44px; margin-bottom: 12px; }
+    .pos-title {
+      font-family: var(--font-serif); font-size: 22px;
+      font-weight: 600; margin-bottom: 6px;
+    }
+    .pos-desc { font-size: 13px; color: var(--text-light); margin-bottom: 20px; }
+    .model-bar {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 20px;
+    }
+    .model-label { font-size: 12px; color: var(--text-light); }
+    .model-opt {
+      padding: 5px 12px; border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+      border: 1px solid var(--border-medium);
+      background: var(--bg-paper); color: var(--text-muted);
+    }
+    .model-opt.active {
+      background: var(--bg-dark); color: #fff; border-color: var(--bg-dark);
+    }
+    .pos-list { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 320px; }
+    .pos-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      font-size: 14px; font-weight: 500; text-align: left;
+    }
+    .pos-icon-box {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--bg-surface);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .pos-btn-name { flex: 1; }
+
+    /* ==================== Score Header ==================== */
+    .score-header {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 0 20px; margin-bottom: 28px;
+    }
+    /* Circular progress ring */
+    .score-ring {
+      width: 72px; height: 72px; flex-shrink: 0; position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .score-ring svg { width: 72px; height: 72px; transform: rotate(-90deg); }
+    .score-ring-bg { fill: none; stroke: var(--border-light); stroke-width: 5; }
+    .score-ring-fg { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+    .score-ring-fg.high { stroke: #16A34A; }
+    .score-ring-fg.mid { stroke: #D97706; }
+    .score-ring-fg.low { stroke: #DC2626; }
+    .score-ring-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .score-num {
+      font-size: 22px; font-weight: 700; letter-spacing: -1px; line-height: 1;
+    }
+    .score-max { font-size: 9px; color: var(--text-light); font-weight: 500; margin-top: 1px; }
+    .score-verdict {
+      font-size: 16px; font-weight: 600; display: block; margin-bottom: 4px;
+    }
+    .score-text {
+      font-size: 13px; color: var(--text-muted); line-height: 1.6;
+    }
+
+    /* Diagnostic card */
+    .diag-card {
+      padding: 14px 20px;
+    }
+    .diag-indicator {
+      display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; margin-right: 6px; vertical-align: middle;
+    }
+    .diag-indicator.danger { background: var(--color-danger); }
+    .diag-indicator.warning { background: var(--accent); }
+    .diag-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; vertical-align: middle;
+    }
+    .diag-body {
+      margin-top: 10px;
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px; padding: 14px;
+    }
+    .diag-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block; }
+    .diag-original {
+      font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px;
+    }
+    .diag-rewrite {
+      background: var(--bg-surface); border-radius: 8px; padding: 10px 12px;
+      border-left: 3px solid var(--color-success);
+    }
+    .diag-rewrite-label {
+      font-size: 10px; color: var(--text-light); margin-bottom: 4px; display: block;
+    }
+    .diag-rewrite-text {
+      font-size: 12px; color: var(--text-main); line-height: 1.5;
+    }
+
+    /* Export button */
+    .export-btn {
+      margin: 24px 20px 40px;
+      background: var(--bg-dark); color: #fff; border: none;
+      padding: 14px; border-radius: 14px; width: calc(100% - 40px);
+      font-size: 14px; font-weight: 500;
+      display: flex; justify-content: center; align-items: center; gap: 8px;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Login */
+    .login-screen {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 24px;
+    }
+    .login-brand {
+      font-family: var(--font-serif); font-size: 32px;
+      font-weight: 600; letter-spacing: -1px; margin-bottom: 6px;
+    }
+    .login-desc { font-size: 13px; color: var(--text-light); }
+    .login-divider {
+      width: 36px; height: 2px; background: var(--border-medium);
+      margin: 32px auto;
+    }
+    .login-btn {
+      width: 100%; max-width: 300px;
+      background: var(--bg-dark); color: #fff;
+      padding: 14px; border-radius: 14px;
+      font-size: 15px; font-weight: 500;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      border: none; cursor: pointer;
+      box-shadow: var(--shadow-md);
+    }
+    .login-note { font-size: 10px; color: var(--text-light); margin-top: 16px; }
+
+    /* Stats */
+    .stats-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px; padding: 0 20px; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px; padding: 16px 10px;
+      text-align: center; box-shadow: var(--shadow-sm);
+    }
+    .stat-num {
+      font-size: 22px; font-weight: 700;
+      font-family: var(--font-serif); display: block; margin-bottom: 2px;
+    }
+    .stat-label { font-size: 11px; color: var(--text-light); }
+
+    /* Menu */
+    .menu-group {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px; overflow: hidden;
+      margin: 0 20px 14px;
+    }
+    .menu-item {
+      padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--text-main);
+    }
+    .menu-item:not(:last-child) { border-bottom: 1px solid var(--border-light); }
+    .menu-item-label { flex: 1; }
+    .menu-item-danger { color: var(--color-danger); }
+
+    /* Profile head */
+    .profile-head {
+      padding: 40px 20px 24px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .profile-avatar {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .profile-name { font-size: 18px; font-weight: 600; }
+    .profile-id { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+    /* Upload */
+    .upload-zone {
+      margin: 0 20px; padding: 40px 20px; text-align: center;
+      background: var(--bg-paper);
+      border: 2px dashed var(--border-light);
+      border-radius: 20px;
+    }
+    .upload-icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: rgba(217,117,10,0.06);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .upload-title { font-size: 16px; font-weight: 500; display: block; margin-bottom: 4px; }
+    .upload-desc { font-size: 12px; color: var(--text-light); }
+
+    /* Exam grid */
+    .exam-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; padding: 0 20px;
+    }
+    .exam-card {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      padding: 20px 16px; box-shadow: var(--shadow-sm);
+    }
+    .exam-icon {
+      width: 40px; height: 40px; background: rgba(217,117,10,0.06);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .exam-title { font-size: 15px; font-weight: 500; display: block; margin-bottom: 2px; }
+    .exam-meta { font-size: 11px; color: var(--text-light); }
+
+    /* Question card */
+    .q-card {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px;
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+    }
+    .q-number {
+      font-size: 12px; font-weight: 600; color: var(--accent); flex-shrink: 0;
+    }
+    .q-title { font-size: 13px; font-weight: 500; display: block; margin-bottom: 2px; }
+    .q-meta { font-size: 11px; color: var(--text-light); }
+
+    /* History list */
+    .hist-list { display: flex; flex-direction: column; gap: 8px; padding: 0 20px; }
+    .hist-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+    }
+    .hist-info { flex: 1; min-width: 0; }
+    .hist-name { font-size: 13px; font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hist-time { font-size: 11px; color: var(--text-light); }
+    .hist-badge {
+      font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 100px;
+    }
+    .badge-high { background: #F0FDF4; color: #16A34A; }
+    .badge-mid { background: #FFFBEB; color: #D97706; }
+    .badge-pending { background: var(--bg-surface); color: var(--text-light); }
+
+    /* Empty state */
+    .empty {
+      text-align: center; padding-top: 120px;
+    }
+    .empty-icon { display: flex; justify-content: center; margin-bottom: 12px; }
+    .empty-icon svg { display: block; }
+    .empty-title { font-size: 15px; font-weight: 500; display: block; margin-bottom: 6px; }
+    .empty-desc { font-size: 12px; color: var(--text-light); }
+    .empty-btn {
+      margin-top: 20px; background: var(--bg-dark); color: #fff;
+      padding: 10px 28px; border-radius: 12px; font-size: 14px; font-weight: 500;
+      border: none; box-shadow: var(--shadow-md);
+    }
+
+    /* Option buttons */
+    .options { display: flex; flex-direction: column; gap: 8px; }
+    .option-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      background: var(--bg-paper);
+      font-size: 14px; text-align: left;
+    }
+    .option-letter {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--bg-surface);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600; color: var(--text-muted); flex-shrink: 0;
+    }
+    .option-btn.sel { border-color: var(--accent); background: rgba(217,117,10,0.04); }
+    .option-btn.sel .option-letter { background: var(--accent); color: #fff; }
+
+    .question-card {
+      padding: 24px 20px;
+    }
+    .q-type {
+      font-size: 10px; font-weight: 600; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 1px;
+      display: block; margin-bottom: 10px;
+    }
+    .q-text { font-size: 16px; font-weight: 500; line-height: 1.6; margin-bottom: 20px; }
+    .progress-bar {
+      height: 3px; background: var(--border-light); border-radius: 2px;
+      margin: 0 20px 24px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--accent); border-radius: 2px;
+      width: 30%;
+    }
+    .actions {
+      display: flex; gap: 10px; padding: 0 20px;
+    }
+    .action-btn {
+      flex: 1; padding: 12px; border-radius: 12px;
+      font-size: 14px; font-weight: 500; text-align: center;
+    }
+    .action-sec { background: var(--bg-paper); border: 1px solid var(--border-medium); color: var(--text-main); }
+    .action-pri { background: var(--bg-dark); color: #fff; border: none; box-shadow: var(--shadow-md); }
+
+    /* ===== Capsule Input Pill ===== */
+    .input-pill {
+      display: flex; align-items: center;
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 100px;
+      padding: 5px;
+    }
+    .input-pill:focus-within {
+      border-color: var(--text-main);
+      box-shadow: 0 0 0 3px rgba(20,20,19,0.06);
+    }
+
+    .pill-toggle {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: none; background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-light); flex-shrink: 0; cursor: pointer;
+      position: relative; overflow: hidden;
+      transition: background 0.2s, color 0.2s;
+    }
+    .pill-toggle:hover { background: var(--bg-surface); color: var(--text-main); }
+    .pill-toggle-icon {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .pill-toggle-icon.hover {
+      opacity: 0; transform: translateY(4px);
+    }
+    .pill-toggle:hover .pill-toggle-icon.default {
+      opacity: 0; transform: translateY(-4px);
+    }
+    .pill-toggle:hover .pill-toggle-icon.hover {
+      opacity: 1; transform: translateY(0);
+    }
+
+    .pill-input {
+      flex: 1; min-width: 0;
+      border: none; background: transparent;
+      padding: 8px 6px;
+      font-size: 14px; line-height: 1.5;
+      outline: none; resize: none; font-family: inherit;
+      color: var(--text-main);
+    }
+    .pill-input::placeholder { color: var(--text-light); }
+
+    .pill-send {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: none; background: var(--bg-dark);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; flex-shrink: 0; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .pill-send:hover {
+      background: var(--accent);
+      box-shadow: 0 4px 16px rgba(217,117,10,0.35);
+    }
+
+    .pill-voice {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 6px 12px; cursor: pointer;
+      border-radius: 100px; transition: background 0.15s;
+    }
+    .pill-voice:hover { background: var(--bg-surface); }
+    .pill-voice-hint { font-size: 14px; color: var(--text-light); }
+    .pill-voice-active {
+      justify-content: space-between; cursor: default;
+      background: var(--bg-dark); border-radius: 100px;
+    }
+    .pill-voice-active:hover { background: var(--bg-dark); }
+    .pill-voice-cancel { color: #888; font-size: 13px; font-weight: 500; padding: 0 8px; }
+    .pill-voice-send {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #fff; border: none;
+      display: flex; align-items: center; justify-content: center;
+      color: #141413; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .pill-voice-send:hover {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 4px 16px rgba(217,117,10,0.4);
+    }
+
+    .input-row-voice { align-items: center; }
+
+    /* Done overlay */
+    .done-overlay {
+      position: absolute; inset: 0; z-index: 50;
+      background: rgba(20,20,19,0.5);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .done-card {
+      background: var(--bg-paper); border-radius: 20px;
+      padding: 40px 36px; text-align: center;
+      box-shadow: var(--shadow-xl);
+    }
+    .done-icon { display: flex; justify-content: center; margin-bottom: 12px; }
+    .done-icon svg { display: block; }
+    .done-title {
+      font-family: var(--font-serif); font-size: 22px; font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .done-btn {
+      background: var(--bg-dark); color: #fff;
+      padding: 12px 32px; border-radius: 14px;
+      font-size: 14px; font-weight: 500; border: none;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ==================== Animated dot grid indicator ==================== */
+    .dot-indicator {
+      display: flex; gap: 3px; align-items: center;
+      height: 16px; margin-top: 4px;
+    }
+    .dot-indicator span {
+      width: 3px; height: 3px; border-radius: 50%;
+      background: var(--text-light);
+      opacity: 0.3;
+    }
+
+    /* ==================== Waveform ==================== */
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.5); }
+      50% { transform: scaleY(1); }
+    }
+    .wave-bars { display: flex; align-items: center; gap: 3px; height: 20px; }
+    .wave-bar {
+      width: 2px; background: var(--color-success);
+      border-radius: 1px; transform-origin: center;
+      animation: wave 1s infinite ease-in-out;
+    }
+    .wave-bar:nth-child(1) { height: 12px; animation-delay: 0.0s; }
+    .wave-bar:nth-child(2) { height: 18px; animation-delay: 0.2s; }
+    .wave-bar:nth-child(3) { height: 10px; animation-delay: 0.4s; }
+    .wave-bar:nth-child(4) { height: 16px; animation-delay: 0.1s; }
+    .wave-bar:nth-child(5) { height: 11px; animation-delay: 0.3s; }
+
+    /* ==================== Recording bar ==================== */
+    .record-bar {
+      background: var(--bg-dark); border-radius: 20px;
+      padding: 12px 16px; display: flex; align-items: center;
+      justify-content: space-between; box-shadow: var(--shadow-lg);
+    }
+    .record-cancel { color: #888; font-size: 13px; font-weight: 500; }
+    .record-send {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #fff; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Thinking */
+    .thinking {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; color: #AAA; margin-top: 6px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .blink { animation: blink 1s infinite; }
+  </style>
+</head>
+<body>
+
+<h1 class="gallery-title">Mianmian. Full Design System</h1>
+<p class="gallery-subtitle">Warm Tech / 极简科技风 / 全页面覆盖 / 移动端 + PC 端</p>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: 首页 (Home) -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">01 — 首页</h2>
+<p class="gallery-section-desc">移动端 375×812 · 全功能入口</p>
+
+<div class="mockup-gallery">
+  <div class="mockup-mobile">
+    <!-- Header -->
+    <div class="header">
+      <span class="brand">Mianmian.</span>
+      <div class="avatar"><span class="avatar-letter">D</span></div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-accent"></div>
+      <span class="hero-label">AI 面试平台</span>
+      <h1 class="hero-title">为真实环境<br>做好准备。</h1>
+      <p class="hero-sub">与硅谷标准对齐的 AI 技术面试，全流程语音对话与代码考察。</p>
+
+      <!-- Dark Card -->
+      <div class="hero-card">
+        <img class="hero-card-bg" src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80" alt="">
+        <div class="hero-card-gradient"></div>
+        <div class="hero-card-inner">
+          <div class="hero-card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+          </div>
+          <div class="hero-card-spacer"></div>
+          <div class="hero-card-row">
+            <div>
+              <span class="hero-card-title">开始 AI 面试</span>
+              <span class="hero-card-desc">语音流 · 代码编辑器 · 深度追问</span>
+            </div>
+            <div class="hero-card-circle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Func Grid -->
+    <div class="func-grid">
+      <div class="func-card accent">
+        <div class="func-card-top">
+          <div class="func-icon-box func-icon-amber">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <span class="func-tag">推荐</span>
+        </div>
+        <span class="func-title">简历深度诊断</span>
+        <span class="func-desc">上传 PDF，AI 定位项目薄弱点</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+          </div>
+        </div>
+        <span class="func-title">在线试卷</span>
+        <span class="func-desc">限时模拟考试，查漏补缺</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+        </div>
+        <span class="func-title">自由刷题</span>
+        <span class="func-desc">按分类随机练习</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+          </div>
+        </div>
+        <span class="func-title">错题本</span>
+        <span class="func-desc">记录薄弱环节，反复巩固</span>
+      </div>
+    </div>
+
+    <!-- Hot Topics -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-line"></div>
+        <span class="section-label">Hot Topics</span>
+      </div>
+      <div class="chip-row">
+        <span class="chip active">Redis 穿透</span>
+        <span class="chip">MySQL 索引优化</span>
+        <span class="chip">ConcurrentHashMap</span>
+        <span class="chip">AQS 源码分析</span>
+        <span class="chip">TCP 拥塞控制</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-line"></div>
+        <span class="section-label">题目分类</span>
+      </div>
+      <div class="chip-row">
+        <span class="chip">Java 基础</span>
+        <span class="chip">并发编程</span>
+        <span class="chip">Redis</span>
+        <span class="chip">MySQL</span>
+        <span class="chip">网络协议</span>
+      </div>
+    </div>
+    <div class="mockup-label">首页 · Home</div>
+  </div>
+
+  <!-- ====== 首页 PC 宽屏 ====== -->
+  <div style="width:100%;max-width:900px;">
+    <div class="mockup-desktop" style="height:760px;">
+      <div class="no-scrollbar" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:100%;max-width:820px;">
+          <div class="header">
+            <span class="brand">Mianmian.</span>
+            <div class="avatar"><span class="avatar-letter">D</span></div>
+          </div>
+          <div class="hero">
+            <div class="hero-accent"></div>
+            <span class="hero-label">AI 面试平台</span>
+            <h1 class="hero-title">为真实环境<br>做好准备。</h1>
+            <p class="hero-sub">与硅谷标准对齐的 AI 技术面试，全流程语音对话与代码考察。</p>
+            <div class="hero-card" style="height:310px;">
+              <img class="hero-card-bg" src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80" alt="">
+              <div class="hero-card-gradient"></div>
+              <div class="hero-card-inner">
+                <div class="hero-card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                </div>
+                <div class="hero-card-spacer"></div>
+                <div class="hero-card-row">
+                  <div>
+                    <span class="hero-card-title">开始 AI 面试</span>
+                    <span class="hero-card-desc">语音流 · 代码编辑器 · 深度追问</span>
+                  </div>
+                  <div class="hero-card-circle">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="func-grid">
+            <div class="func-card accent">
+              <div class="func-card-top"><div class="func-icon-box func-icon-amber"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="func-tag">推荐</span></div>
+              <span class="func-title">简历深度诊断</span><span class="func-desc">上传 PDF，AI 定位项目薄弱点</span>
+            </div>
+            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div></div><span class="func-title">在线试卷</span><span class="func-desc">限时模拟考试</span></div>
+            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div><span class="func-title">自由刷题</span><span class="func-desc">按分类随机练习</span></div>
+            <div class="func-card"><div class="func-card-top"><div class="func-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div></div><span class="func-title">错题本</span><span class="func-desc">记录薄弱环节</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup-label">首页 · PC 宽屏</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: 登录页 (Login) -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">02 — 登录页</h2>
+<p class="gallery-section-desc">极简品牌展示 + 微信一键登录</p>
+
+<div class="mockup-gallery">
+  <div class="mockup-mobile">
+    <div class="login-screen">
+      <span class="login-brand">Mianmian.</span>
+      <p class="login-desc">AI 模拟面试平台</p>
+      <div class="login-divider"></div>
+      <button class="login-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.69 11.66c-.15-.93.06-1.86.5-2.63.61-1.06 1.7-1.72 2.86-1.61 1.16.1 2.07.77 2.56 1.71.08.16.27.21.41.1.64-.47 1.22-.72 1.94-.72 1.09 0 1.99.45 2.65 1.26.5.61.76 1.33.76 2.14 0 2.76-4.5 5.11-8.55 5.11-4.11 0-8.62-2.38-8.62-5.14 0-1.92 2.14-3.58 5.1-4.43.15-.04.26-.16.23-.31-.07-.45-.06-.86 0-1.2.03-.17-.06-.33-.22-.38-.94-.32-1.56-1.14-1.56-2.1 0-2.02 3.43-2.59 5.29-1.33.14.1.33.07.43-.06.58-.78 1.41-1.34 2.5-1.34 1.66 0 3 1.32 3 2.94 0 1.29-.85 2.41-2.05 2.81-.17.06-.28.22-.26.4.07.69.07 1.43 0 2.14-.02.15.1.3.25.28 1.76-.13 6.06.95 6.06 4.73C23.5 15.28 16.5 18 12 18c-4.66 0-11.5-2.84-11.5-6.5 0-2.05 1.97-3.63 4.57-4.55.14-.05.24-.19.21-.34-.07-.3-.07-.59 0-.85.03-.14-.06-.29-.2-.33C2.28 4.66 0 3.5 0 1.5 0 .67.7 0 1.56 0h.01c.84 0 1.53.66 1.54 1.47 0 .42-.19.78-.48 1.02-.11.09-.11.25 0 .34.63.47 1.33.47 1.93 0 .11-.09.11-.25.01-.34-.3-.24-.48-.6-.48-1.02 0-.81.69-1.47 1.54-1.47h.01c.87 0 1.56.67 1.56 1.5 0 1.1-.55 2.04-1.37 2.54-.12.08-.17.23-.12.36.1.22.2.41.31.57.09.12.25.15.37.06C7.52 3.75 8.77 3.33 10 3.33c.73 0 1.39.15 1.97.42.13.06.28.02.37-.1.43-.56.96-.98 1.62-1.14 1.09-.27 2.23.03 3.01.77.38.36.65.81.78 1.3.03.11.13.2.25.18.48-.08.92.13 1.22.48.28.33.43.74.43 1.2 0 .64-.38 1.2-.93 1.46-.13.06-.19.21-.14.35.22.68.29 1.35.2 1.98-.02.16-.19.26-.35.22-1.3-.23-2.52-.18-3.7.15-.15.04-.3-.05-.33-.2-.14-.62-.13-1.27.04-1.9.04-.15.19-.24.34-.2.61.15 1.27.2 1.93.15.17-.01.3-.15.28-.32-.05-.57-.23-1.12-.54-1.6-.06-.1-.19-.12-.28-.03-.66.66-1.53 1.07-2.51 1.07-.6 0-1.16-.14-1.68-.4-.1-.05-.23-.02-.29.07-.33.53-.82.94-1.42 1.12-.5.15-1.04.12-1.54-.07-.07-.03-.15-.01-.2.04-.41.42-.95.71-1.58.79-.16.02-.28.16-.27.32.06.53.02.96-.1 1.33-.03.08-.04.16-.04.24z"/></svg>
+        微信一键登录
+      </button>
+      <p class="login-note">登录即表示同意服务条款与隐私政策</p>
+    </div>
+    <div class="mockup-label">登录页</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: 面试对话 (Interview Chat) -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">03 — AI 面试对话</h2>
+<p class="gallery-section-desc">移动端 375×812 · 语音对话 + 暗色代码块 + 实时交互</p>
+
+<div class="mockup-gallery">
+  <!-- Mobile: Position select -->
+  <div class="mockup-mobile">
+    <div class="pos-screen">
+      <span class="pos-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-main)" stroke-width="1.2"><rect x="3" y="3" width="18" height="14" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><path d="M8 13c0 0 1.5 2 4 2s4-2 4-2"/><line x1="12" y1="17" x2="12" y2="20"/><line x1="9" y1="20" x2="15" y2="20"/></svg></span>
+      <h2 class="pos-title">AI 模拟面试</h2>
+      <p class="pos-desc">选择目标岗位，AI 面试官将进行一场真实技术面试</p>
+      <div class="model-bar">
+        <span class="model-label">模型</span>
+        <span class="model-opt active">Flash</span>
+        <span class="model-opt">Pro</span>
+      </div>
+      <div class="pos-list">
+        <div class="pos-btn"><div class="pos-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div><span class="pos-btn-name">Java 后端开发</span><span style="color:#CCC">›</span></div>
+        <div class="pos-btn"><div class="pos-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg></div><span class="pos-btn-name">前端开发工程师</span><span style="color:#CCC">›</span></div>
+        <div class="pos-btn"><div class="pos-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="6" x2="8" y2="3"/></svg></div><span class="pos-btn-name">算法工程师</span><span style="color:#CCC">›</span></div>
+        <div class="pos-btn"><div class="pos-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><span class="pos-btn-name">数据分析师</span><span style="color:#CCC">›</span></div>
+        <div class="pos-btn"><div class="pos-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><span class="pos-btn-name">DevOps 工程师</span><span style="color:#CCC">›</span></div>
+      </div>
+    </div>
+    <div class="mockup-label">面试 · 岗位选择</div>
+  </div>
+
+  <!-- Mobile: Active chat -->
+  <div class="mockup-mobile">
+    <div class="chat-topbar">
+      <span style="color:#666;font-size:16px;">←</span>
+      <div class="chat-topbar-center">
+        <span class="chat-topbar-title">AI 面试官</span>
+        <div class="chat-status"><span class="chat-status-dot"></span>在线</div>
+      </div>
+      <span class="chat-end">结束</span>
+    </div>
+
+    <div class="msg-area no-scrollbar">
+      <!-- AI message with code -->
+      <div class="msg-ai">
+        <img class="msg-avatar" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="">
+        <div class="msg-body">
+          <div class="msg-role">Interviewer</div>
+          <p class="msg-text">概括得很准。接下来看这段经典的 AQS 获取独占锁的代码，你能指出其中的 <code style="background:rgba(0,0,0,0.05);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:0.9em;">tryAcquire(arg)</code> 是如何体现模板方法模式的吗？</p>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><div class="code-dot red"></div><div class="code-dot yellow"></div><div class="code-dot green"></div></div>
+              <span class="code-fn">AQS.java</span>
+            </div>
+            <div class="code-body">
+<pre><span class="code-keyword">public final void</span> <span class="code-func">acquire</span>(<span class="code-keyword">int</span> arg) {
+    <span style="color:#D2A8FF;">if</span> (!<span class="code-func">tryAcquire</span>(arg) &&
+        <span class="code-func">acquireQueued</span>(<span class="code-func">addWaiter</span>(Node.EXCLUSIVE), arg))
+        <span class="code-func">selfInterrupt</span>();
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User message -->
+      <div class="msg-user">
+        <div class="msg-user-bubble">
+          AQS 本质上提供了一个同步框架。它内部抛出了 tryAcquire 这样的方法让子类去实现具体的逻辑，这就是典型的模板方法。
+        </div>
+      </div>
+
+      <!-- AI thinking skeleton -->
+      <div class="msg-ai">
+        <img class="msg-avatar" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="" style="opacity:0.7;">
+        <div class="msg-body">
+          <div class="msg-role">Interviewer</div>
+          <div>
+            <div class="skeleton-bar" style="width:80%;"></div>
+            <div class="skeleton-bar" style="width:55%;"></div>
+            <div class="skeleton-bar" style="width:65%;"></div>
+            <div class="thinking">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#AAA" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              正在分析你的回答...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input: keyboard mode pill -->
+    <div class="input-zone">
+      <div class="input-pill">
+        <button class="pill-toggle" title="切换到语音">
+          <span class="pill-toggle-icon default">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </span>
+          <span class="pill-toggle-icon hover">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+          </span>
+        </button>
+        <textarea class="pill-input" placeholder="输入你的回答..." rows="1"></textarea>
+        <button class="pill-send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="mockup-label">面试 · 对话中（键盘模式）</div>
+  </div>
+
+  <!-- Mobile: Recording + Ended -->
+  <div class="mockup-mobile">
+    <div class="chat-topbar">
+      <span style="color:#666;font-size:16px;">←</span>
+      <div class="chat-topbar-center">
+        <span class="chat-topbar-title">AI 面试官</span>
+        <div class="chat-status"><span class="chat-status-dot"></span>在线</div>
+      </div>
+      <span class="chat-end">结束</span>
+    </div>
+
+    <div class="msg-area no-scrollbar">
+      <div class="msg-ai">
+        <img class="msg-avatar" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="">
+        <div class="msg-body">
+          <div class="msg-role">Interviewer</div>
+          <p class="msg-text">很好，接下来聊聊 Redis 缓存架构设计。</p>
+        </div>
+      </div>
+      <div class="msg-user">
+        <div class="msg-user-bubble">我觉得主要通过 CAS 操作去修改 Node 的状态...<span class="blink" style="color:var(--color-success);">|</span></div>
+      </div>
+    </div>
+
+    <!-- Input: voice mode pill (recording active) -->
+    <div class="input-zone">
+      <div class="input-pill">
+        <button class="pill-toggle" title="切换到键盘">
+          <span class="pill-toggle-icon default">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+          </span>
+          <span class="pill-toggle-icon hover">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </span>
+        </button>
+        <div class="pill-voice pill-voice-active">
+          <span class="pill-voice-cancel">取消</span>
+          <div class="wave-bars">
+            <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+          </div>
+          <button class="pill-voice-send">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Done overlay -->
+    <div class="done-overlay">
+      <div class="done-card">
+        <span class="done-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="8 13 11 16 16 8"/></svg></span>
+        <h2 class="done-title">面试完成</h2>
+        <button class="done-btn">查看面试报告</button>
+      </div>
+    </div>
+    <div class="mockup-label">面试 · 语音模式（录音中）</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: PC 桌面端面试 (3-column) -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">04 — PC 桌面端面试</h2>
+<p class="gallery-section-desc">三栏布局 · 进度侧栏 + 对话区 + 代码编辑器</p>
+
+<div class="mockup-desktop" style="height:660px;">
+  <!-- Left sidebar -->
+  <div class="pc-sidebar">
+    <div class="pc-sidebar-head">
+      <span class="brand">Mianmian.</span>
+      <span class="pc-sidebar-sub">Java 后端资深岗面试</span>
+    </div>
+    <div class="pc-sidebar-body no-scrollbar">
+      <span class="pc-sidebar-label">Interview Progress</span>
+      <div class="progress-tree">
+        <div class="progress-line"></div>
+        <div class="progress-item">
+          <div class="progress-dot done"></div>
+          <div><span class="progress-name">自我介绍与破冰</span><span class="progress-status">Completed (4m)</span></div>
+        </div>
+        <div class="progress-item active">
+          <div class="progress-dot active"></div>
+          <div><span class="progress-name">并发编程 (AQS)</span><span class="progress-status">In Progress...</span></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-dot"></div>
+          <div><span class="progress-name">Redis 缓存架构</span><span class="progress-status">Pending</span></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-dot"></div>
+          <div><span class="progress-name">系统设计</span><span class="progress-status">Pending</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center chat -->
+  <div class="pc-chat">
+    <div class="chat-topbar" style="padding:14px 24px;">
+      <div class="chat-topbar-center">
+        <span class="chat-topbar-title">AI 面试官 · Kevin</span>
+        <div class="chat-status"><span class="chat-status-dot"></span>在线</div>
+      </div>
+      <span class="chat-end">结束面试</span>
+    </div>
+    <div class="msg-area no-scrollbar" style="padding:24px 32px;">
+      <div class="msg-ai">
+        <img class="msg-avatar" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="" style="width:32px;height:32px;">
+        <div class="msg-body">
+          <div class="msg-role">Interviewer</div>
+          <p class="msg-text">概括得很准。接下来看右侧这段经典的 AQS 获取独占锁的代码，你能指出其中的 tryAcquire(arg) 是如何体现模板方法模式的吗？你可以直接在编辑器里写注释。</p>
+        </div>
+      </div>
+    </div>
+    <div class="input-zone" style="padding:16px 32px 24px;">
+      <div class="input-pill">
+        <button class="pill-toggle" title="切换到语音">
+          <span class="pill-toggle-icon default">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </span>
+          <span class="pill-toggle-icon hover">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+          </span>
+        </button>
+        <textarea class="pill-input" placeholder="输入你的回答..." rows="1"></textarea>
+        <button class="pill-send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right code editor -->
+  <div class="pc-code">
+    <div class="pc-code-head">
+      <div class="code-dots"><div class="code-dot red"></div><div class="code-dot yellow"></div><div class="code-dot green"></div></div>
+      <span class="pc-code-fn">AQS_Source.java</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+    </div>
+    <div class="pc-code-body no-scrollbar">
+<pre><span class="code-comment">/**
+ * Acquires in exclusive mode, ignoring interrupts.
+ */</span>
+<span class="code-keyword">public final void</span> <span class="code-func">acquire</span>(<span class="code-keyword">int</span> arg) {
+    <span style="color:#D2A8FF;">if</span> (!<span class="code-func">tryAcquire</span>(arg) &&
+        <span class="code-func">acquireQueued</span>(<span class="code-func">addWaiter</span>(Node.EXCLUSIVE), arg))
+        <span class="code-func">selfInterrupt</span>();
+}
+
+<span class="code-comment">// You can write code or notes here...
+// </span><span class="blink" style="border-right:2px solid #FFF;"> </span></pre>
+    </div>
+  </div>
+  <div class="mockup-label">面试 · PC 三栏布局</div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 5: 简历诊断报告 (Resume Report) -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">05 — 简历诊断报告</h2>
+<p class="gallery-section-desc">分数徽章 + 诊断卡片 + AI 重写建议 + 导出按钮</p>
+
+<div class="mockup-gallery">
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">诊断结果</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+      <!-- Score -->
+      <div class="score-header">
+        <div class="score-ring">
+          <svg viewBox="0 0 72 72"><circle class="score-ring-bg" cx="36" cy="36" r="30"/><circle class="score-ring-fg mid" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="41.5"/></svg>
+          <div class="score-ring-center"><span class="score-num" style="color:#D97706;">78</span><span class="score-max">/100</span></div>
+        </div>
+        <div>
+          <span class="score-verdict">项目深度不足</span>
+          <p class="score-text">你的 Java 基础框架掌握得很好，但在"高并发"场景缺乏具体的数据支撑。</p>
+        </div>
+      </div>
+
+      <!-- Diagnostic cards -->
+      <div class="diag-card">
+        <span class="diag-indicator danger"></span><span class="diag-label">高优修改建议</span>
+        <div class="diag-body">
+          <span class="diag-title">⚠️ 缺乏量化指标 (STAR法则)</span>
+          <p class="diag-original">原句："优化了数据库查询，提升了系统响应速度。"</p>
+          <div class="diag-rewrite">
+            <span class="diag-rewrite-label">AI 建议重写为：</span>
+            <p class="diag-rewrite-text">"通过引入 Redis 缓存与联合索引，将核心接口 P99 响应时间降低至 200ms，吞吐量提升 30%。"</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="diag-card">
+        <span class="diag-indicator warning"></span><span class="diag-label">技术栈关键词优化</span>
+        <div class="diag-body">
+          <span class="diag-title">缺少核心技术标签</span>
+          <p class="diag-original">目前的技能列表中缺少 Spring Cloud、Kubernetes 等企业级关键词。</p>
+          <div class="diag-rewrite">
+            <span class="diag-rewrite-label">AI 建议补充：</span>
+            <p class="diag-rewrite-text">增加"Spring Cloud 微服务架构"、"Kubernetes 容器编排"、"分布式事务 - Seata"等关键词。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="diag-card">
+        <span class="diag-indicator warning"></span><span class="diag-label">项目经验优化</span>
+        <div class="diag-body">
+          <span class="diag-title">项目描述过于简略</span>
+          <p class="diag-original">"负责订单系统开发，使用 Spring Boot + MySQL。"</p>
+          <div class="diag-rewrite">
+            <span class="diag-rewrite-label">AI 建议重写为：</span>
+            <p class="diag-rewrite-text">"主导订单系统架构设计，基于 Spring Boot 微服务 + MySQL 分库分表，支撑日均 50 万订单量，P99 延迟 < 100ms。"</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="export-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        导出优化后的 PDF
+      </button>
+    </div>
+    <div class="mockup-label">简历 · 诊断报告</div>
+  </div>
+
+  <!-- Resume upload -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">简历诊断</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+      <div class="upload-zone">
+        <div class="upload-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <span class="upload-title">上传简历 PDF</span>
+        <span class="upload-desc">支持 PDF 格式，文件不超过 10MB</span>
+      </div>
+
+      <div style="padding:20px 20px 0;">
+        <div class="section-head"><div class="section-line"></div><span class="section-label">最近诊断</span></div>
+        <div class="hist-list" style="padding:0;">
+          <div class="hist-item">
+            <div class="hist-info"><span class="hist-name">Java工程师简历.pdf</span><span class="hist-time">2026-05-14</span></div>
+            <span class="hist-badge badge-high">78分</span><span style="color:#CCC">›</span>
+          </div>
+          <div class="hist-item">
+            <div class="hist-info"><span class="hist-name">实习简历_v2.pdf</span><span class="hist-time">2026-05-10</span></div>
+            <span class="hist-badge badge-pending">待分析</span><span style="color:#CCC">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">简历 · 上传页</div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 6: 个人中心 (Profile) -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">06 — 个人中心</h2>
+<p class="gallery-section-desc">数据统计 + 菜单入口 + 退出</p>
+
+<div class="mockup-gallery">
+  <div class="mockup-mobile">
+    <div class="profile-head">
+      <div class="profile-avatar"><span class="avatar-letter" style="font-size:28px;">D</span></div>
+      <span class="profile-name">开发者</span>
+      <span class="profile-id">ID: 1001</span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><span class="stat-num">128</span><span class="stat-label">刷题数</span></div>
+      <div class="stat-card"><span class="stat-num">5</span><span class="stat-label">面试次数</span></div>
+      <div class="stat-card"><span class="stat-num">23</span><span class="stat-label">错题积累</span></div>
+    </div>
+
+    <div class="menu-group">
+      <div class="menu-item"><span class="menu-item-label">面试历史</span><span style="color:#CCC">›</span></div>
+      <div class="menu-item"><span class="menu-item-label">在线试卷</span><span style="color:#CCC">›</span></div>
+      <div class="menu-item"><span class="menu-item-label">错题本</span><span style="color:#CCC">›</span></div>
+    </div>
+
+    <div class="menu-group">
+      <div class="menu-item"><span class="menu-item-label">AI API Key</span><span style="font-size:12px;color:var(--text-light);">未配置</span><span style="color:#CCC">›</span></div>
+    </div>
+
+    <div class="menu-group">
+      <div class="menu-item"><span class="menu-item-label menu-item-danger">退出登录</span><span style="color:#CCC">›</span></div>
+    </div>
+    <div class="mockup-label">个人中心</div>
+  </div>
+
+  <!-- Interview History -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">面试历史</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+      <div class="hist-list">
+        <div class="hist-item">
+          <div class="hist-info"><span class="hist-name">Java 后端开发</span><span class="hist-time">2026-05-15</span></div>
+          <span class="hist-badge badge-high">8分</span><span style="color:#CCC">›</span>
+        </div>
+        <div class="hist-item">
+          <div class="hist-info"><span class="hist-name">算法工程师</span><span class="hist-time">2026-05-12</span></div>
+          <span class="hist-badge badge-mid">6分</span><span style="color:#CCC">›</span>
+        </div>
+        <div class="hist-item">
+          <div class="hist-info"><span class="hist-name">前端开发工程师</span><span class="hist-time">2026-05-08</span></div>
+          <span class="hist-badge badge-high">9分</span><span style="color:#CCC">›</span>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">面试历史</div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 7: 在线试卷 + 答题 -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">07 — 在线试卷</h2>
+<p class="gallery-section-desc">试卷列表 + 答题界面 + 选项交互</p>
+
+<div class="mockup-gallery">
+  <!-- Exam list -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">在线试卷</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 20px 40px;">
+      <span class="hero-label" style="margin-bottom:4px;">限时模拟</span>
+      <h2 style="font-family:var(--font-serif);font-size:28px;font-weight:600;margin-bottom:4px;">在线试卷</h2>
+      <p style="font-size:13px;color:var(--text-light);margin-bottom:24px;">模拟真实考试环境，限时作答，查漏补缺</p>
+
+      <div class="exam-grid" style="padding:0;">
+        <div class="exam-card">
+          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
+          <span class="exam-title">Java 基础卷</span>
+          <span class="exam-meta">20 题 · 30 分钟</span>
+        </div>
+        <div class="exam-card">
+          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
+          <span class="exam-title">并发编程卷</span>
+          <span class="exam-meta">15 题 · 25 分钟</span>
+        </div>
+        <div class="exam-card">
+          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
+          <span class="exam-title">综合模拟卷</span>
+          <span class="exam-meta">30 题 · 45 分钟</span>
+        </div>
+        <div class="exam-card">
+          <div class="exam-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div>
+          <span class="exam-title">算法专项卷</span>
+          <span class="exam-meta">10 题 · 20 分钟</span>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">试卷列表</div>
+  </div>
+
+  <!-- Exam do -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">答题</span>
+      <span style="font-size:13px;color:var(--text-light);">1/20</span>
+    </div>
+
+    <div class="progress-bar"></div>
+    <!-- Override progress fill -->
+    <div style="height:3px;background:var(--accent);border-radius:2px;width:30%;margin-top:-27px;margin-left:20px;margin-bottom:24px;"></div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;">
+      <div class="question-card">
+        <span class="q-type">单选题</span>
+        <p class="q-text">在 Java 中，以下哪个集合类是线程安全的？</p>
+        <div class="options">
+          <div class="option-btn" style="border-color:var(--border-light);background:var(--bg-paper);">
+            <span class="option-letter">A</span> ArrayList
+          </div>
+          <div class="option-btn">
+            <span class="option-letter">B</span> HashMap
+          </div>
+          <div class="option-btn sel">
+            <span class="option-letter">C</span> ConcurrentHashMap
+          </div>
+          <div class="option-btn">
+            <span class="option-letter">D</span> LinkedList
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" style="padding:16px 20px 32px;">
+      <button class="action-btn action-sec">上一题</button>
+      <button class="action-btn action-pri">下一题</button>
+    </div>
+    <div class="mockup-label">答题中</div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 8: 自由刷题 + 错题本 -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">08 — 自由刷题 & 错题本</h2>
+<p class="gallery-section-desc">分类筛选 + 题目列表 + 空状态</p>
+
+<div class="mockup-gallery">
+  <!-- Practice -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">自由刷题</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 20px 40px;">
+      <div class="chip-row" style="margin-bottom:20px;">
+        <span class="chip active">全部</span>
+        <span class="chip">Java基础</span>
+        <span class="chip">并发编程</span>
+        <span class="chip">Redis</span>
+        <span class="chip">MySQL</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="q-card"><span class="q-number">Q1</span><div><span class="q-title">HashMap 的扩容机制是怎样的？</span><span class="q-meta">Java基础 · 中等</span></div></div>
+        <div class="q-card"><span class="q-number">Q2</span><div><span class="q-title">volatile 关键字的作用是什么？</span><span class="q-meta">并发编程 · 简单</span></div></div>
+        <div class="q-card"><span class="q-number">Q3</span><div><span class="q-title">Redis 的持久化策略有哪些？</span><span class="q-meta">Redis · 中等</span></div></div>
+        <div class="q-card"><span class="q-number">Q4</span><div><span class="q-title">解释 MySQL 的索引下推优化</span><span class="q-meta">MySQL · 困难</span></div></div>
+        <div class="q-card"><span class="q-number">Q5</span><div><span class="q-title">AQS 中 CLH 队列的作用是什么？</span><span class="q-meta">并发编程 · 困难</span></div></div>
+      </div>
+    </div>
+    <div class="mockup-label">自由刷题</div>
+  </div>
+
+  <!-- Wrong Book (empty) -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">错题本</span>
+    </div>
+
+    <div class="empty">
+      <span class="empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="1.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+      <span class="empty-title">还没有错题</span>
+      <p class="empty-desc">多练习几道题，错题会自动出现在这里</p>
+      <button class="empty-btn">开始刷题</button>
+    </div>
+    <div class="mockup-label">错题本 · 空状态</div>
+  </div>
+
+  <!-- Wrong Book (with data) -->
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">错题本</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 20px 40px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="q-card">
+          <span style="width:6px;height:6px;background:var(--color-danger);border-radius:50%;flex-shrink:0;margin-top:5px;"></span>
+          <div><span class="q-title">HashMap 的扩容机制是怎样的？</span><span class="q-meta">Java基础</span></div>
+          <span class="wrong-tag" style="background:#FEF2F2;color:#DC2626;font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;">错 3 次</span>
+          <span style="color:#CCC">›</span>
+        </div>
+        <div class="q-card">
+          <div style="flex:1;min-width:0;"><span class="q-title">Redis 的持久化策略有哪些？</span><span class="q-meta">Redis</span></div>
+          <span class="wrong-tag" style="background:#FEF2F2;color:#DC2626;font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;">错 2 次</span>
+          <span style="color:#CCC">›</span>
+        </div>
+        <div class="q-card">
+          <div style="flex:1;min-width:0;"><span class="q-title">解释 MySQL 的索引下推优化</span><span class="q-meta">MySQL</span></div>
+          <span class="wrong-tag" style="background:#FFF7ED;color:#EA580C;font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;">错 1 次</span>
+          <span style="color:#CCC">›</span>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">错题本 · 有数据</div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 9: 面试报告 -->
+<!-- ============================================================ -->
+<h2 class="gallery-section">09 — 面试报告</h2>
+<p class="gallery-section-desc">维度评分 + 提升建议</p>
+
+<div class="mockup-gallery">
+  <div class="mockup-mobile">
+    <div class="back-header">
+      <div class="back-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <span class="page-title">面试报告</span>
+    </div>
+
+    <div class="no-scrollbar" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+      <div class="score-header">
+        <div class="score-ring">
+          <svg viewBox="0 0 72 72"><circle class="score-ring-bg" cx="36" cy="36" r="30"/><circle class="score-ring-fg high" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="37.7"/></svg>
+          <div class="score-ring-center"><span class="score-num" style="color:#16A34A;">8</span><span class="score-max">/10</span></div>
+        </div>
+        <div>
+          <span class="score-verdict">优秀</span>
+          <p class="score-text">你在并发编程和 AQS 源码分析方面表现优秀，展现了对底层原理的深刻理解。</p>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;padding:0 20px;">
+        <div style="background:var(--bg-paper);border:1px solid var(--border-light);border-radius:14px;padding:14px;">
+          <span style="font-size:13px;font-weight:500;">Java 基础 · 9/10</span>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:4px;">对 AQS、ReentrantLock 等底层实现理解透彻，能准确描述模板方法模式。</p>
+        </div>
+        <div style="background:var(--bg-paper);border:1px solid var(--border-light);border-radius:14px;padding:14px;">
+          <span style="font-size:13px;font-weight:500;">并发编程 · 8/10</span>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:4px;">CAS 原理和 volatile 关键字掌握较好，但在 JMM 内存屏障方面可以更深入。</p>
+        </div>
+        <div style="background:var(--bg-paper);border:1px solid var(--border-light);border-radius:14px;padding:14px;">
+          <span style="font-size:13px;font-weight:500;">系统设计 · 7/10</span>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:4px;">缓存架构设计能力中等，缺乏大规模集群部署的实践经验。</p>
+        </div>
+        <div style="background:var(--bg-paper);border:1px solid var(--border-light);border-radius:14px;padding:14px;">
+          <span style="font-size:13px;font-weight:500;">沟通表达 · 8/10</span>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:4px;">结构化表达能力强，能清晰阐述技术方案和设计权衡。</p>
+        </div>
+        <div style="background:var(--bg-paper);border:1px solid var(--border-light);border-radius:14px;padding:14px;">
+          <span style="font-size:13px;font-weight:500;">提升建议</span>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:4px;">建议加强对 Redis 集群方案和分布式锁的理解，这是高级工程师面试的常见考点。</p>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-label">面试报告</div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- FOOTER -->
+<div style="text-align:center;padding:80px 0 40px;">
+  <span class="brand" style="font-size:24px;">Mianmian.</span>
+  <p style="margin-top:8px;color:var(--text-light);font-size:13px;">Warm Tech Design System · 2026-05-15</p>
+  <p style="color:var(--text-light);font-size:11px;margin-top:4px;">移动端 375×812 · PC 端 1200×700 · 全 9 章节 18 视图</p>
+</div>
+
+</body>
+</html>

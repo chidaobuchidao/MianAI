@@ -48,16 +48,22 @@ public class DeepSeekAiService implements AiService {
 
     @Override
     public String chat(String systemPrompt, List<Map<String, String>> messages) {
-        return doChat(systemPrompt, messages, apiKey);
+        return chat(systemPrompt, messages, null, null);
     }
 
     @Override
     public String chat(String systemPrompt, List<Map<String, String>> messages, String userApiKey) {
-        String key = (userApiKey != null && !userApiKey.isBlank()) ? userApiKey : apiKey;
-        return doChat(systemPrompt, messages, key);
+        return chat(systemPrompt, messages, userApiKey, null);
     }
 
-    private String doChat(String systemPrompt, List<Map<String, String>> messages, String key) {
+    @Override
+    public String chat(String systemPrompt, List<Map<String, String>> messages, String userApiKey, String modelOverride) {
+        String key = (userApiKey != null && !userApiKey.isBlank()) ? userApiKey : apiKey;
+        String mdl = (modelOverride != null && !modelOverride.isBlank()) ? modelOverride : model;
+        return doChat(systemPrompt, messages, key, mdl);
+    }
+
+    private String doChat(String systemPrompt, List<Map<String, String>> messages, String key, String mdl) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -68,7 +74,7 @@ public class DeepSeekAiService implements AiService {
             allMessages.addAll(messages);
 
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", model);
+            body.put("model", mdl);
             body.put("messages", allMessages);
 
             String json = objectMapper.writeValueAsString(body);

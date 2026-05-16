@@ -1,0 +1,57 @@
+/* styles/animations.css */
+
+/* 光标闪烁 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-blink { animation: blink 1s infinite; }
+
+/* 骨架屏光影 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-bar {
+  background: linear-gradient(90deg, #F0F0F0 25%, #E4E4E4 50%, #F0F0F0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 6px;
+}
+
+/* 语音波形 */
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+.wave-bar {
+  width: 3px;
+  background: var(--color-success);
+  border-radius: 2px;
+  transform-origin: center;
+  animation: wave 1s infinite ease-in-out;
+}
+.wave-bar:nth-child(1) { height: 16px; animation-delay: 0.0s; }
+.wave-bar:nth-child(2) { height: 24px; animation-delay: 0.2s; }
+.wave-bar:nth-child(3) { height: 12px; animation-delay: 0.4s; }
+.wave-bar:nth-child(4) { height: 20px; animation-delay: 0.1s; }
+.wave-bar:nth-child(5) { height: 14px; animation-delay: 0.3s; }
+
+/* 按钮按压 */
+.btn-press {
+  transition: transform 0.15s;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* PC 端卡片 hover */
+@media (min-width: 1025px) {
+  .card-hover {
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}

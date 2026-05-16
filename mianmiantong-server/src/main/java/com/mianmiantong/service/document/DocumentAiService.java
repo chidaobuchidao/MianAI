@@ -30,6 +30,9 @@ public class DocumentAiService {
             throw new RuntimeException("阿里云凭证未配置，请在 .env 中设置 ALIBABA_CLOUD_ACCESS_KEY_ID 和 ALIBABA_CLOUD_ACCESS_KEY_SECRET");
         }
 
+        log.info("阿里云DocMind客户端创建中: endpoint={}, accessKeyId前缀={}",
+                endpoint, accessKeyId.substring(0, Math.min(7, accessKeyId.length())));
+
         Config config = new Config()
             .setAccessKeyId(accessKeyId)
             .setAccessKeySecret(accessKeySecret);
@@ -62,8 +65,10 @@ public class DocumentAiService {
             log.info("文档解析任务提交成功: fileName={}, taskId={}", fileName, taskId);
             return taskId;
         } catch (Exception e) {
-            log.error("文档解析任务提交失败: fileName={}", fileName, e);
-            throw new RuntimeException("文档解析提交失败: " + e.getMessage());
+            String cause = e.getCause() != null ? e.getCause().toString() : "";
+            log.error("文档解析任务提交失败: fileName={}, 错误类型={}, 详情={}, 根因={}",
+                    fileName, e.getClass().getSimpleName(), e.getMessage(), cause);
+            throw new RuntimeException("文档解析提交失败: " + e.getMessage(), e);
         }
     }
 

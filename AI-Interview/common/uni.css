@@ -1,11 +1,11 @@
 /* 主题变量 */
 .theme-light {
-	--list-background-color: #ffffff;
-	--background-color: #f8f8f8;
-	--active-color:#a0a0a0;
-	--active-background-color: #f8f8f8;
-	--text-color: #333333;
-	--border-color: rgba(0, 0, 0, .06);
+    --list-background-color: #FDFCFB;
+    --background-color: #F7F7F5;
+    --active-color: #D9750A;
+    --active-background-color: #F3EFE8;
+    --text-color: #141413;
+    --border-color: rgba(0, 0, 0, .06);
 }
 
 .theme-dark {

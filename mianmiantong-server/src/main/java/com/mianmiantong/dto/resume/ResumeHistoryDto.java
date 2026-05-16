@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class ResumeHistoryDto {
     private Long id;
     private String fileName;
+    private String position;
     private Integer parseStatus;
     private Integer overallScore;
     private Integer deepStatus;

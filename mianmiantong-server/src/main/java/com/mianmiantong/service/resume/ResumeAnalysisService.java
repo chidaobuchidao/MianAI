@@ -7,6 +7,8 @@ import com.mianmiantong.entity.resume.ResumeAnalysis;
 import com.mianmiantong.mapper.resume.ResumeAnalysisMapper;
 import com.mianmiantong.mapper.resume.ResumeMapper;
 import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.document.DocumentAiService;
+import com.mianmiantong.service.document.DocumentParseResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -21,6 +23,7 @@ public class ResumeAnalysisService {
     private final ResumeMapper resumeMapper;
     private final ResumeAnalysisMapper analysisMapper;
     private final AiService aiService;
+    private final DocumentAiService documentAiService;
     private final ObjectMapper objectMapper;
 
     /** Phase 1: 快速评分，轻量快速 */
@@ -64,11 +67,16 @@ public class ResumeAnalysisService {
 
     public ResumeAnalysisService(ResumeMapper resumeMapper,
                                   ResumeAnalysisMapper analysisMapper,
-                                  AiService aiService) {
+                                  AiService aiService,
+                                  DocumentAiService documentAiService) {
         this.resumeMapper = resumeMapper;
         this.analysisMapper = analysisMapper;
         this.aiService = aiService;
+        this.documentAiService = documentAiService;
         this.objectMapper = new ObjectMapper();
+        // AI 可能返回 literal newlines 等未转义控制字符，Jackson 默认拒绝
+        this.objectMapper.configure(
+                com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true);
     }
 
     /** Phase 1: 快速评分（异步后台） */
@@ -76,7 +84,19 @@ public class ResumeAnalysisService {
         CompletableFuture.runAsync(() -> {
             try {
                 Resume resume = resumeMapper.selectById(resumeId);
-                if (resume == null || resume.getParseStatus() != 1) return;
+                if (resume == null) {
+                    log.warn("快速评分跳过: resumeId={} 不存在", resumeId);
+                    return;
+                }
+                if (resume.getParseStatus() != 1) {
+                    log.warn("快速评分跳过: resumeId={}, parseStatus={}", resumeId, resume.getParseStatus());
+                    // 写入失败状态，让前端感知
+                    ResumeAnalysis analysis = upsert(resumeId);
+                    analysis.setDeepStatus(-1);
+                    analysis.setSuggestion("简历解析未完成，无法进行AI分析。请重新上传简历。");
+                    save(analysis);
+                    return;
+                }
 
                 String prompt = String.format(QUICK_PROMPT, resume.getJobDescription(), resume.getParsedText());
                 List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", "开始评估"));
@@ -93,6 +113,14 @@ public class ResumeAnalysisService {
                 log.info("快速评分完成: resumeId={}, score={}", resumeId, analysis.getOverallScore());
             } catch (Exception e) {
                 log.error("快速评分失败: resumeId={}", resumeId, e);
+                try {
+                    ResumeAnalysis analysis = upsert(resumeId);
+                    analysis.setDeepStatus(-1);
+                    analysis.setSuggestion("AI分析失败: " + (e.getMessage() != null ? e.getMessage().substring(0, Math.min(100, e.getMessage().length())) : "未知错误"));
+                    save(analysis);
+                } catch (Exception ignored) {
+                    log.error("保存失败状态时出错: resumeId={}", resumeId, ignored);
+                }
             }
         });
     }
@@ -101,6 +129,33 @@ public class ResumeAnalysisService {
     public SseEmitter analyzeDeepStream(Long resumeId, String model) {
         Resume resume = resumeMapper.selectById(resumeId);
         ResumeAnalysis analysis = upsert(resumeId);
+
+        // 先尝试从 partial 恢复（在重试次数检查之前，因为数据已经有了）
+        String partial = analysis.getPartialResponse();
+        if (partial != null && !partial.isBlank()) {
+            try {
+                String recovered = extractJson(partial);
+                Map<String, Object> recoveredReport = objectMapper.readValue(recovered, Map.class);
+                if (recoveredReport.get("highlights") != null || recoveredReport.get("optimizedText") != null) {
+                    analysis.setHighlights(toJson(recoveredReport.get("highlights")));
+                    analysis.setOptimizedText((String) recoveredReport.get("optimizedText"));
+                    analysis.setInterviewQuestions(toJson(recoveredReport.get("interviewQuestions")));
+                    analysis.setDeepStatus(2);
+                    analysis.setPartialResponse(null);
+                    save(analysis);
+                    log.info("深度优化从partial恢复成功: resumeId={}", resumeId);
+                    SseEmitter recoveryEmitter = new SseEmitter();
+                    recoveryEmitter.onCompletion(() -> {});
+                    recoveryEmitter.send(SseEmitter.event().name("finish")
+                            .data(objectMapper.writeValueAsString(Map.of(
+                                    "resumeId", resumeId, "deepStatus", 2, "phase", "deep", "recovered", true))));
+                    recoveryEmitter.complete();
+                    return recoveryEmitter;
+                }
+            } catch (Exception ignored) {
+                log.info("从partial恢复失败，将继续SSE: resumeId={}", resumeId);
+            }
+        }
 
         // 检查重试次数
         int retryCount = analysis.getRetryCount() != null ? analysis.getRetryCount() : 0;
@@ -122,9 +177,6 @@ public class ResumeAnalysisService {
 
         // 构建 prompt
         String basePrompt = buildDeepPrompt(resume, analysis);
-
-        // 如果有 partial，续传
-        String partial = analysis.getPartialResponse();
         String userMessage;
         if (partial != null && !partial.isBlank()) {
             userMessage = "之前的输出被中断，已输出的内容：\n" + partial + "\n\n请从断点处继续输出完整的JSON，不要重复已输出的内容。";
@@ -155,9 +207,9 @@ public class ResumeAnalysisService {
                     buf.append(token);
                     safeSend(emitter, "token", token);
 
-                    // 每 5 秒保存中间结果
+                    // 每 30 秒保存中间结果（仅用于崩溃恢复，不需高频写入）
                     long now = System.currentTimeMillis();
-                    if (now - lastSaveTime[0] >= 5000) {
+                    if (now - lastSaveTime[0] >= 30000) {
                         lastSaveTime[0] = now;
                         safeSavePartial(analysis, buf.toString());
                     }
@@ -317,21 +369,60 @@ public class ResumeAnalysisService {
 
     public Map<String, Object> getReport(Long resumeId) {
         Resume resume = resumeMapper.selectById(resumeId);
+        if (resume == null) throw new IllegalArgumentException("简历不存在");
+
+        // 如果解析还在进行中，主动轮询一次阿里云状态
+        if (resume.getParseStatus() == 0 && resume.getDocTaskId() != null) {
+            try {
+                DocumentParseResult parseResult = documentAiService.getResult(resume.getDocTaskId());
+                if ("SUCCESS".equals(parseResult.getStatus())) {
+                    resume.setParseStatus(1);
+                    resume.setParsedText(parseResult.getParsedText());
+                    resumeMapper.updateById(resume);
+                    log.info("getReport触发解析完成: resumeId={}", resumeId);
+                } else if ("FAIL".equals(parseResult.getStatus())) {
+                    resume.setParseStatus(-1);
+                    resumeMapper.updateById(resume);
+                    log.warn("getReport检测到解析失败: resumeId={}", resumeId);
+                }
+            } catch (Exception e) {
+                log.warn("getReport轮询解析状态异常: resumeId={}", resumeId, e);
+            }
+        }
+
         ResumeAnalysis analysis = analysisMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ResumeAnalysis>()
                         .eq(ResumeAnalysis::getResumeId, resumeId));
-        if (analysis == null) throw new IllegalArgumentException("分析报告不存在");
+
+        // 解析已完成但无分析记录 → 自动触发快速评分（前端轮询 GET 即可，无需额外 POST）
+        if (resume.getParseStatus() == 1 && analysis == null) {
+            log.info("getReport自动触发快速评分: resumeId={}", resumeId);
+            analyzeQuickAsync(resumeId);
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("resumeId", resumeId);
-        result.put("overallScore", analysis.getOverallScore());
         result.put("fileName", resume.getFileName());
+        result.put("parseStatus", resume.getParseStatus());
+
+        if (analysis == null) {
+            result.put("overallScore", null);
+            result.put("suggestion", null);
+            result.put("deepStatus", null);
+            result.put("dimensions", null);
+            result.put("missingKeywords", null);
+            result.put("highlights", null);
+            result.put("optimizedText", null);
+            result.put("interviewQuestions", null);
+            return result;
+        }
+
+        result.put("overallScore", analysis.getOverallScore());
         result.put("jobDescription", resume.getJobDescription());
         result.put("dimensions", parseJson(analysis.getDimensions()));
         result.put("missingKeywords", parseJson(analysis.getMissingKeywords()));
         result.put("suggestion", analysis.getSuggestion());
         result.put("deepStatus", analysis.getDeepStatus());
-        // 深度优化结果（可能为空）
         result.put("highlights", parseJson(analysis.getHighlights()));
         result.put("optimizedText", analysis.getOptimizedText());
         result.put("interviewQuestions", parseJson(analysis.getInterviewQuestions()));
@@ -358,9 +449,52 @@ public class ResumeAnalysisService {
         try { e.send(SseEmitter.event().name(name).data(data)); } catch (Exception ignored) {}
     }
 
+    /**
+     * 从AI返回的文本中提取JSON对象。
+     * 用括号计数法找到匹配的 { }，跳过字符串内的括号和转义字符。
+     * 同时处理 markdown 代码围栏 ```json ... ```。
+     */
     private String extractJson(String s) {
-        int a = s.indexOf("{"), b = s.lastIndexOf("}") + 1;
-        return (a >= 0 && b > a) ? s.substring(a, b) : s;
+        // 去掉 markdown 代码围栏
+        String text = s.replaceAll("```\\w*\\s*", "").replaceAll("```", "").trim();
+
+        int start = text.indexOf("{");
+        if (start < 0) return s;
+
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+
+        for (int i = start; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\' && inString) {
+                escaped = true;
+                continue;
+            }
+
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+
+            if (!inString) {
+                if (c == '{') depth++;
+                else if (c == '}') {
+                    depth--;
+                    if (depth == 0) return text.substring(start, i + 1);
+                }
+            }
+        }
+
+        // 括号没闭合，回退到旧逻辑
+        int end = text.lastIndexOf("}") + 1;
+        return (end > start) ? text.substring(start, end) : s;
     }
 
     private int toInt(Object v) { return v instanceof Number n ? n.intValue() : 0; }

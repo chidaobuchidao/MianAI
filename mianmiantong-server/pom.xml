@@ -15,7 +15,6 @@
     <version>1.0.0</version>
     <name>面面通</name>
     <packaging>jar</packaging>
-    <finalName>mianmiantong</finalName>
 
     <properties>
         <java.version>17</java.version>
@@ -100,6 +99,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>1.18.36</version>
             <optional>true</optional>
         </dependency>
 
@@ -139,6 +139,13 @@
             <version>5.2.5</version>
         </dependency>
 
+        <!-- Dotenv -->
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -148,6 +155,7 @@
     </dependencies>
 
     <build>
+        <finalName>mianmiantong</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

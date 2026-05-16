@@ -12,16 +12,22 @@ onLaunch(() => {
 </script>
 
 <style lang="scss">
+@import "@/styles/tokens.scss";
+
+@import "@/styles/tokens.css";
+
 page {
-  background-color: #f5f6fa;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: $bg-canvas;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .global-text-primary {
-  color: #2b6ff2;
+  color: $accent;
 }
 
 .global-bg-primary {
-  background-color: #2b6ff2;
+  background-color: $bg-dark;
 }
 </style>

@@ -1,50 +1,88 @@
 <template>
   <view class="exam-do">
+    <!-- 顶部栏 -->
     <view class="top-bar">
-      <text class="top-title">{{ examInfo?.title }}</text>
-      <text class="timer" :class="{ warn: remainingTime < 60 }">{{ formatTime(remainingTime) }}</text>
+      <text class="top-title">{{ examInfo?.title || '考试中' }}</text>
+      <view class="timer" :class="{ warn: remainingTime < 60 }">
+        <text>{{ formatTime(remainingTime) }}</text>
+      </view>
     </view>
 
+    <!-- 进度条 -->
+    <view class="progress-wrap">
+      <view class="progress-bar">
+        <view class="progress-fill" :style="{ width: progressPct + '%' }" />
+      </view>
+      <text class="progress-text">{{ currentIndex + 1 }} / {{ questions.length }}</text>
+    </view>
+
+    <!-- 题目卡片 -->
     <view class="q-card" v-if="currentQ">
-      <text class="q-num">{{ currentIndex + 1 }} / {{ questions.length }}</text>
+      <text class="q-num">第 {{ currentIndex + 1 }} 题</text>
       <text class="q-title">{{ currentQ.title }}</text>
 
+      <!-- 单选/多选 -->
       <view v-if="currentQ.type <= 2" class="opts">
-        <view v-for="o in parseOpts(currentQ.options)" :key="o.label" class="opt" :class="{ sel: answers[currentQ.id] === o.label }" @click="answers[currentQ.id] = o.label">
+        <view
+          v-for="o in parseOpts(currentQ.options)"
+          :key="o.label"
+          class="opt"
+          :class="{ sel: answers[currentQ.id] === o.label }"
+          @click="answers[currentQ.id] = o.label"
+        >
           <view class="opt-lab" :class="{ on: answers[currentQ.id] === o.label }">{{ o.label }}</view>
           <text class="opt-txt">{{ o.content }}</text>
         </view>
       </view>
 
+      <!-- 判断 -->
       <view v-if="currentQ.type === 3" class="opts">
-        <view v-for="v in ['正确','错误']" :key="v" class="opt" :class="{ sel: answers[currentQ.id] === v }" @click="answers[currentQ.id] = v">
+        <view
+          v-for="v in ['正确','错误']" :key="v"
+          class="opt" :class="{ sel: answers[currentQ.id] === v }"
+          @click="answers[currentQ.id] = v"
+        >
           <view class="opt-lab" :class="{ on: answers[currentQ.id] === v }">{{ v === '正确' ? '✓' : '✗' }}</view>
           <text class="opt-txt">{{ v }}</text>
         </view>
       </view>
 
-      <input v-if="currentQ.type === 4" class="fill" v-model="answers[currentQ.id]" placeholder="输入答案" />
+      <!-- 填空 -->
+      <input v-if="currentQ.type === 4" class="fill-input" v-model="answers[currentQ.id]" placeholder="输入答案..." />
     </view>
 
+    <!-- 底部按钮 -->
     <view class="bottom-bar">
-      <button class="b-btn" @click="prev" :disabled="currentIndex === 0">上一题</button>
-      <text class="b-indicator">{{ currentIndex + 1 }}/{{ questions.length }}</text>
-      <button v-if="currentIndex < questions.length - 1" class="b-btn" @click="next">下一题</button>
-      <button v-else class="b-btn submit" @click="submitExam">交卷</button>
+      <view class="bottom-btn" :class="{ disabled: currentIndex === 0 }" @click="prev">
+        <text>上一题</text>
+      </view>
+      <view v-if="currentIndex < questions.length - 1" class="bottom-btn primary" @click="next">
+        <text>下一题</text>
+      </view>
+      <view v-else class="bottom-btn submit" @click="submitExam">
+        <text>交卷</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { get, post } from '@/utils/request';
+
 interface Q { id: number; type: number; title: string; options: string; }
 interface ExamInfo { id: number; title: string; duration: number; totalScore: number; }
+
 const examInfo = ref<ExamInfo|null>(null); const examId = ref(0);
 const questions = ref<Q[]>([]); const currentIndex = ref(0); const currentQ = ref<Q|null>(null);
 const answers = ref<Record<number,string>>({}); const remainingTime = ref(0);
 let timer: ReturnType<typeof setInterval>|null = null;
+
+const progressPct = computed(() => {
+  if (questions.value.length === 0) return 0;
+  return Math.round(((currentIndex.value + 1) / questions.value.length) * 100);
+});
 
 onLoad(opts => { examId.value = Number(opts?.examId); remainingTime.value = (Number(opts?.duration)||30)*60; });
 onMounted(async () => { try {
@@ -73,25 +111,82 @@ async function submitExam() {
 </script>
 
 <style lang="scss" scoped>
-.exam-do { min-height: 100vh; background: #f0f4ff; padding-bottom: 140rpx; }
-.top-bar { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 30rpx; background: #fff; }
-.top-title { font-size: 28rpx; font-weight: 600; color: #0f172a; }
-.timer { font-size: 36rpx; font-weight: 800; color: #2b6ff2; }
-.timer.warn { color: #ef4444; animation: pulse 0.5s infinite alternate; }
-@keyframes pulse { to { opacity: 0.5; } }
-.q-card { background: #fff; margin: 20rpx 24rpx; padding: 30rpx; border-radius: 24rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.03); }
-.q-num { font-size: 26rpx; font-weight: 700; color: #2b6ff2; }
-.q-title { display: block; font-size: 30rpx; font-weight: 600; color: #0f172a; line-height: 1.8; margin-top: 16rpx; }
-.opts { display: flex; flex-direction: column; gap: 14rpx; margin-top: 28rpx; }
-.opt { display: flex; align-items: center; gap: 16rpx; padding: 18rpx; border: 2rpx solid #e2e8f0; border-radius: 14rpx; }
-.opt.sel { border-color: #2b6ff2; background: #f0f4ff; }
-.opt-lab { width: 44rpx; height: 44rpx; border-radius: 10rpx; display: flex; align-items: center; justify-content: center; font-size: 22rpx; font-weight: 700; color: #64748b; background: #f1f5f9; }
-.opt-lab.on { background: #2b6ff2; color: #fff; }
-.opt-txt { font-size: 28rpx; color: #1e293b; flex: 1; }
-.fill { border: 2rpx solid #e2e8f0; border-radius: 14rpx; padding: 22rpx; font-size: 28rpx; background: #f8fafc; margin-top: 28rpx; }
-.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 16rpx 24rpx 44rpx; background: #fff; box-shadow: 0 -2rpx 20rpx rgba(0,0,0,0.05); }
-.b-btn { padding: 14rpx 32rpx; border-radius: 24rpx; font-size: 26rpx; font-weight: 600; border: none; background: #f1f5f9; color: #334155; min-width: 130rpx; }
-.b-btn.submit { background: #ef4444; color: #fff; }
-.b-btn[disabled] { opacity: 0.4; }
-.b-indicator { font-size: 26rpx; color: #64748b; font-weight: 600; }
+@import "@/styles/tokens.scss";
+
+.exam-do { min-height: 100vh; background: $bg-canvas; display: flex; flex-direction: column; }
+
+// 顶部栏
+.top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 28rpx; background: $bg-paper;
+  border-bottom: 1px solid $border-light;
+}
+.top-title { font-size: 28rpx; font-weight: 600; color: $text-main; }
+.timer {
+  font-family: monospace; font-size: 28rpx; font-weight: 600; color: $accent;
+  background: rgba(217,117,10,0.08); padding: 8rpx 20rpx; border-radius: $radius-full;
+}
+.timer.warn { color: $color-danger; background: rgba(239,68,68,0.08); }
+
+// 进度条
+.progress-wrap {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 20rpx 28rpx; background: $bg-paper;
+  border-bottom: 1px solid $border-light;
+}
+.progress-bar { flex: 1; height: 6rpx; background: $bg-surface; border-radius: 3rpx; overflow: hidden; }
+.progress-fill { height: 100%; background: $accent; border-radius: 3rpx; transition: width 0.3s; }
+.progress-text { font-size: 24rpx; color: $text-light; font-weight: 500; }
+
+// 题目卡片
+.q-card {
+  flex: 1; margin: 20rpx; padding: 36rpx 28rpx;
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-lg; box-shadow: $shadow-sm; overflow-y: auto;
+}
+.q-num { font-size: 24rpx; color: $accent; font-weight: 600; margin-bottom: 20rpx; display: block; }
+.q-title { font-size: 30rpx; color: $text-main; line-height: 1.8; margin-bottom: 32rpx; display: block; }
+
+// 选项
+.opts { display: flex; flex-direction: column; gap: 14rpx; }
+.opt {
+  display: flex; align-items: center; gap: 18rpx;
+  padding: 24rpx 22rpx; border: 1px solid $border-light;
+  border-radius: $radius-md; font-size: 28rpx; color: $text-main;
+}
+.opt:active { background: $bg-surface; }
+.opt.sel { border-color: $accent; background: rgba(217,117,10,0.04); }
+.opt-lab {
+  width: 52rpx; height: 52rpx; border-radius: 50%;
+  border: 1px solid $border-medium; display: flex; align-items: center;
+  justify-content: center; font-size: 24rpx; font-weight: 600;
+  color: $text-light; flex-shrink: 0; background: $bg-surface;
+}
+.opt-lab.on { background: $bg-dark; color: #fff; border-color: $bg-dark; }
+.opt-txt { flex: 1; line-height: 1.6; }
+
+// 填空
+.fill-input {
+  width: 100%; border: 1px solid $border-medium; border-radius: $radius-md;
+  padding: 20rpx 24rpx; font-size: 28rpx; background: $bg-surface;
+  box-sizing: border-box;
+}
+
+// 底部
+.bottom-bar {
+  display: flex; gap: 16rpx; padding: 20rpx 28rpx 44rpx;
+  background: $bg-paper; border-top: 1px solid $border-light;
+}
+.bottom-btn {
+  flex: 1; height: 88rpx; background: $bg-surface;
+  color: $text-main; font-size: 28rpx; font-weight: 500;
+  border-radius: $radius-xl; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.bottom-btn:active { opacity: 0.9; }
+.bottom-btn.disabled { opacity: 0.4; }
+.bottom-btn.primary { background: $bg-dark; color: #fff; }
+.bottom-btn.submit { background: $accent; color: #fff; font-weight: 600; }
+
+@media (min-width: 1025px) { .exam-do { max-width: 800px; margin: 0 auto; } }
 </style>

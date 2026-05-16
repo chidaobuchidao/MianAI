@@ -1,5 +1,6 @@
 <template>
   <view class="report-page">
+    <!-- 分数头部 -->
     <view class="score-hero">
       <view class="score-ring" :class="score >= 7 ? 'great' : score >= 4 ? 'ok' : 'low'">
         <text class="score-num">{{ score }}</text>
@@ -8,31 +9,37 @@
       <text class="score-label">综合评分</text>
     </view>
 
-    <view class="card" v-if="feedback">
-      <text class="card-label">考官总评</text>
-      <text class="card-text">{{ feedback }}</text>
+    <!-- 考官总评 -->
+    <view class="report-card" v-if="feedback">
+      <text class="report-card-label">考官总评</text>
+      <text class="report-card-text">{{ feedback }}</text>
     </view>
 
-    <view class="card" v-if="dimensions.length">
-      <text class="card-label">能力维度</text>
+    <!-- 考试结果 -->
+    <view v-if="examResult" class="report-card exam-result-card">
+      <text class="exam-big">{{ examResult.correct }} / {{ examResult.total }}</text>
+      <text class="exam-label">正确题数</text>
+    </view>
+
+    <!-- 能力维度 -->
+    <view class="report-card" v-if="dimensions.length">
+      <text class="report-card-label">能力维度</text>
       <view class="dim-item" v-for="d in dimensions" :key="d.name">
         <view class="dim-head">
           <text class="dim-name">{{ d.name }}</text>
           <text class="dim-score">{{ d.score }}/10</text>
         </view>
-        <view class="dim-bar-bg"><view class="dim-bar-fill" :style="{ width: (d.score * 10) + '%' }" /></view>
+        <view class="dim-bar-bg">
+          <view class="dim-bar-fill" :style="{ width: (d.score * 10) + '%' }" />
+        </view>
         <text class="dim-comment" v-if="d.comment">{{ d.comment }}</text>
       </view>
     </view>
 
-    <view class="card" v-if="suggestion">
-      <text class="card-label">提升建议</text>
-      <text class="card-text">{{ suggestion }}</text>
-    </view>
-
-    <view v-if="examResult" class="card" style="text-align:center;">
-      <text class="exam-big">{{ examResult.correct }} / {{ examResult.total }}</text>
-      <text class="exam-label">正确题数</text>
+    <!-- 提升建议 -->
+    <view class="report-card" v-if="suggestion">
+      <text class="report-card-label">提升建议</text>
+      <text class="report-card-text">{{ suggestion }}</text>
     </view>
 
     <!-- 对话记录 -->
@@ -49,9 +56,14 @@
       </view>
     </view>
 
+    <!-- 底部按钮 -->
     <view class="actions">
-      <button class="btn-primary" @click="goHome">返回首页</button>
+      <view class="btn-primary" @click="goHome">
+        <text>返回首页</text>
+      </view>
     </view>
+
+    <view class="bottom-safe" />
   </view>
 </template>
 
@@ -69,24 +81,27 @@ const chatMessages = ref<ChatMsg[]>([]);
 const examResult = ref<{correct:number;total:number}|null>(null);
 
 onLoad(async (opts) => {
-  // 解析报告
   if (opts?.report) {
-    try { const r = JSON.parse(decodeURIComponent(opts.report)); score.value=r.score||0; feedback.value=r.feedback||''; dimensions.value=r.dimensions||[]; suggestion.value=r.suggestion||''; } catch { feedback.value='报告解析失败'; }
-  } else if (opts?.type==='exam') {
-    examResult.value = { correct:Number(opts.correct)||0, total:Number(opts.total)||0 };
-    const pct = examResult.value.total>0 ? Math.round(examResult.value.correct/examResult.value.total*100) : 0;
-    score.value = Math.round(pct/10); feedback.value = `答对 ${examResult.value.correct}/${examResult.value.total} 题，正确率 ${pct}%`;
-    uni.setNavigationBarTitle({ title: decodeURIComponent(opts.title||'考试结果') });
+    try {
+      const r = JSON.parse(decodeURIComponent(opts.report));
+      score.value = r.score || 0;
+      feedback.value = r.feedback || '';
+      dimensions.value = r.dimensions || [];
+      suggestion.value = r.suggestion || '';
+    } catch { feedback.value = '报告解析失败'; }
+  } else if (opts?.type === 'exam') {
+    examResult.value = { correct: Number(opts.correct) || 0, total: Number(opts.total) || 0 };
+    const pct = examResult.value.total > 0 ? Math.round(examResult.value.correct / examResult.value.total * 100) : 0;
+    score.value = Math.round(pct / 10);
+    feedback.value = `答对 ${examResult.value.correct}/${examResult.value.total} 题，正确率 ${pct}%`;
+    uni.setNavigationBarTitle({ title: decodeURIComponent(opts.title || '考试结果') });
   }
 
-  // 加载聊天记录
   const stored = uni.getStorageSync('lastChatMessages');
   if (stored) {
     chatMessages.value = JSON.parse(stored);
-    // 清除已读取的缓存
     uni.removeStorageSync('lastChatMessages');
   } else if (opts?.sessionId) {
-    // 从历史记录进入，通过API加载
     try {
       const res = await get<{ messages: string }>(`/api/interview/${opts.sessionId}`);
       if (res.data?.messages) {
@@ -100,37 +115,90 @@ function goHome() { uni.switchTab({ url: '/pages/index/index' }); }
 </script>
 
 <style lang="scss" scoped>
-.report-page { min-height: 100vh; background: #f0f4ff; padding-bottom: 40rpx; }
-.score-hero { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0 60rpx; background: linear-gradient(135deg, #1a3a6b, #2b6ff2, #4f8dff); }
-.score-ring { width: 180rpx; height: 180rpx; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 6rpx solid rgba(255,255,255,0.3); }
-.score-num { font-size: 72rpx; font-weight: 900; color: #fff; }
-.score-unit { font-size: 24rpx; color: rgba(255,255,255,0.7); }
-.score-label { font-size: 28rpx; color: rgba(255,255,255,0.8); margin-top: 16rpx; }
-.card { background: #fff; margin: 20rpx 24rpx; padding: 28rpx; border-radius: 20rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.03); }
-.card-label { font-size: 28rpx; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16rpx; }
-.card-text { font-size: 26rpx; color: #64748b; line-height: 1.8; display: block; }
-.dim-item { padding: 16rpx 0; }
-.dim-item + .dim-item { border-top: 1rpx solid #f1f5f9; }
-.dim-head { display: flex; justify-content: space-between; margin-bottom: 10rpx; }
-.dim-name { font-size: 26rpx; font-weight: 600; color: #1e293b; }
-.dim-score { font-size: 26rpx; font-weight: 700; color: #2b6ff2; }
-.dim-bar-bg { height: 6rpx; background: #e2e8f0; border-radius: 3rpx; overflow: hidden; }
-.dim-bar-fill { height: 100%; background: linear-gradient(90deg, #2b6ff2, #6366f1); border-radius: 3rpx; transition: width 0.6s; }
-.dim-comment { font-size: 22rpx; color: #94a3b8; margin-top: 6rpx; display: block; }
-.exam-big { font-size: 64rpx; font-weight: 900; color: #2b6ff2; display: block; }
-.exam-label { font-size: 26rpx; color: #94a3b8; margin-top: 6rpx; display: block; }
-.chat-log-section { background: #fff; margin: 20rpx 24rpx; border-radius: 20rpx; overflow: hidden; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03); }
-.chat-log-toggle { display: flex; justify-content: space-between; align-items: center; padding: 28rpx; }
-.chat-log-toggle:active { background: #f8fafc; }
-.cl-label { font-size: 28rpx; font-weight: 700; color: #0f172a; }
-.cl-arrow { font-size: 24rpx; color: #94a3b8; }
-.chat-log-list { padding: 0 28rpx 28rpx; max-height: 600rpx; overflow-y: auto; }
-.cl-msg { margin-bottom: 16rpx; }
-.cl-role { display: block; font-size: 22rpx; font-weight: 600; margin-bottom: 4rpx; }
-.cl-msg.user .cl-role { color: #2b6ff2; }
-.cl-msg.ai .cl-role { color: #10b981; }
-.cl-content { display: block; font-size: 24rpx; color: #64748b; line-height: 1.6; }
+@import "@/styles/tokens.scss";
 
-.actions { padding: 30rpx 24rpx; }
-.btn-primary { width: 100%; height: 96rpx; background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; font-size: 32rpx; font-weight: 700; border-radius: 48rpx; border: none; }
+.report-page { min-height: 100vh; background: $bg-canvas; padding: 40rpx 28rpx; }
+
+// ===== 分数 =====
+.score-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48rpx 0; margin-bottom: 32rpx;
+}
+.score-ring {
+  width: 180rpx; height: 180rpx; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; margin-bottom: 20rpx;
+  border: 3px solid transparent;
+}
+.score-ring.great { background: rgba(34,197,94,0.08); border-color: $color-success; }
+.score-ring.ok { background: rgba(217,117,10,0.08); border-color: $accent; }
+.score-ring.low { background: rgba(239,68,68,0.08); border-color: $color-danger; }
+
+.score-num { font-family: Georgia, serif; font-size: 60rpx; font-weight: 700; color: $text-main; line-height: 1; }
+.score-unit { font-size: 22rpx; color: $text-light; margin-top: 4rpx; }
+.score-label {
+  font-size: 26rpx; font-weight: 600; color: $text-main;
+}
+
+// ===== 通用卡片 =====
+.report-card {
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-lg; padding: 28rpx; margin-bottom: 20rpx;
+  box-shadow: $shadow-sm;
+}
+.report-card-label {
+  font-size: 26rpx; font-weight: 600; color: $text-main;
+  margin-bottom: 14rpx; display: block;
+}
+.report-card-text { font-size: 26rpx; color: $text-muted; line-height: 1.8; }
+
+// 考试结果
+.exam-result-card { text-align: center; padding: 40rpx 28rpx; }
+.exam-big {
+  font-family: Georgia, serif; font-size: 56rpx; font-weight: 700;
+  color: $text-main; display: block; margin-bottom: 8rpx;
+}
+.exam-label { font-size: 24rpx; color: $text-light; }
+
+// ===== 维度 =====
+.dim-item { margin-top: 24rpx; }
+.dim-item + .dim-item { border-top: 1px solid $border-light; padding-top: 24rpx; }
+.dim-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.dim-name { font-size: 26rpx; font-weight: 500; color: $text-main; }
+.dim-score { font-size: 26rpx; font-weight: 600; color: $accent; }
+.dim-bar-bg { height: 8rpx; background: $bg-surface; border-radius: 4rpx; margin-bottom: 12rpx; overflow: hidden; }
+.dim-bar-fill { height: 100%; background: $accent; border-radius: 4rpx; transition: width 0.5s; }
+.dim-comment { font-size: 24rpx; color: $text-light; line-height: 1.6; }
+
+// ===== 对话记录 =====
+.chat-log-section { margin-bottom: 20rpx; }
+.chat-log-toggle {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24rpx 28rpx; background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-lg; box-shadow: $shadow-sm;
+}
+.chat-log-toggle:active { background: $bg-surface; }
+.cl-label { font-size: 26rpx; font-weight: 500; color: $text-main; }
+.cl-arrow { font-size: 24rpx; color: $text-light; }
+.chat-log-list { padding: 20rpx 0; }
+.cl-msg {
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-md; padding: 20rpx 24rpx; margin-top: 12rpx;
+}
+.cl-msg.user { border-left: 4rpx solid $accent; }
+.cl-role { font-size: 22rpx; font-weight: 600; color: $text-light; display: block; margin-bottom: 8rpx; }
+.cl-content { font-size: 26rpx; color: $text-muted; line-height: 1.7; }
+
+// ===== 底部按钮 =====
+.actions { margin-top: 12rpx; }
+.btn-primary {
+  width: 100%; height: 96rpx; background: $bg-dark; color: #fff;
+  font-size: 30rpx; font-weight: 600; border-radius: $radius-lg;
+  border: none; display: flex; align-items: center; justify-content: center;
+}
+.btn-primary:active { opacity: 0.9; }
+
+.bottom-safe { height: 60rpx; }
+
+@media (min-width: 1025px) { .report-page { max-width: 700px; margin: 0 auto; } }
 </style>

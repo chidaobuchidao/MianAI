@@ -153,6 +153,37 @@ public class ResumeService {
         return resumeMapper.selectHistory(userId);
     }
 
+    /** 重试文档解析 */
+    @Transactional
+    public void retryParse(Resume resume) {
+        resume.setParseStatus(0);
+        resumeMapper.updateById(resume);
+
+        final Long resumeId = resume.getId();
+        final byte[] fileBytes = resume.getFileData();
+        final String fileName = resume.getFileName();
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                String taskId = documentAiService.submitParse(
+                        new ByteArrayInputStream(fileBytes), fileName);
+                Resume r = resumeMapper.selectById(resumeId);
+                if (r != null) {
+                    r.setDocTaskId(taskId);
+                    resumeMapper.updateById(r);
+                }
+                log.info("重试解析成功: resumeId={}, taskId={}", resumeId, taskId);
+            } catch (Exception e) {
+                log.error("重试解析失败: resumeId={}, fileName={}", resumeId, fileName, e);
+                Resume r = resumeMapper.selectById(resumeId);
+                if (r != null) {
+                    r.setParseStatus(-1);
+                    resumeMapper.updateById(r);
+                }
+            }
+        });
+    }
+
     public void delete(Long resumeId) {
         Long userId = JwtAuthFilter.getCurrentUserId();
         Resume resume = resumeMapper.selectById(resumeId);

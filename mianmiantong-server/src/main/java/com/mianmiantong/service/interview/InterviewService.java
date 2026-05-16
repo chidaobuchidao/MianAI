@@ -133,7 +133,7 @@ public class InterviewService {
                  "=".repeat(80),
                  position, userId);
 
-        String firstQuestion = aiService.chat(systemPrompt, initMessages, getUserApiKey());
+        String firstQuestion = aiService.chat(systemPrompt, initMessages, getUserApiKey(), request.getModel());
 
         log.info("\n" + "-".repeat(60) + "\n" +
                  "【AI原始输出 - 第1问】\n{}\n" +
@@ -204,7 +204,7 @@ public class InterviewService {
                  "-".repeat(40),
                  nextIndex, sessionId, answer, summarizeContext(aiMessages));
 
-        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey());
+        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey(), session.getModel());
 
         boolean finished = aiResponse.contains("[面试结束]");
 
@@ -466,7 +466,7 @@ public class InterviewService {
                  "=".repeat(80),
                  sessionId, messages.stream().filter(m -> "user".equals(m.get("role"))).count());
 
-        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey());
+        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey(), session.getModel());
 
         log.info("\n" + "-".repeat(40) + "\n" +
                  "【AI最终报告 - 原始输出】\n{}\n" +

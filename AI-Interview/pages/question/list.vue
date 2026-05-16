@@ -51,21 +51,49 @@ function onType(e:{detail:{value:number}}) { typ.value = e.detail.value===0?null
 </script>
 
 <style lang="scss" scoped>
-.q-list { min-height: 100vh; background: #f0f4ff; }
-.filter { display: flex; gap: 16rpx; padding: 20rpx 24rpx; background: #fff; }
-.f-tag { display: flex; align-items: center; gap: 8rpx; padding: 12rpx 22rpx; background: #f1f5f9; border-radius: 8rpx; font-size: 24rpx; color: #64748b; }
+@import "@/styles/tokens.scss";
+
+.q-list { min-height: 100vh; background: $bg-canvas; padding: 24rpx 28rpx; }
+
+.filter { display: flex; gap: 12rpx; margin-bottom: 24rpx; flex-wrap: wrap; }
+.f-tag {
+  display: flex; align-items: center; gap: 8rpx;
+  padding: 14rpx 24rpx; border: 1px solid $border-light; border-radius: $radius-full;
+  font-size: 24rpx; color: $text-muted; background: $bg-paper;
+}
+.f-tag:active { background: $bg-surface; }
 .f-arrow { font-size: 18rpx; }
-.q-card { background: #fff; margin: 16rpx 24rpx; padding: 28rpx; border-radius: 20rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.03); }
-.q-top { display: flex; align-items: center; gap: 14rpx; margin-bottom: 16rpx; }
-.q-num { width: 40rpx; height: 40rpx; background: #2b6ff2; color: #fff; font-size: 22rpx; font-weight: 700; border-radius: 10rpx; display: flex; align-items: center; justify-content: center; }
-.q-diff { font-size: 20rpx; padding: 4rpx 10rpx; border-radius: 6rpx; }
-.d1 { background: #ecfdf5; color: #10b981; }
-.d2 { background: #fef3c7; color: #f59e0b; }
-.d3 { background: #fef2f2; color: #ef4444; }
-.q-type { font-size: 22rpx; color: #94a3b8; }
-.q-title { font-size: 28rpx; font-weight: 500; color: #1e293b; line-height: 1.7; display: block; }
-.empty { display: flex; flex-direction: column; align-items: center; padding-top: 180rpx; }
-.empty-icon { font-size: 80rpx; opacity: 0.6; }
-.empty-text { font-size: 28rpx; color: #94a3b8; margin-top: 16rpx; }
-.more { text-align: center; padding: 30rpx; color: #2b6ff2; font-size: 26rpx; font-weight: 600; }
+
+.q-card {
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-lg; padding: 28rpx; margin-bottom: 16rpx;
+  box-shadow: $shadow-sm;
+}
+.q-card:active { background: $bg-surface; }
+.q-top { display: flex; align-items: center; gap: 12rpx; margin-bottom: 14rpx; }
+.q-num { font-size: 22rpx; color: $text-light; font-weight: 500; }
+.q-diff {
+  font-size: 20rpx; font-weight: 600; padding: 4rpx 12rpx;
+  border-radius: $radius-sm;
+}
+.q-diff.d1 { background: rgba(34,197,94,0.1); color: $color-success; }
+.q-diff.d2 { background: rgba(217,117,10,0.1); color: $accent; }
+.q-diff.d3 { background: rgba(239,68,68,0.1); color: $color-danger; }
+.q-type {
+  font-size: 20rpx; font-weight: 500; padding: 4rpx 12rpx;
+  border-radius: $radius-sm; background: $bg-surface; color: $text-light;
+}
+.q-title { font-size: 28rpx; font-weight: 500; color: $text-main; line-height: 1.6; display: block; }
+
+.empty { text-align: center; padding-top: 200rpx; }
+.empty-icon { font-size: 80rpx; display: block; margin-bottom: 16rpx; }
+.empty-text { font-size: 28rpx; color: $text-light; }
+
+.more {
+  text-align: center; padding: 28rpx; font-size: 26rpx;
+  color: $text-light; font-weight: 500;
+}
+.more:active { color: $text-main; }
+
+@media (min-width: 1025px) { .q-list { max-width: 800px; margin: 0 auto; } }
 </style>

@@ -19,7 +19,7 @@
       </view>
 
       <!-- 维度评分 -->
-      <view class="card" v-if="report.dimensions">
+      <view class="card" v-if="report.dimensions && report.dimensions.length">
         <text class="card-label">能力维度</text>
         <view class="dim-item" v-for="d in report.dimensions" :key="d.name">
           <view class="dim-head">
@@ -49,8 +49,12 @@
       <view class="card deep-section">
         <text class="card-label">深度优化</text>
 
-        <!-- 未开始 -->
-        <view v-if="deepStatus === 0" class="deep-idle">
+        <!-- 等待评分完成 -->
+        <view v-if="deepStatus === 0 && score === 0" class="deep-idle">
+          <text class="deep-hint">等待简历评分完成...</text>
+        </view>
+        <!-- 评分完成，可以开始深度优化 -->
+        <view v-if="deepStatus === 0 && score > 0" class="deep-idle">
           <text class="deep-hint">AI 将逐段优化简历并生成面试追问</text>
           <view class="model-pick">
             <text class="model-label">模型</text>
@@ -61,7 +65,9 @@
                 @click="deepModel = 'deepseek-v4-pro'">Pro</view>
             </view>
           </view>
-          <button class="btn-deep" @click="startDeepOptimize">开始深度优化</button>
+          <view class="btn-deep" @click="startDeepOptimize">
+            <text>开始深度优化</text>
+          </view>
         </view>
 
         <!-- 进行中 -->
@@ -71,14 +77,16 @@
           <text class="deep-time">已运行 {{ deepElapsed }}s</text>
         </view>
 
-        <!-- 失败：重试面板 -->
+        <!-- 失败 -->
         <view v-if="deepStatus === -1" class="deep-failed">
           <text class="deep-fail-text">深度优化失败</text>
           <text class="deep-fail-hint" v-if="retryRemaining > 0">还可重试 {{ retryRemaining }} 次</text>
           <text class="deep-fail-hint" v-else>已达最大重试次数</text>
           <view class="btn-row" style="justify-content:center;margin-top:20rpx">
-            <button v-if="retryRemaining > 0" class="btn-retry" @click="retryDeepOptimize">重新优化</button>
-            <button class="btn-back" @click="goHome">返回首页</button>
+            <view v-if="retryRemaining > 0" class="btn-retry" @click="retryDeepOptimize">
+              <text>重新优化</text>
+            </view>
+            <view class="btn-back" @click="goHome"><text>返回首页</text></view>
           </view>
         </view>
 
@@ -97,10 +105,10 @@
           <view v-if="report.optimizedText" class="deep-result">
             <text class="card-sub-label">优化后简历</text>
             <view class="btn-row" style="margin-bottom:16rpx">
-              <button class="btn-copy" @click="copyText(report.optimizedText)">复制</button>
-              <button class="btn-preview" @click="previewWord">预览</button>
-              <button class="btn-download" @click="downloadWord">下载Word</button>
-              <button class="btn-template" @click="showTemplatePicker = true">换模板</button>
+              <view class="btn-copy" @click="copyText(report.optimizedText)"><text>复制</text></view>
+              <view class="btn-preview" @click="previewWord"><text>预览</text></view>
+              <view class="btn-download" @click="downloadWord"><text>下载Word</text></view>
+              <view class="btn-template" @click="showTemplatePicker = true"><text>换模板</text></view>
             </view>
             <view class="optimized-resume">
               <text class="opt-text">{{ report.optimizedText }}</text>
@@ -120,8 +128,8 @@
 
       <!-- 操作按钮 -->
       <view class="actions">
-        <button class="btn-primary" @click="goInterview">应用到面试</button>
-        <button class="btn-secondary" @click="goHome">返回首页</button>
+        <view class="btn-primary" @click="goInterview"><text>应用到面试</text></view>
+        <view class="btn-secondary" @click="goHome"><text>返回首页</text></view>
       </view>
     </template>
 
@@ -148,7 +156,10 @@ interface Report {
   resumeId: number; overallScore: number; fileName: string; jobDescription: string;
   dimensions: Dim[]; missingKeywords: string[]; highlights: Highlight[];
   optimizedText: string; interviewQuestions: string[]; suggestion: string;
+  parseStatus?: number; deepStatus?: number;
 }
+
+interface Template { id: number; name: string; description: string; styleClass: string; bgColor: string; accentColor: string; }
 
 const loading = ref(true);
 const loadingText = ref('AI 正在分析简历...');
@@ -162,8 +173,7 @@ const retryCount = ref(0);
 const deepElapsed = ref(0);
 const deepModel = ref('deepseek-v4-flash');
 let deepTimer: ReturnType<typeof setInterval> | null = null;
-
-interface Template { id: number; name: string; description: string; styleClass: string; bgColor: string; accentColor: string; }
+let analyzeTriggered = false;
 
 onLoad(async (opts) => {
   const resumeId = Number(opts?.resumeId);
@@ -171,52 +181,71 @@ onLoad(async (opts) => {
   // 加载模板列表
   get<Template[]>('/api/resume/template/list').then(r => { if (r.data) templates.value = r.data; }).catch(() => {});
 
-  // 先查已有报告
-  try {
-    const r = await get<Report>(`/api/resume/${resumeId}/analysis`);
-    if (r.data && r.data.overallScore != null) {
-      report.value = r.data;
-      score.value = r.data.overallScore;
-      deepStatus.value = (r.data as any).deepStatus ?? 0;
+  // === Phase 1: 加载已有报告 ===
+  let r = await get<any>(`/api/resume/${resumeId}/analysis`);
+  if (isValidReport(r.data)) {
+    report.value = r.data;
+    score.value = r.data.overallScore || 0;
+    deepStatus.value = r.data.deepStatus ?? 0;
+
+    // 已有报告 → 直接展示
+    if (r.data.overallScore != null) {
       loading.value = false;
-      // 恢复失败状态（显示重试面板）
-      if (deepStatus.value === -1) {
-        try {
-          const s = await get<{ retryCount: number }>(`/api/resume/${resumeId}/deep-status`);
-          retryCount.value = s.data?.retryCount ?? 0;
-          retryRemaining.value = Math.max(0, 3 - retryCount.value);
-        } catch (_) {}
-      }
-      // 如果深度优化进行中，恢复流式连接
+      if (deepStatus.value === -1) loadRetryStatus(resumeId);
       if (deepStatus.value === 1) doStreamDeep(resumeId);
       return;
     }
-  } catch {}
 
-  // 触发快速评分（异步后台）
-  post(`/api/resume/${resumeId}/analyze`).catch(() => {});
-
-  // 轮询等待评分完成
-  let pollAttempts = 0;
-  while (pollAttempts < 60) {
-    await sleep(2000);
-    pollAttempts++;
-    loadingText.value = `AI 正在分析简历... (${pollAttempts * 2}s)`;
-    try {
-      const r = await get<Report>(`/api/resume/${resumeId}/analysis`);
-      if (r.data && r.data.overallScore != null) {
-        report.value = r.data;
-        score.value = r.data.overallScore;
-        deepStatus.value = (r.data as any).deepStatus ?? 0;
-        loading.value = false;
-        return;
-      }
-    } catch (_) {}
+    // 解析失败 → 直接展示错误
+    if (r.data.parseStatus === -1) {
+      loading.value = false;
+      return;
+    }
   }
-  uni.showToast({ title: '分析超时，请返回重试', icon: 'error' });
+
+  // === Phase 2: 解析完成但无报告 → 触发分析 ===
+  if (report.value?.parseStatus === 1) {
+    analyzeTriggered = true;
+    await post(`/api/resume/${resumeId}/analyze`).catch(() => {});
+  }
+
+  // === Phase 3: 轮询（最多 20 次 = 40s） ===
+  for (let i = 0; i < 20; i++) {
+    await sleep(2000);
+    loadingText.value = `AI 正在分析简历... (${(i + 1) * 2}s)`;
+
+    r = await get<any>(`/api/resume/${resumeId}/analysis`);
+    if (!isValidReport(r.data)) continue;
+
+    report.value = r.data;
+    if (r.data.overallScore != null) {
+      score.value = r.data.overallScore;
+      deepStatus.value = r.data.deepStatus ?? 0;
+      loading.value = false;
+      return;
+    }
+    if (r.data.parseStatus === -1 || r.data.deepStatus === -1) {
+      loading.value = false;
+      return;
+    }
+  }
+
   loading.value = false;
+  uni.showToast({ title: 'AI分析较慢，稍后刷新页面查看', icon: 'none', duration: 3000 });
 });
 
+function loadRetryStatus(resumeId: number) {
+  get<{ retryCount: number }>(`/api/resume/${resumeId}/deep-status`).then(s => {
+    retryCount.value = s.data?.retryCount ?? 0;
+    retryRemaining.value = Math.max(0, 3 - retryCount.value);
+  }).catch(() => {});
+}
+
+function isValidReport(d: unknown): d is Report {
+  return d != null && typeof d === 'object' && 'resumeId' in (d as any);
+}
+
+// ===== 深度优化 =====
 let deepAbort: (() => void) | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let lastTokenTime = 0;
@@ -229,10 +258,7 @@ function startDeepOptimize() {
   deepTimer = setInterval(() => deepElapsed.value++, 1000);
   lastTokenTime = Date.now();
 
-  uni.setStorageSync('deep_optimizing', JSON.stringify({
-    resumeId, name: report.value.fileName || '简历'
-  }));
-
+  uni.setStorageSync('deep_optimizing', JSON.stringify({ resumeId, name: report.value.fileName || '简历' }));
   doStreamDeep(resumeId);
 }
 
@@ -249,7 +275,6 @@ function retryDeepOptimize() {
 function doStreamDeep(resumeId: number) {
   lastTokenTime = Date.now();
 
-  // 心跳检测：30 秒无 token 则提示
   heartbeatTimer = setInterval(() => {
     if (Date.now() - lastTokenTime > 30000 && deepStatus.value === 1) {
       uni.showToast({ title: 'AI 响应较慢，请耐心等待', icon: 'none', duration: 2000 });
@@ -261,20 +286,19 @@ function doStreamDeep(resumeId: number) {
     `/api/resume/${resumeId}/analyze-deep?model=${encodeURIComponent(deepModel.value)}`,
     {},
     {
-      onToken: (token) => {
+      onToken: (_token) => {
         lastTokenTime = Date.now();
       },
-      onFinish: async (data) => {
+      onFinish: async (_data) => {
         cleanupStream();
         deepStatus.value = 2;
         uni.removeStorageSync('deep_optimizing');
         try {
           const full = await get<Report>(`/api/resume/${resumeId}/analysis`);
-          if (full.data) { report.value = full.data; }
+          if (full.data) report.value = full.data;
         } catch (_) {}
       },
-      onError: async (err) => {
-        // 如果已经完成（onFinish 先触发），忽略后续的 error
+      onError: async (_err) => {
         if (deepStatus.value === 2) return;
         cleanupStream();
         try {
@@ -294,12 +318,12 @@ function doStreamDeep(resumeId: number) {
 }
 
 function cleanupStream() {
-  // 不主动 abort，避免触发 fail → onError 覆盖 onFinish 的状态
   deepAbort = null;
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   if (deepTimer) { clearInterval(deepTimer); deepTimer = null; }
 }
 
+// ===== 操作函数 =====
 function copyText(text: string) {
   uni.setClipboardData({ data: text, success: () => uni.showToast({ title: '已复制' }) });
 }
@@ -308,7 +332,6 @@ function downloadWord() {
   const token = uni.getStorageSync('mianmiantong_token') || '';
   const resumeId = report.value?.resumeId;
   if (!resumeId) return;
-
   uni.downloadFile({
     url: `${BASE_URL}/api/resume/${resumeId}/export-word`,
     header: { Authorization: 'Bearer ' + token },
@@ -375,81 +398,143 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 </script>
 
 <style lang="scss" scoped>
-.report-page { min-height: 100vh; background: #f0f4ff; padding-bottom: 40rpx; }
+@import "@/styles/tokens.scss";
+
+.report-page { min-height: 100vh; background: $bg-canvas; padding-bottom: 40rpx; }
+
+// ===== 加载 =====
 .loading-screen { display: flex; flex-direction: column; align-items: center; padding-top: 300rpx; }
-.loading-spinner { width: 80rpx; height: 80rpx; border: 6rpx solid #e2e8f0; border-top-color: #2b6ff2; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.loading-spinner { width: 80rpx; height: 80rpx; border: 6rpx solid $border-light; border-top-color: $accent; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 26rpx; color: #64748b; margin-top: 30rpx; }
+.loading-text { font-size: 26rpx; color: $text-muted; margin-top: 30rpx; }
 
-.score-hero { display: flex; flex-direction: column; align-items: center; padding: 60rpx 0 50rpx; background: linear-gradient(135deg, #1a3a6b, #2b6ff2, #4f8dff); }
-.score-ring { width: 180rpx; height: 180rpx; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 6rpx solid rgba(255,255,255,0.3); }
-.score-num { font-size: 72rpx; font-weight: 900; color: #fff; }
-.score-unit { font-size: 24rpx; color: rgba(255,255,255,0.7); }
+// ===== 评分 =====
+.score-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 60rpx 0 50rpx; background: $bg-dark;
+}
+.score-ring {
+  width: 180rpx; height: 180rpx; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 6rpx solid rgba(255,255,255,0.2);
+}
+.score-ring.great { border-color: $color-success; }
+.score-ring.ok { border-color: $accent; }
+.score-ring.low { border-color: $color-danger; }
+.score-num { font-size: 72rpx; font-weight: 900; color: #fff; font-family: Georgia, serif; }
+.score-unit { font-size: 24rpx; color: rgba(255,255,255,0.5); }
 .score-label { font-size: 28rpx; color: rgba(255,255,255,0.8); margin-top: 16rpx; }
-.score-file { font-size: 22rpx; color: rgba(255,255,255,0.5); margin-top: 6rpx; }
+.score-file { font-size: 22rpx; color: rgba(255,255,255,0.45); margin-top: 6rpx; }
 
-.card { background: #fff; margin: 20rpx 24rpx; padding: 28rpx; border-radius: 20rpx; box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.03); }
-.card-label { font-size: 28rpx; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16rpx; }
-.card-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
-.card-text { font-size: 26rpx; color: #64748b; line-height: 1.8; display: block; }
-.btn-row { display: flex; gap: 12rpx; }
-.btn-copy, .btn-download, .btn-preview, .btn-template { font-size: 24rpx; padding: 8rpx 24rpx; border-radius: 20rpx; border: none; }
-.btn-copy { color: #2b6ff2; background: #f0f4ff; }
-.btn-preview { color: #6366f1; background: #f0f0ff; border: 1rpx solid #d0d0f0; }
-.btn-download { color: #fff; background: linear-gradient(135deg, #10b981, #059669); }
-.btn-template { color: #fff; background: linear-gradient(135deg, #f59e0b, #d97706); }
+// ===== 卡片 =====
+.card {
+  background: $bg-paper; margin: 20rpx 24rpx; padding: 28rpx;
+  border-radius: $radius-lg; border: 1px solid $border-light;
+  box-shadow: $shadow-sm;
+}
+.card-label { font-size: 28rpx; font-weight: 700; color: $text-main; display: block; margin-bottom: 16rpx; }
+.card-sub-label { font-size: 26rpx; font-weight: 700; color: $text-main; display: block; margin-bottom: 16rpx; margin-top: 20rpx; }
+.card-text { font-size: 26rpx; color: $text-muted; line-height: 1.8; display: block; }
 
-/* Deep optimization */
-.deep-section { margin-top: 10rpx; }
-.deep-idle { text-align: center; padding: 24rpx 0; }
-.deep-hint { font-size: 24rpx; color: #94a3b8; display: block; margin-bottom: 20rpx; }
-.model-pick { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin-bottom: 24rpx; }
-.model-label { font-size: 24rpx; color: #64748b; }
-.model-opts { display: flex; gap: 0; background: #f1f5f9; border-radius: 12rpx; overflow: hidden; }
-.model-opt { font-size: 22rpx; padding: 10rpx 24rpx; color: #94a3b8; transition: all 0.15s; }
-.model-opt.active { background: #2b6ff2; color: #fff; }
-.btn-deep { width: 100%; height: 80rpx; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 40rpx; border: none; }
-.deep-running { display: flex; flex-direction: column; align-items: center; padding: 40rpx 0; }
-.deep-spinner { width: 56rpx; height: 56rpx; border: 4rpx solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
-.deep-text { font-size: 26rpx; color: #6366f1; margin-top: 16rpx; }
-.deep-time { font-size: 22rpx; color: #94a3b8; margin-top: 6rpx; }
+.btn-row { display: flex; gap: 12rpx; flex-wrap: wrap; }
+.btn-copy, .btn-download, .btn-preview, .btn-template {
+  font-size: 24rpx; padding: 10rpx 24rpx; border-radius: $radius-full; border: none;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.btn-copy { color: $accent; background: rgba(217,117,10,0.08); }
+.btn-preview { color: $accent; background: $bg-surface; border: 1px solid $border-medium; }
+.btn-download { color: #fff; background: $color-success; }
+.btn-template { color: #fff; background: $accent; }
 
-/* Deep optimization failed */
-.deep-failed { text-align: center; padding: 24rpx 0; }
-.deep-fail-text { font-size: 28rpx; color: #ef4444; font-weight: 600; display: block; }
-.deep-fail-hint { font-size: 24rpx; color: #94a3b8; margin-top: 8rpx; display: block; }
-.btn-retry { font-size: 28rpx; color: #fff; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 40rpx; border: none; padding: 16rpx 48rpx; }
-.btn-back { font-size: 28rpx; color: #64748b; background: #f1f5f9; border-radius: 40rpx; border: none; padding: 16rpx 48rpx; }
-
-.card-sub-label { font-size: 26rpx; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16rpx; margin-top: 20rpx; }
-.deep-result { margin-top: 8rpx; }
-.deep-questions { margin-top: 8rpx; }
-
+// ===== 维度 =====
 .dim-item { padding: 16rpx 0; }
-.dim-item + .dim-item { border-top: 1rpx solid #f1f5f9; }
+.dim-item + .dim-item { border-top: 1px solid $border-light; }
 .dim-head { display: flex; justify-content: space-between; margin-bottom: 10rpx; }
-.dim-name { font-size: 26rpx; font-weight: 600; color: #1e293b; }
-.dim-score { font-size: 26rpx; font-weight: 700; color: #2b6ff2; }
-.dim-bar-bg { height: 6rpx; background: #e2e8f0; border-radius: 3rpx; overflow: hidden; }
-.dim-bar-fill { height: 100%; background: linear-gradient(90deg, #2b6ff2, #6366f1); border-radius: 3rpx; transition: width 0.6s; }
-.dim-comment { font-size: 22rpx; color: #94a3b8; margin-top: 6rpx; display: block; }
+.dim-name { font-size: 26rpx; font-weight: 600; color: $text-main; }
+.dim-score { font-size: 26rpx; font-weight: 700; color: $accent; }
+.dim-bar-bg { height: 6rpx; background: $bg-surface; border-radius: 3rpx; overflow: hidden; }
+.dim-bar-fill { height: 100%; background: $accent; border-radius: 3rpx; transition: width 0.6s; }
+.dim-comment { font-size: 24rpx; color: $text-light; margin-top: 6rpx; display: block; }
 
+// ===== 关键词 =====
 .keywords { display: flex; flex-wrap: wrap; gap: 12rpx; }
-.kw-tag { font-size: 22rpx; background: #fef2f2; color: #ef4444; padding: 6rpx 16rpx; border-radius: 8rpx; }
+.kw-tag { font-size: 22rpx; background: rgba(239,68,68,0.1); color: $color-danger; padding: 6rpx 16rpx; border-radius: $radius-sm; }
 
+// ===== 深度优化 =====
+.deep-section { margin-top: 10rpx; }
+
+.deep-idle { text-align: center; padding: 24rpx 0; }
+.deep-hint { font-size: 24rpx; color: $text-light; display: block; margin-bottom: 20rpx; }
+.model-pick { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin-bottom: 24rpx; }
+.model-label { font-size: 24rpx; color: $text-muted; }
+.model-opts { display: flex; gap: 0; background: $bg-surface; border-radius: $radius-sm; overflow: hidden; }
+.model-opt { font-size: 22rpx; padding: 10rpx 24rpx; color: $text-light; }
+.model-opt.active { background: $bg-dark; color: #fff; }
+
+.btn-deep {
+  width: 100%; height: 80rpx; background: $bg-dark; color: #fff;
+  font-size: 28rpx; font-weight: 600; border-radius: 40rpx; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-deep:active { opacity: 0.9; }
+
+.deep-running { display: flex; flex-direction: column; align-items: center; padding: 40rpx 0; }
+.deep-spinner { width: 56rpx; height: 56rpx; border: 4rpx solid $border-light; border-top-color: $accent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.deep-text { font-size: 26rpx; color: $accent; margin-top: 16rpx; }
+.deep-time { font-size: 22rpx; color: $text-light; margin-top: 6rpx; }
+
+.deep-failed { text-align: center; padding: 24rpx 0; }
+.deep-fail-text { font-size: 28rpx; color: $color-danger; font-weight: 600; display: block; }
+.deep-fail-hint { font-size: 24rpx; color: $text-light; margin-top: 8rpx; display: block; }
+.btn-retry {
+  font-size: 28rpx; color: #fff; background: $bg-dark;
+  border-radius: 40rpx; border: none; padding: 16rpx 48rpx;
+  display: inline-flex;
+}
+.btn-retry:active { opacity: 0.9; }
+.btn-back {
+  font-size: 28rpx; color: $text-muted; background: $bg-surface;
+  border-radius: 40rpx; border: none; padding: 16rpx 48rpx;
+  display: inline-flex;
+}
+.btn-back:active { background: #e8e8e5; }
+
+// ===== GitHub 风格 Diff =====
 .highlight-item { padding: 20rpx 0; }
-.highlight-item + .highlight-item { border-top: 1rpx solid #f1f5f9; }
-.hl-reason { font-size: 22rpx; color: #94a3b8; margin-top: 10rpx; padding-left: 12rpx; display: block; }
+.highlight-item + .highlight-item { border-top: 1px solid $border-light; }
+.hl-reason { font-size: 24rpx; color: $text-light; margin-top: 10rpx; padding-left: 12rpx; display: block; }
 
-.optimized-resume { background: #f8fafc; border-radius: 12rpx; padding: 24rpx; }
-.opt-text { font-size: 26rpx; color: #1e293b; line-height: 1.8; white-space: pre-wrap; }
+// ===== 优化后简历 =====
+.deep-result { margin-top: 8rpx; }
+.optimized-resume { background: $bg-surface; border-radius: $radius-md; padding: 24rpx; }
+.opt-text { font-size: 26rpx; color: $text-main; line-height: 1.8; white-space: pre-wrap; }
 
+// ===== 面试追问 =====
+.deep-questions { margin-top: 8rpx; }
 .iq-item { display: flex; gap: 14rpx; padding: 14rpx 0; }
-.iq-item + .iq-item { border-top: 1rpx solid #f1f5f9; }
-.iq-num { width: 40rpx; height: 40rpx; background: #f0f4ff; color: #2b6ff2; font-size: 22rpx; font-weight: 700; border-radius: 10rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.iq-text { font-size: 26rpx; color: #1e293b; line-height: 1.6; }
+.iq-item + .iq-item { border-top: 1px solid $border-light; }
+.iq-num {
+  width: 40rpx; height: 40rpx; background: rgba(217,117,10,0.1);
+  color: $accent; font-size: 22rpx; font-weight: 700;
+  border-radius: $radius-sm; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.iq-text { font-size: 26rpx; color: $text-main; line-height: 1.6; }
 
+// ===== 底部按钮 =====
 .actions { padding: 30rpx 24rpx; display: flex; flex-direction: column; gap: 16rpx; }
-.btn-primary { width: 100%; height: 96rpx; background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; font-size: 32rpx; font-weight: 700; border-radius: 48rpx; border: none; }
-.btn-secondary { width: 100%; height: 96rpx; background: #f1f5f9; color: #64748b; font-size: 32rpx; font-weight: 700; border-radius: 48rpx; border: none; }
+.btn-primary {
+  width: 100%; height: 96rpx; background: $bg-dark; color: #fff;
+  font-size: 32rpx; font-weight: 600; border-radius: 48rpx; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-primary:active { opacity: 0.9; }
+.btn-secondary {
+  width: 100%; height: 96rpx; background: $bg-surface; color: $text-muted;
+  font-size: 32rpx; font-weight: 600; border-radius: 48rpx; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-secondary:active { background: #e8e8e5; }
+
+@media (min-width: 1025px) { .report-page { max-width: 700px; margin: 0 auto; } }
 </style>

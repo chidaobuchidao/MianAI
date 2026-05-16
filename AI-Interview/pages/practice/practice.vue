@@ -1,45 +1,38 @@
 <template>
-  <DeepStatusBar />
-    <view class="practice">
+  <view class="practice">
     <!-- 开始屏 -->
-    <DeepStatusBar />
     <view class="start-screen" v-if="!started && !finished">
-      <DeepStatusBar />
-    <view class="start-card">
-        <text class="start-icon">🎯</text>
-        <text class="start-title">自由刷题</text>
-        <text class="start-desc">随机抽取 10 道题目</text>
-        <DeepStatusBar />
-    <view class="start-stats">
-          <DeepStatusBar />
-    <view class="stat"><text class="stat-num">10</text><text class="stat-lbl">题量</text></view>
-          <DeepStatusBar />
-    <view class="stat-divider" />
-          <DeepStatusBar />
-    <view class="stat"><text class="stat-num">不限</text><text class="stat-lbl">时间</text></view>
-          <DeepStatusBar />
-    <view class="stat-divider" />
-          <DeepStatusBar />
-    <view class="stat"><text class="stat-num">即时</text><text class="stat-lbl">判分</text></view>
+      <view class="start-card">
+        <view class="start-icon-box">
+          <text class="start-icon">🎯</text>
         </view>
-        <button class="btn-start" @click="startPractice">开始刷题</button>
+        <text class="start-title">自由刷题</text>
+        <text class="start-desc">随机抽取 10 道题目，即时判分</text>
+        <view class="start-stats">
+          <view class="stat"><text class="stat-num">10</text><text class="stat-lbl">题量</text></view>
+          <view class="stat-divider" />
+          <view class="stat"><text class="stat-num">不限</text><text class="stat-lbl">时间</text></view>
+          <view class="stat-divider" />
+          <view class="stat"><text class="stat-num">即时</text><text class="stat-lbl">判分</text></view>
+        </view>
+        <view class="btn-start" @click="startPractice">
+          <text>开始刷题</text>
+        </view>
       </view>
     </view>
 
     <!-- 答题屏 -->
-    <DeepStatusBar />
     <view class="quiz-screen" v-if="started && !finished && currentQuestion">
       <!-- 进度条 -->
-      <DeepStatusBar />
-    <view class="progress-bar">
-        <DeepStatusBar />
-    <view class="progress-fill" :style="{ width: ((currentIndex + 1) / questions.length * 100) + '%' }" />
+      <view class="progress-wrap">
+        <view class="progress-bar">
+          <view class="progress-fill" :style="{ width: ((currentIndex + 1) / questions.length * 100) + '%' }" />
+        </view>
+        <text class="progress-text">{{ currentIndex + 1 }}/{{ questions.length }}</text>
       </view>
 
-      <DeepStatusBar />
-    <view class="quiz-card">
-        <DeepStatusBar />
-    <view class="quiz-meta">
+      <view class="quiz-card">
+        <view class="quiz-meta">
           <text class="quiz-index">第 {{ currentIndex + 1 }} 题</text>
           <text class="quiz-type">{{ getTypeLabel(currentQuestion.type) }}</text>
         </view>
@@ -59,10 +52,10 @@
             }"
             @click="selectOption(opt.label)"
           >
-            <DeepStatusBar />
-    <view class="opt-letter" :class="{ active: selectedAnswer === opt.label }">{{ opt.label }}</view>
+            <view class="opt-letter" :class="{ active: selectedAnswer === opt.label }">{{ opt.label }}</view>
             <text class="opt-text">{{ opt.content }}</text>
-            <text v-if="answered && opt.label === currentQuestion.answer" class="opt-mark">✓</text>
+            <text v-if="answered && opt.label === currentQuestion.answer" class="opt-mark correct-mark">✓</text>
+            <text v-if="answered && selectedAnswer === opt.label && selectedAnswer !== currentQuestion.answer" class="opt-mark wrong-mark">✗</text>
           </view>
         </view>
 
@@ -78,8 +71,7 @@
             }"
             @click="selectOption(v)"
           >
-            <DeepStatusBar />
-    <view class="opt-letter" :class="{ active: selectedAnswer === v }">{{ v === '正确' ? '✓' : '✗' }}</view>
+            <view class="opt-letter" :class="{ active: selectedAnswer === v }">{{ v === '正确' ? '✓' : '✗' }}</view>
             <text class="opt-text">{{ v }}</text>
           </view>
         </view>
@@ -90,8 +82,7 @@
         <!-- 判分结果 -->
         <view v-if="answered" class="quiz-result" :class="lastResult?.isCorrect ? 'is-correct' : 'is-wrong'">
           <text class="result-icon">{{ lastResult?.isCorrect ? '✓' : '✗' }}</text>
-          <DeepStatusBar />
-    <view class="result-body">
+          <view class="result-body">
             <text class="result-verdict">{{ lastResult?.isCorrect ? '回答正确' : '回答错误' }}</text>
             <text class="result-answer">正确答案：{{ lastResult?.correctAnswer }}</text>
             <text class="result-analysis" v-if="lastResult?.analysis">{{ lastResult?.analysis }}</text>
@@ -100,24 +91,27 @@
       </view>
 
       <!-- 按钮 -->
-      <DeepStatusBar />
-    <view class="quiz-actions" v-if="answered">
-        <button v-if="currentIndex < questions.length - 1" class="btn-next" @click="nextQuestion">下一题</button>
-        <button v-else class="btn-finish" @click="finish">查看结果</button>
+      <view class="quiz-actions" v-if="answered">
+        <view v-if="currentIndex < questions.length - 1" class="btn-next" @click="nextQuestion">
+          <text>下一题</text>
+        </view>
+        <view v-else class="btn-finish" @click="finish">
+          <text>查看结果</text>
+        </view>
       </view>
-      <button v-else class="btn-submit" :disabled="!selectedAnswer" @click="submitAnswer">提交答案</button>
+      <view v-else class="btn-submit" :class="{ disabled: !selectedAnswer }" @click="submitAnswer">
+        <text>提交答案</text>
+      </view>
     </view>
 
     <!-- 完成屏 -->
-    <DeepStatusBar />
     <view class="finish-screen" v-if="finished">
-      <DeepStatusBar />
-    <view class="finish-circle" :class="correctCount >= 6 ? 'good' : 'retry'">
+      <view class="finish-circle" :class="correctCount >= 6 ? 'good' : 'retry'">
         <text class="finish-score">{{ correctCount }}/{{ questions.length }}</text>
       </view>
       <text class="finish-msg">{{ correctCount >= 8 ? '太棒了！' : correctCount >= 6 ? '继续加油！' : '多多练习！' }}</text>
-      <button class="btn-retry" @click="retry">再刷一次</button>
-      <button class="btn-back" @click="goHome">返回首页</button>
+      <view class="btn-retry" @click="retry"><text>再刷一次</text></view>
+      <view class="btn-back" @click="goHome"><text>返回首页</text></view>
     </view>
   </view>
 </template>
@@ -156,61 +150,140 @@ function goHome() { uni.switchTab({ url: '/pages/index/index' }); }
 </script>
 
 <style lang="scss" scoped>
-.practice { min-height: 100vh; background: #f0f4ff; }
+@import "@/styles/tokens.scss";
 
-// Start
-.start-screen { display: flex; justify-content: center; padding-top: 180rpx; }
-.start-card { background: #fff; border-radius: 28rpx; padding: 60rpx 50rpx; width: 85vw; text-align: center; box-shadow: 0 8rpx 40rpx rgba(43,111,242,0.08); }
-.start-icon { font-size: 96rpx; }
-.start-title { display: block; font-size: 40rpx; font-weight: 800; color: #0f172a; margin-top: 20rpx; }
-.start-desc { display: block; font-size: 26rpx; color: #94a3b8; margin-top: 8rpx; }
-.start-stats { display: flex; justify-content: center; align-items: center; gap: 40rpx; margin: 40rpx 0; }
+.practice { min-height: 100vh; background: $bg-canvas; }
+
+// ===== 开始屏 =====
+.start-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 40rpx; }
+.start-card {
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-xl; padding: 64rpx 48rpx;
+  width: 100%; max-width: 600rpx; display: flex; flex-direction: column;
+  align-items: center; box-shadow: $shadow-md; text-align: center;
+}
+.start-icon-box {
+  width: 120rpx; height: 120rpx; background: $bg-surface;
+  border-radius: 28rpx; display: flex; align-items: center;
+  justify-content: center; margin-bottom: 28rpx;
+}
+.start-icon { font-size: 56rpx; }
+.start-title {
+  font-family: Georgia, serif; font-size: 36rpx; font-weight: 600;
+  color: $text-main; margin-bottom: 10rpx;
+}
+.start-desc { font-size: 26rpx; color: $text-muted; margin-bottom: 40rpx; }
+
+.start-stats { display: flex; align-items: center; gap: 32rpx; margin-bottom: 44rpx; }
 .stat { display: flex; flex-direction: column; align-items: center; }
-.stat-num { font-size: 36rpx; font-weight: 800; color: #2b6ff2; }
-.stat-lbl { font-size: 22rpx; color: #94a3b8; }
-.stat-divider { width: 2rpx; height: 40rpx; background: #e2e8f0; }
-.btn-start { width: 100%; height: 96rpx; background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; font-size: 32rpx; font-weight: 700; border-radius: 48rpx; border: none; margin-top: 10rpx; }
+.stat-num { font-family: Georgia, serif; font-size: 40rpx; font-weight: 600; color: $text-main; }
+.stat-lbl { font-size: 22rpx; color: $text-light; margin-top: 4rpx; }
+.stat-divider { width: 2rpx; height: 48rpx; background: $border-light; }
 
-// Quiz
-.quiz-screen { padding: 0 24rpx 40rpx; }
-.progress-bar { height: 6rpx; background: #e2e8f0; margin: 20rpx 0 24rpx; border-radius: 3rpx; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #2b6ff2, #6366f1); border-radius: 3rpx; transition: width 0.3s; }
-.quiz-card { background: #fff; border-radius: 24rpx; padding: 36rpx; box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.04); }
-.quiz-meta { display: flex; justify-content: space-between; margin-bottom: 24rpx; }
-.quiz-index { font-size: 26rpx; font-weight: 700; color: #2b6ff2; }
-.quiz-type { font-size: 22rpx; color: #94a3b8; background: #f1f5f9; padding: 4rpx 14rpx; border-radius: 8rpx; }
-.quiz-title { display: block; font-size: 30rpx; font-weight: 600; color: #0f172a; line-height: 1.8; margin-bottom: 32rpx; }
-.options { display: flex; flex-direction: column; gap: 16rpx; }
-.option { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; border: 2rpx solid #e2e8f0; border-radius: 16rpx; transition: all 0.15s; position: relative; }
-.option.selected { border-color: #2b6ff2; background: #f0f4ff; }
-.option.correct { border-color: #10b981; background: #ecfdf5; }
-.option.wrong { border-color: #ef4444; background: #fef2f2; }
-.opt-letter { width: 48rpx; height: 48rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; color: #64748b; background: #f1f5f9; }
-.opt-letter.active { background: #2b6ff2; color: #fff; }
-.opt-text { font-size: 28rpx; color: #1e293b; flex: 1; }
-.opt-mark { font-size: 28rpx; color: #10b981; font-weight: 700; }
-.fill-input { border: 2rpx solid #e2e8f0; border-radius: 16rpx; padding: 24rpx; font-size: 28rpx; background: #f8fafc; }
-.quiz-result { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 24rpx; padding: 20rpx; border-radius: 16rpx; }
-.quiz-result.is-correct { background: #ecfdf5; }
-.quiz-result.is-wrong { background: #fef2f2; }
-.result-icon { font-size: 32rpx; font-weight: 700; margin-top: 4rpx; }
-.result-verdict { display: block; font-size: 26rpx; font-weight: 700; }
-.result-answer { display: block; font-size: 24rpx; color: #64748b; margin-top: 4rpx; }
-.result-analysis { display: block; font-size: 24rpx; color: #94a3b8; margin-top: 4rpx; }
-.btn-submit, .btn-next, .btn-finish { width: 100%; height: 96rpx; border: none; border-radius: 48rpx; font-size: 32rpx; font-weight: 700; margin-top: 30rpx; }
-.btn-submit { background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; }
-.btn-submit[disabled] { background: #cbd5e1; color: #94a3b8; }
-.btn-next { background: #0f172a; color: #fff; }
-.btn-finish { background: linear-gradient(135deg, #10b981, #34d399); color: #fff; }
+.btn-start {
+  width: 100%; height: 96rpx; background: $bg-dark;
+  color: #fff; font-size: 30rpx; font-weight: 600;
+  border-radius: $radius-lg; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-start:active { opacity: 0.9; }
 
-// Finish
+// ===== 答题屏 =====
+.quiz-screen { padding-bottom: 40rpx; }
+
+.progress-wrap {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 20rpx 28rpx; background: $bg-paper;
+  border-bottom: 1px solid $border-light;
+}
+.progress-bar { flex: 1; height: 6rpx; background: $bg-surface; border-radius: 3rpx; overflow: hidden; }
+.progress-fill { height: 100%; background: $accent; border-radius: 3rpx; transition: width 0.3s; }
+.progress-text { font-size: 24rpx; color: $text-light; font-weight: 500; }
+
+.quiz-card {
+  margin: 20rpx; padding: 36rpx 28rpx;
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-lg; box-shadow: $shadow-sm;
+}
+.quiz-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.quiz-index { font-size: 24rpx; color: $accent; font-weight: 600; }
+.quiz-type { font-size: 22rpx; color: $text-light; background: $bg-surface; padding: 6rpx 16rpx; border-radius: $radius-full; }
+.quiz-title { font-size: 30rpx; color: $text-main; line-height: 1.8; margin-bottom: 32rpx; display: block; }
+
+.options { display: flex; flex-direction: column; gap: 14rpx; }
+.option {
+  display: flex; align-items: center; gap: 18rpx;
+  padding: 24rpx 22rpx; border: 1px solid $border-light;
+  border-radius: $radius-md; font-size: 28rpx; color: $text-main;
+}
+.option:active { background: $bg-surface; }
+.option.selected { border-color: $accent; background: rgba(217,117,10,0.04); }
+.option.correct { border-color: $color-success; background: rgba(34,197,94,0.04); }
+.option.wrong { border-color: $color-danger; background: rgba(239,68,68,0.04); }
+
+.opt-letter {
+  width: 52rpx; height: 52rpx; border-radius: 50%;
+  border: 1px solid $border-medium; display: flex; align-items: center;
+  justify-content: center; font-size: 24rpx; font-weight: 600;
+  color: $text-light; flex-shrink: 0; background: $bg-surface;
+}
+.opt-letter.active { background: $bg-dark; color: #fff; border-color: $bg-dark; }
+.opt-text { flex: 1; line-height: 1.6; }
+.opt-mark { font-size: 28rpx; font-weight: 700; flex-shrink: 0; }
+.correct-mark { color: $color-success; }
+.wrong-mark { color: $color-danger; }
+
+.fill-input {
+  width: 100%; border: 1px solid $border-medium; border-radius: $radius-md;
+  padding: 20rpx 24rpx; font-size: 28rpx; background: $bg-surface;
+  box-sizing: border-box;
+}
+
+// 判分结果
+.quiz-result {
+  margin-top: 28rpx; padding: 24rpx; border-radius: $radius-md;
+  display: flex; gap: 16rpx;
+}
+.quiz-result.is-correct { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); }
+.quiz-result.is-wrong { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); }
+.result-icon { font-size: 40rpx; font-weight: 700; flex-shrink: 0; }
+.is-correct .result-icon { color: $color-success; }
+.is-wrong .result-icon { color: $color-danger; }
+.result-body { flex: 1; display: flex; flex-direction: column; }
+.result-verdict { font-size: 26rpx; font-weight: 600; color: $text-main; margin-bottom: 8rpx; }
+.result-answer { font-size: 24rpx; color: $text-muted; margin-bottom: 6rpx; }
+.result-analysis { font-size: 24rpx; color: $text-light; line-height: 1.7; }
+
+// 按钮
+.btn-submit, .btn-next, .btn-finish {
+  width: calc(100% - 40rpx); height: 88rpx; margin: 20rpx auto 0;
+  background: $bg-dark; color: #fff; font-size: 30rpx; font-weight: 600;
+  border-radius: $radius-lg; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-submit:active, .btn-next:active, .btn-finish:active { opacity: 0.9; }
+.btn-submit.disabled { opacity: 0.4; }
+.btn-finish { background: $accent; }
+
+// ===== 完成屏 =====
 .finish-screen { display: flex; flex-direction: column; align-items: center; padding-top: 180rpx; }
-.finish-circle { width: 200rpx; height: 200rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24rpx; }
-.finish-circle.good { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
-.finish-circle.retry { background: linear-gradient(135deg, #fef3c7, #fde68a); }
-.finish-score { font-size: 48rpx; font-weight: 900; color: #0f172a; }
-.finish-msg { font-size: 36rpx; font-weight: 700; color: #0f172a; }
-.btn-retry, .btn-back { width: 460rpx; height: 96rpx; border: none; border-radius: 48rpx; font-size: 32rpx; font-weight: 700; }
-.btn-retry { background: linear-gradient(135deg, #2b6ff2, #4f8dff); color: #fff; margin-top: 60rpx; }
-.btn-back { background: #f1f5f9; color: #64748b; margin-top: 20rpx; }
+.finish-circle {
+  width: 180rpx; height: 180rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 32rpx;
+}
+.finish-circle.good { background: rgba(34,197,94,0.1); border: 2px solid $color-success; }
+.finish-circle.retry { background: rgba(217,117,10,0.1); border: 2px solid $accent; }
+.finish-score { font-family: Georgia, serif; font-size: 48rpx; font-weight: 700; color: $text-main; }
+.finish-msg { font-size: 28rpx; color: $text-muted; margin-bottom: 56rpx; }
+
+.btn-retry, .btn-back {
+  width: calc(100% - 80rpx); max-width: 500rpx; height: 88rpx;
+  font-size: 30rpx; font-weight: 600; border-radius: $radius-lg; border: none;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 20rpx;
+}
+.btn-retry { background: $bg-dark; color: #fff; }
+.btn-back { background: $bg-surface; color: $text-muted; }
+.btn-retry:active, .btn-back:active { opacity: 0.9; }
+
+@media (min-width: 1025px) { .practice { max-width: 800px; margin: 0 auto; } }
 </style>

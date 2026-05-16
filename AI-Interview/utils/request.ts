@@ -1,9 +1,13 @@
 // uni.request 封装 + JWT 拦截器
 // 开发模式下后端不可用时静默返回空数据，不阻塞 UI 展示
 
-// 微信开发者工具不支持 localhost，需用本机 LAN IP
-// IP 变化时只需改这一处
-export const BASE_URL = 'http://10.29.66.166:8080';
+// H5 生产环境用相对路径（由 Nginx 反代），否则连本地/WiFi
+// #ifdef H5
+export const BASE_URL = '';
+// #endif
+// #ifndef H5
+export const BASE_URL = 'http://10.80.168.43:8080';
+// #endif
 const TOKEN_KEY = 'mianmiantong_token';
 export function getToken(): string {
   return uni.getStorageSync(TOKEN_KEY) || '';
@@ -39,7 +43,7 @@ export function request<T = unknown>(options: RequestOptions): Promise<ApiRespon
     ...options.header,
   };
 
-  if (token && !isDev) {
+  if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -54,6 +58,7 @@ export function request<T = unknown>(options: RequestOptions): Promise<ApiRespon
       method: options.method || 'GET',
       data,
       header: headers,
+      timeout: 30000,
       success: (res) => {
         // 后端返回 401 → 重新登录
         if (res.statusCode === 401) {
@@ -73,9 +78,9 @@ export function request<T = unknown>(options: RequestOptions): Promise<ApiRespon
         // 非 200 静默返回空
         resolve({ code: 200, message: 'ok', data: (Array.isArray(apiRes.data) ? [] : apiRes.data) as unknown as T });
       },
-      fail: () => {
-        // 网络不通，静默返回空
-        resolve({ code: 200, message: 'offline', data: [] as unknown as T });
+      fail: (err) => {
+        // 网络不通，静默返回空（带错误信息）
+        resolve({ code: 200, message: err.errMsg || 'offline', data: [] as unknown as T });
       },
     });
   });
@@ -124,7 +129,7 @@ export function streamRequest(
     'Content-Type': 'application/json',
   };
 
-  if (token && !isDev) {
+  if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 

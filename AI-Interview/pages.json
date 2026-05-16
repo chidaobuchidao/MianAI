@@ -8,8 +8,8 @@
     "globalStyle": {
         "navigationBarTextStyle": "white",
         "navigationBarTitleText": "面面通",
-        "navigationBarBackgroundColor": "#2B6FF2",
-        "backgroundColor": "#F5F6FA"
+        "navigationBarBackgroundColor": "#141413",
+        "backgroundColor": "#F3EFE8"
     },
     "pages": [
         {
@@ -125,9 +125,9 @@
         }
     ],
     "tabBar": {
-        "color": "#999999",
-        "selectedColor": "#2B6FF2",
-        "backgroundColor": "#FFFFFF",
+        "color": "#888888",
+        "selectedColor": "#D9750A",
+        "backgroundColor": "#FDFCFB",
         "borderStyle": "black",
         "list": [
             {
