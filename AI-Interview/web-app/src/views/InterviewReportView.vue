@@ -69,20 +69,31 @@ const route = useRoute()
 const report = ref<Report | null>(null)
 const loading = ref(true)
 
+function sanitize(s: string) {
+  return s.replace(/\[面试结束\]\s*\{.*\}/s, '').trim()
+}
+
+function safeParseDims(raw: any): Dim[] {
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try {
+      // Fix trailing commas in JSON objects: ,"  →  "
+      const fixed = raw.replace(/,"\s*}/g, '"}').replace(/,"\s*\]/g, '"]')
+      return JSON.parse(fixed)
+    } catch { return [] }
+  }
+  return []
+}
+
 function loadFromStorage() {
   const score = sessionStorage.getItem('interviewScore')
   const feedback = sessionStorage.getItem('interviewFeedback')
   if (!score && !feedback) return null
-  let dims: Dim[] = []
-  try {
-    const raw = sessionStorage.getItem('interviewDims')
-    if (raw) dims = JSON.parse(raw)
-  } catch {}
   return {
     overallScore: Number(score) || 0,
-    feedback: feedback || '',
-    suggestion: sessionStorage.getItem('interviewSuggestion') || '',
-    dimensions: dims
+    feedback: sanitize(feedback || ''),
+    suggestion: sanitize(sessionStorage.getItem('interviewSuggestion') || ''),
+    dimensions: safeParseDims(sessionStorage.getItem('interviewDims'))
   } as Report
 }
 
@@ -101,17 +112,11 @@ onMounted(async () => {
     const r = await get<Report>(`/api/interview/${id}`)
     if (r.data) {
       const raw = r.data as any
-      let dims: Dim[] = []
-      if (typeof raw.dimensions === 'string') {
-        try { dims = JSON.parse(raw.dimensions) } catch {}
-      } else if (Array.isArray(raw.dimensions)) {
-        dims = raw.dimensions
-      }
       report.value = {
         overallScore: raw.overallScore ?? 0,
-        feedback: raw.feedback || '',
-        suggestion: raw.suggestion || raw.feedback || '',
-        dimensions: dims,
+        feedback: sanitize(raw.feedback || ''),
+        suggestion: sanitize(raw.suggestion || raw.feedback || ''),
+        dimensions: safeParseDims(raw.dimensions),
         position: raw.position,
         createTime: raw.createTime
       }
