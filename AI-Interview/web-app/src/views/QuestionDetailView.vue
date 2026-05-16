@@ -100,6 +100,7 @@ const question = ref<Question | null>(null)
 const questionIds = ref<number[]>([])
 const currentIndex = ref(-1)
 const slideDirection = ref<'slide-left' | 'slide-right'>('slide-left')
+const cache = new Map<number, Question>()
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < questionIds.value.length - 1)
@@ -118,10 +119,31 @@ function difficultyLabel(d: number) {
 }
 
 async function fetchDetail(id: number) {
+  // Cache hit — instant render, no flash
+  if (cache.has(id)) {
+    question.value = cache.get(id)!
+    return
+  }
+  // Cache miss — fetch and cache
   try {
     const res = await get<Question>(`/api/questions/${id}`)
     question.value = res.data
+    if (res.data) cache.set(id, res.data)
   } catch { question.value = null }
+}
+
+function preloadAdjacent() {
+  const idx = currentIndex.value
+  if (idx < 0) return
+  const adj = [idx - 1, idx + 1]
+  for (const i of adj) {
+    if (i < 0 || i >= questionIds.value.length) continue
+    const id = questionIds.value[i]
+    if (cache.has(id)) continue
+    get<Question>(`/api/questions/${id}`).then(res => {
+      if (res.data) cache.set(id, res.data)
+    }).catch(() => {})
+  }
 }
 
 async function fetchQuestionList() {
@@ -133,6 +155,7 @@ async function fetchQuestionList() {
     const records: Question[] = data.records || data || []
     questionIds.value = records.map(q => q.id)
     currentIndex.value = questionIds.value.indexOf(questionId.value)
+    preloadAdjacent()
   } catch { /* ignore */ }
 }
 
@@ -140,6 +163,10 @@ function goPrev() {
   if (!hasPrev.value) return
   slideDirection.value = 'slide-right'
   const prevId = questionIds.value[currentIndex.value - 1]
+  // Pre-seed cache so fetchDetail hits instantly
+  if (cache.has(prevId)) {
+    question.value = cache.get(prevId)!
+  }
   router.replace({ path: `/questions/${prevId}`, query: route.query })
 }
 
@@ -147,6 +174,9 @@ function goNext() {
   if (!hasNext.value) return
   slideDirection.value = 'slide-left'
   const nextId = questionIds.value[currentIndex.value + 1]
+  if (cache.has(nextId)) {
+    question.value = cache.get(nextId)!
+  }
   router.replace({ path: `/questions/${nextId}`, query: route.query })
 }
 
@@ -154,6 +184,7 @@ watch(questionId, async (id) => {
   if (!id) return
   await fetchDetail(id)
   currentIndex.value = questionIds.value.indexOf(id)
+  preloadAdjacent()
 }, { immediate: true })
 
 onMounted(async () => {
