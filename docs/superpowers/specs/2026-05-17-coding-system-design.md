@@ -68,12 +68,21 @@
 | 代码执行 | Piston | Go 单容器 ~300MB，REST API |
 | 通信 | SSE | 复用现有面试流式通道 |
 
-### Piston 部署
+### Piston 部署（最小化）
 
 ```bash
+# 1. 启动容器
 docker run -d -p 2000:2000 --restart=always \
   --name piston ghcr.io/engineer-man/piston
+
+# 2. 仅安装主流语言包（节省约 2GB 空间）
+docker exec piston piston ppman install java python javascript cpp go
+
+# 3. 验证
+curl http://localhost:2000/api/v2/runtimes | grep -E "java|python|javascript|cpp|go"
 ```
+
+> 内存占用约 300MB（比 Judge0 少 80%），2核2G 服务器可用
 
 ```yaml
 # API: POST /api/v2/execute

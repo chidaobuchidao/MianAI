@@ -34,7 +34,10 @@
         <span class="sidebar__subtitle">{{ selectedPosition }}面试</span>
       </div>
       <div class="sidebar__body no-scrollbar">
-        <span class="sidebar__section-label">Interview Progress</span>
+        <span class="sidebar__section-label">
+          Interview Progress
+          <button class="dev-test-btn" @click="startCoding()" title="开发者：直接进入编程环节">[测试]</button>
+        </span>
         <div class="progress-tree">
           <div class="progress-tree__line" />
           <div
@@ -535,7 +538,15 @@ function renderContent(text: string): string {
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 20px;
-  display: block;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dev-test-btn {
+  font-size: 10px; font-weight: 500;
+  padding: 2px 8px; border-radius: 4px;
+  border: 1px dashed var(--accent);
+  background: transparent;
+  color: var(--accent); cursor: pointer;
+  text-transform: none; letter-spacing: 0;
 }
 
 /* Progress tree */
