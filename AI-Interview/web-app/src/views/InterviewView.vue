@@ -142,6 +142,13 @@
         </div>
       </div>
 
+      <!-- Coding invite bar -->
+      <div class="coding-invite" v-if="showCodingInvite && !finished">
+        <span class="coding-invite__text">进入编程实战环节？</span>
+        <button class="coding-invite__btn coding-invite__btn--skip" @click="skipCoding">跳过</button>
+        <button class="coding-invite__btn coding-invite__btn--enter" @click="enterCoding">进入编程</button>
+      </div>
+
       <!-- Capsule input pill -->
       <div class="input-zone" v-if="!finished">
         <!-- Keyboard mode -->
@@ -323,6 +330,7 @@ const currentCode = ref('')
 const codeFilename = ref('')
 const codeLanguage = ref('java')
 const showCodePanel = ref(false)
+const showCodingInvite = ref(false)
 const inputText = ref('')
 const inputMode = ref<'keyboard' | 'voice'>('keyboard')
 const msgContainer = ref<HTMLElement>()
@@ -388,6 +396,20 @@ function handleFinish(data: ReportData) {
   router.push(`/interview/report?id=${sessionId.value}`)
 }
 
+function handleCodingInvite() {
+  showCodingInvite.value = true
+}
+
+function enterCoding() {
+  showCodingInvite.value = false
+  startCoding()
+}
+
+function skipCoding() {
+  showCodingInvite.value = false
+  sendAnswer('跳过编程环节，请直接结束面试并给出报告')
+}
+
 function handleCodeProblem(data: CodeProblem) {
   showCodePanel.value = true
   currentCode.value = data.template
@@ -405,7 +427,8 @@ const { sendAnswer, reportScore } = useInterviewStream({
   messages,
   loading,
   onFinish: handleFinish,
-  onCodeProblem: handleCodeProblem
+  onCodeProblem: handleCodeProblem,
+  onCodingInvite: handleCodingInvite
 })
 
 // Detect coding round triggers in user messages
@@ -875,6 +898,27 @@ function renderContent(text: string): string {
 .pos-loading {
   margin-top: 20px; font-size: 13px; color: var(--text-light);
   display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* ===== Coding Invite Bar ===== */
+.coding-invite {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px; margin: 0 16px 8px;
+  background: var(--bg-paper);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.coding-invite__text { font-size: 14px; font-weight: 500; flex: 1; }
+.coding-invite__btn {
+  padding: 8px 20px; border-radius: var(--radius-full);
+  font-size: 13px; font-weight: 500; cursor: pointer; border: none;
+}
+.coding-invite__btn--skip {
+  background: var(--bg-surface); color: var(--text-muted);
+}
+.coding-invite__btn--enter {
+  background: var(--accent); color: #fff;
 }
 
 /* ===== Capsule Input Pill ===== */

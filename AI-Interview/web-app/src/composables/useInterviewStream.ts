@@ -31,6 +31,7 @@ interface UseInterviewStreamOptions {
   loading: Ref<boolean>
   onFinish: (data: ReportData) => void
   onCodeProblem?: (data: CodeProblem) => void
+  onCodingInvite?: () => void
 }
 
 interface SSEParseResult {
@@ -65,7 +66,7 @@ function parseSSEBuffer(
 }
 
 export function useInterviewStream(options: UseInterviewStreamOptions) {
-  const { sessionId, messages, loading, onFinish, onCodeProblem } = options
+  const { sessionId, messages, loading, onFinish, onCodeProblem, onCodingInvite } = options
   const reportScore = ref(0)
 
   function buildFinishData(json: Record<string, unknown>): ReportData {
@@ -170,6 +171,15 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
 
         if (event === 'token') {
           streamState.aiContent += data
+
+          // Detect [笔试邀请] marker
+          if (streamState.aiContent.includes('[笔试邀请]') && onCodingInvite) {
+            const clean = streamState.aiContent.replace(/\[笔试邀请\]/g, '').trim()
+            streamState.aiContent = clean
+            updateMessage(aiMsgIdx, clean || '...')
+            onCodingInvite()
+            return
+          }
 
           // Detect [编程题目] marker (before end marker check)
           const codeResult = tryParseCodeMarker(streamState.aiContent)
