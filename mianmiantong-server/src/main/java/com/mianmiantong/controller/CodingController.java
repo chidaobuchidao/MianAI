@@ -18,6 +18,6 @@ public class CodingController {
 
     @PostMapping("/run")
     public Map<String, Object> runCode(@RequestBody RunCodeRequest request) {
-        return codingService.runCode(request.getCode(), request.getLanguage());
+        return codingService.runCode(request.getCode(), request.getLanguage(), request.getStdin());
     }
 }

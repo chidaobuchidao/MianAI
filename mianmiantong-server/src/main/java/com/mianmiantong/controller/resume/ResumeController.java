@@ -1,6 +1,11 @@
 package com.mianmiantong.controller.resume;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mianmiantong.config.JwtAuthFilter;
+import com.mianmiantong.entity.user.UserAiConfig;
+import com.mianmiantong.mapper.user.UserAiConfigMapper;
+import com.mianmiantong.mapper.user.UserMapper;
+import java.time.LocalDate;
 import com.mianmiantong.common.JwtUtil;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.entity.resume.Resume;
@@ -31,19 +36,25 @@ public class ResumeController {
     private final HtmlPreviewService htmlPreviewService;
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final UserMapper userMapper;
+    private final UserAiConfigMapper aiConfigMapper;
 
     public ResumeController(ResumeService resumeService,
                            ResumeAnalysisService analysisService,
                            WordExportService wordExportService,
                            TemplatePreservingExportService templateExportService,
                            HtmlPreviewService htmlPreviewService,
-                           JwtUtil jwtUtil) {
+                           JwtUtil jwtUtil,
+                           UserMapper userMapper,
+                           UserAiConfigMapper aiConfigMapper) {
         this.resumeService = resumeService;
         this.analysisService = analysisService;
         this.wordExportService = wordExportService;
         this.templateExportService = templateExportService;
         this.htmlPreviewService = htmlPreviewService;
         this.jwtUtil = jwtUtil;
+        this.userMapper = userMapper;
+        this.aiConfigMapper = aiConfigMapper;
     }
 
     /** 上传简历 */
@@ -61,6 +72,24 @@ public class ResumeController {
     }
 
     /** Phase 1: 快速评分（异步后台执行，前端轮询 GET /analysis） */
+    /** 校验并消耗配额。配额不足抛异常。Flash=1, Pro=2 */
+    private void consumeResumeQuota(String model) {
+        Long userId = JwtAuthFilter.getCurrentUserId();
+        if (userId == null || JwtAuthFilter.isAdmin()) return;
+        UserAiConfig config = aiConfigMapper.selectById(userId);
+        if (config != null && config.getApiKey() != null && !config.getApiKey().isBlank()) return;
+        var user = userMapper.selectById(userId);
+        if (user == null) throw new IllegalArgumentException("用户不存在");
+        int daily = user.getDailyQuota() != null ? user.getDailyQuota() : 10;
+        int used = user.getQuotaUsed() != null ? user.getQuotaUsed() : 0;
+        // Reset if new day
+        if (!java.time.LocalDate.now().equals(user.getQuotaDate())) { used = 0; }
+        if (used >= daily) {
+            throw new IllegalArgumentException("今日免费次数已用完（" + daily + "次/天），请配置 AI API Key 后无限使用");
+        }
+        int steps = (model != null && model.toLowerCase().contains("pro")) ? 2 : 1;
+        userMapper.incrementQuota(userId, steps);
+    }
     @PostMapping("/{resumeId}/analyze")
     public Result<?> analyze(@PathVariable Long resumeId) {
         Resume resume = resumeService.getById(resumeId);
@@ -74,6 +103,7 @@ public class ResumeController {
             return Result.fail("简历状态异常(" + resume.getParseStatus() + ")，请联系管理员");
         }
         analysisService.analyzeQuickAsync(resumeId);
+        consumeResumeQuota(null); // 提交成功后才消耗
         return Result.ok(Map.of("message", "分析已开始"));
     }
 
@@ -81,6 +111,7 @@ public class ResumeController {
     @PostMapping("/{resumeId}/analyze-deep")
     public SseEmitter analyzeDeep(@PathVariable Long resumeId,
                                   @RequestParam(value = "model", required = false) String model) {
+        consumeResumeQuota(model);
         return analysisService.analyzeDeepStream(resumeId, model);
     }
 
@@ -88,6 +119,7 @@ public class ResumeController {
     @PostMapping("/{resumeId}/retry-deep")
     public SseEmitter retryDeep(@PathVariable Long resumeId,
                                 @RequestParam(value = "model", required = false) String model) {
+        consumeResumeQuota(model);
         return analysisService.analyzeDeepStream(resumeId, model);
     }
 

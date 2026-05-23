@@ -1,6 +1,5 @@
 import { ref, nextTick, type Ref } from 'vue'
-import { post } from '@/utils/request'
-import { sanitizeEndMarker, fixJsonString, type DimItem } from '@/utils/sanitize'
+import { sanitizeEndMarker, fixJsonString, extractBalancedJson, type DimItem } from '@/utils/sanitize'
 
 export interface InterviewMessage {
   role: 'ai' | 'user'
@@ -23,6 +22,20 @@ export interface CodeProblem {
   description: string
   template: string
   language: string
+  templates?: Record<string, string>
+  testCases?: TestCase[]
+}
+
+export interface TestCase {
+  input: string
+  expected: string
+}
+
+export interface CodingReview {
+  score: number
+  feedback: string
+  dimensions?: DimItem[]
+  suggestion?: string
 }
 
 interface UseInterviewStreamOptions {
@@ -32,6 +45,7 @@ interface UseInterviewStreamOptions {
   onFinish: (data: ReportData) => void
   onCodeProblem?: (data: CodeProblem) => void
   onCodingInvite?: () => void
+  onCodingFinish?: (data: CodingReview) => void
 }
 
 interface SSEParseResult {
@@ -66,7 +80,7 @@ function parseSSEBuffer(
 }
 
 export function useInterviewStream(options: UseInterviewStreamOptions) {
-  const { sessionId, messages, loading, onFinish, onCodeProblem, onCodingInvite } = options
+  const { sessionId, messages, loading, onFinish, onCodeProblem, onCodingInvite, onCodingFinish } = options
   const reportScore = ref(0)
 
   function buildFinishData(json: Record<string, unknown>): ReportData {
@@ -79,51 +93,65 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
   }
 
   /**
-   * Try to parse [面试结束] inline marker from accumulated AI content.
-   * Returns parsed report data if the marker is found, null otherwise.
+   * Generic marker parser: locate a marker label, extract balanced JSON after it,
+   * then delegate to `build` to construct the result. Returns null if parsing fails.
    */
-  function tryParseEndMarker(content: string): { data: ReportData; cleanContent: string } | null {
-    if (!content.includes('[面试结束]')) return null
-
-    const match = content.match(/\[面试结束\]\s*(\{.*\})/s)
-    if (!match) return null
-
-    let json: Record<string, unknown> = {}
+  function tryParseMarker<T>(
+    content: string,
+    marker: string,
+    build: (json: Record<string, unknown>) => T | null
+  ): { data: T; cleanContent: string } | null {
+    const idx = content.indexOf(marker)
+    if (idx === -1) return null
+    const result = extractBalancedJson(content, idx + marker.length)
+    if (!result) return null
     try {
-      json = JSON.parse(fixJsonString(match[1]))
-    } catch {
-      /* AI output may have malformed JSON */
-    }
-
-    if (json.score != null) {
-      reportScore.value = Number(json.score)
-    }
-
-    return {
-      data: buildFinishData(json),
-      cleanContent: sanitizeEndMarker(content)
-    }
+      const json = JSON.parse(fixJsonString(result.json))
+      const data = build(json)
+      if (!data) return null
+      return { data, cleanContent: (content.slice(0, idx) + content.slice(result.end)).trim() }
+    } catch { return null }
   }
 
-  /** Try to parse [编程题目] inline marker from AI content */
+  function tryParseEndMarker(content: string): { data: ReportData; cleanContent: string } | null {
+    const result = tryParseMarker(content, '[面试结束]', json => {
+      if (json.score != null) reportScore.value = Number(json.score)
+      return buildFinishData(json)
+    })
+    if (result) return result
+    // Marker exists without JSON → signal end with empty data
+    if (content.includes('[面试结束]')) {
+      return { data: buildFinishData({}), cleanContent: sanitizeEndMarker(content) }
+    }
+    return null
+  }
+
   function tryParseCodeMarker(content: string): { data: CodeProblem; cleanContent: string } | null {
-    if (!content.includes('[编程题目]')) return null
-    const match = content.match(/\[编程题目\]\s*(\{.*\})/s)
-    if (!match) return null
-    try {
-      const json = JSON.parse(fixJsonString(match[1]))
+    return tryParseMarker(content, '[编程题目]', json => {
       if (!json.title || !json.template) return null
       return {
-        data: {
-          type: (json.type === 'algorithm' ? 'algorithm' : 'complete') as CodeProblem['type'],
-          title: json.title || '',
-          description: json.description || '',
-          template: json.template || '',
-          language: json.language || 'java'
-        },
-        cleanContent: content.replace(/\[编程题目\].*/s, '').trim()
-      }
-    } catch { return null }
+        type: (json.type === 'algorithm' ? 'algorithm' : 'complete') as CodeProblem['type'],
+        title: String(json.title || ''),
+        description: String(json.description || ''),
+        template: String(json.template || ''),
+        language: String(json.language || 'java'),
+        templates: json.templates || undefined,
+        testCases: Array.isArray(json.testCases) ? json.testCases : undefined
+      } as CodeProblem
+    })
+  }
+
+  let codingReviewSeen = false
+
+  function tryParseCodingMarker(content: string): { data: CodingReview; cleanContent: string } | null {
+    const result = tryParseMarker(content, '[笔试结束]', json => ({
+      score: json.score != null ? Number(json.score) : 0,
+      feedback: String(json.feedback || ''),
+      dimensions: Array.isArray(json.dimensions) ? json.dimensions as DimItem[] : undefined,
+      suggestion: String(json.suggestion || '')
+    } as CodingReview))
+    if (result) codingReviewSeen = true
+    return result
   }
 
   function updateMessage(idx: number, content: string): void {
@@ -132,21 +160,39 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
     messages.value = updated
   }
 
-  async function sendAnswer(text: string): Promise<void> {
-    if (!text || loading.value) return
+  interface SendAnswerOptions {
+    text: string
+    code?: string
+    codeLang?: string
+    codeFile?: string
+  }
 
-    messages.value = [...messages.value, { role: 'user', content: text }]
+  async function sendAnswer(textOrOptions: string | SendAnswerOptions): Promise<void> {
+    const opts = typeof textOrOptions === 'string'
+      ? { text: textOrOptions }
+      : textOrOptions
+
+    if (!opts.text || loading.value) return
+
+    messages.value = [...messages.value, { role: 'user', content: opts.text }]
     loading.value = true
 
     try {
       const token = localStorage.getItem('token') || ''
+      const body: Record<string, string> = { answer: opts.text }
+      if (opts.code) {
+        body.code = opts.code
+        body.codeLang = opts.codeLang || 'java'
+        body.codeFile = opts.codeFile || 'Solution.java'
+      }
       const response = await fetch(`/api/interview/${sessionId.value}/answer/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ answer: text })
+        body: JSON.stringify(body)
       })
 
       const reader = response.body?.getReader()
@@ -174,9 +220,8 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
 
           // Detect [笔试邀请] marker
           if (streamState.aiContent.includes('[笔试邀请]') && onCodingInvite) {
-            const clean = streamState.aiContent.replace(/\[笔试邀请\]/g, '').trim()
-            streamState.aiContent = clean
-            updateMessage(aiMsgIdx, clean || '...')
+            streamState.aiContent = streamState.aiContent.replace(/\[笔试邀请\]/g, '').trim()
+            updateMessage(aiMsgIdx, streamState.aiContent || '...')
             onCodingInvite()
             return
           }
@@ -190,17 +235,37 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
             return
           }
 
+          // Detect [笔试结束] marker — coding review result from AI
+          const codingResult = tryParseCodingMarker(streamState.aiContent)
+          if (codingResult && onCodingFinish) {
+            streamState.aiContent = codingResult.cleanContent
+            // Show feedback text before marker, then replace marker JSON with done placeholder
+            updateMessage(aiMsgIdx, codingResult.cleanContent || '__CODING_REVIEW_DONE__')
+            onCodingFinish(codingResult.data)
+            // Interview evaluation is handled by codingReviewDone event
+            return
+          }
+
           const endResult = tryParseEndMarker(streamState.aiContent)
           if (endResult) {
+            // During coding review flow, interview evaluation is deferred to codingReviewDone event
+            if (codingReviewSeen) {
+              updateMessage(aiMsgIdx, endResult.cleanContent || '面试已结束')
+              return
+            }
             updateMessage(aiMsgIdx, endResult.cleanContent || '面试已结束')
             loading.value = false
-            post(`/api/interview/${sessionId.value}/end`).catch(() => {})
             onFinish(endResult.data)
             streamState.endDetected = true
             return
           }
 
-          const display = streamState.aiContent.replace(/\[面试结束\].*/s, '').trim()
+          // Strip markers from display content — user never sees raw JSON
+          const display = streamState.aiContent
+            .replace(/\[笔试结束\][\s\S]*/g, '')
+            .replace(/\[面试结束\][\s\S]*/g, '')
+            .replace(/\[编程题目\][\s\S]*/g, '')
+            .trim()
           updateMessage(aiMsgIdx, display)
         } else if (event === 'finish') {
           try {
@@ -208,15 +273,25 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
             if (json.report?.score != null) {
               reportScore.value = Number(json.report.score)
             }
+            // Code review done — interview report was already saved before coding started.
+            // Just navigate to the report page.
+            if (json.codingReviewDone) {
+              loading.value = false
+              onFinish({})
+              streamState.endDetected = true
+              return
+            }
             if (json.finished) {
               loading.value = false
-              post(`/api/interview/${sessionId.value}/end`).catch(() => {})
-              updateMessage(aiMsgIdx, sanitizeEndMarker(streamState.aiContent) || '面试已结束')
-
-              const finishData: ReportData = json.report
-                ? buildFinishData(json.report)
-                : {}
-              onFinish(finishData)
+              // Try [面试结束] marker from accumulated content
+              const endResult = tryParseEndMarker(streamState.aiContent)
+              if (endResult) {
+                updateMessage(aiMsgIdx, endResult.cleanContent || '面试已结束')
+                onFinish(endResult.data)
+              } else {
+                updateMessage(aiMsgIdx, sanitizeEndMarker(streamState.aiContent) || '面试已结束')
+                onFinish(json.report ? buildFinishData(json.report) : {})
+              }
               streamState.endDetected = true
             }
           } catch {

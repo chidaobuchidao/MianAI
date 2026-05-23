@@ -36,12 +36,18 @@ async function request<T>(method: string, url: string, data?: unknown, isFormDat
 
   if (response.status === 401) {
     userStore.clearUser()
+    window.location.href = '/login'
     throw new Error('Unauthorized')
   }
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(errorText || `HTTP ${response.status}`)
+    let msg = errorText || `HTTP ${response.status}`
+    try {
+      const errJson = JSON.parse(errorText)
+      msg = errJson.message || errJson.error || msg
+    } catch {}
+    throw new Error(msg)
   }
 
   const json = await response.json()

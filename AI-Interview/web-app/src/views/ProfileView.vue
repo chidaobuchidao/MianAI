@@ -27,6 +27,15 @@
         </div>
       </div>
 
+      <!-- Quota -->
+      <div class="quota-banner" v-if="quota && !quota.isAdmin && !quota.hasApiKey">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>剩余免费次数：<strong>{{ quota.quotaRemaining ?? 0 }}</strong> 次 · <a href="#" @click.prevent="showAiKey = true">配置 API Key</a> 后无限</span>
+      </div>
+      <div class="quota-banner quota-banner--ok" v-else-if="quota && !quota.isAdmin && quota.hasApiKey">
+        <span>已配置个人 API Key，不限使用次数</span>
+      </div>
+
       <!-- Menu -->
       <div class="menu-group">
         <button class="menu-item" @click="$router.push('/interview/history')">
@@ -61,6 +70,16 @@
       </div>
 
       <div class="menu-group">
+        <button class="menu-item" @click="$router.push('/admin')" v-if="quota?.isAdmin">
+          <span class="menu-item__label">管理后台</span>
+          <span class="menu-item__hint menu-item__hint--ok">Admin</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="menu-group">
         <button class="menu-item menu-item--danger" @click="handleLogout">
           <span class="menu-item__label">退出登录</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2">
@@ -82,6 +101,10 @@
           <input class="modal-input" v-model="apiKey" placeholder="API Key" type="password" />
           <p class="modal-hint">{{ aiTab === 'deepseek' ? '使用 DeepSeek API，模型 deepseek-chat' : '使用千问 API，模型 qwen-turbo' }}</p>
 
+          <a class="modal-apikey-link" href="https://platform.deepseek.com/usage" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            ApiKey 获取（DeepSeek 控制台）
+          </a>
           <div class="modal-actions">
             <button class="btn btn--ghost" @click="showAiKey = false">取消</button>
             <button class="btn btn--dark" @click="saveAiKey">保存</button>
@@ -105,23 +128,31 @@ const showAiKey = ref(false)
 const aiKeyConfigured = ref(false)
 const aiTab = ref<'deepseek' | 'qwen'>('deepseek')
 const apiKey = ref('')
+const quota = ref<{ hasApiKey: boolean; isAdmin: boolean; dailyQuota: number; quotaUsed: number; quotaRemaining: number } | null>(null)
 
 interface Stats { practiceCount: number; interviewCount: number; wrongCount: number }
 const stats = ref<Stats>({ practiceCount: 0, interviewCount: 0, wrongCount: 0 })
 
-onMounted(async () => {
+async function fetchProfileData() {
   try {
-    const [sRes, aRes] = await Promise.all([
+    const [sRes, aRes, qRes] = await Promise.all([
       get<Stats>('/api/user/stats'),
-      get<{ provider: string; model: string }>('/api/user/ai-config')
+      get<{ provider: string; model: string }>('/api/user/ai-config'),
+      get<{ hasApiKey: boolean; isAdmin: boolean; dailyQuota: number; quotaUsed: number; quotaRemaining: number }>('/api/user/quota')
     ])
     if (sRes.data) stats.value = sRes.data
     if (aRes.data) {
       aiKeyConfigured.value = true
       aiTab.value = (aRes.data.provider === 'qwen' ? 'qwen' : 'deepseek')
     }
+    if (qRes.data) {
+      quota.value = qRes.data
+      userStore.setAdmin(qRes.data.isAdmin === true)
+    }
   } catch {}
-})
+}
+
+onMounted(fetchProfileData)
 
 async function saveAiKey() {
   if (!apiKey.value.trim()) return
@@ -247,5 +278,31 @@ function handleLogout() {
 .modal-actions .btn { padding: 10px 24px; border-radius: 100px; font-size: 14px; cursor: pointer; border: none; }
 .modal-actions .btn--ghost { background: var(--bg-surface); color: var(--text-muted); }
 .modal-actions .btn--dark { background: var(--bg-dark); color: #fff; }
+
+.modal-apikey-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-bottom: 14px;
+  font-size: 12px; color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.modal-apikey-link:hover { opacity: 0.8; }
+
+.quota-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  margin: 0 0 16px;
+  background: rgba(217,117,10,0.06);
+  border: 1px solid rgba(217,117,10,0.12);
+  border-radius: var(--radius-md);
+  font-size: 13px; color: var(--accent); line-height: 1.5;
+}
+.quota-banner strong { color: var(--text-main); }
+.quota-banner a { color: var(--accent); font-weight: 600; }
+.quota-banner--ok {
+  background: rgba(34,197,94,0.05);
+  border-color: rgba(34,197,94,0.12);
+  color: var(--color-success);
+}
 
 </style>

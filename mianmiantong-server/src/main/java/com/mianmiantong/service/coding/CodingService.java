@@ -10,6 +10,8 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class CodingService {
@@ -19,18 +21,20 @@ public class CodingService {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public Map<String, Object> runCode(String code, String language) {
+    public Map<String, Object> runCode(String code, String language, String stdin) {
+        HttpURLConnection conn = null;
         try {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("language", getPistonLanguage(language));
             body.put("version", getPistonVersion(language));
-            body.put("files", List.of(Map.of("name", getFileName(language), "content", code)));
+            body.put("files", List.of(Map.of("name", resolveFileName(language, code), "content", code)));
+            body.put("stdin", stdin != null && !stdin.isEmpty() ? stdin : "\n");
             body.put("run_timeout", 3000);
 
             String json = mapper.writeValueAsString(body);
 
             var url = URI.create(pistonUrl + "/api/v2/execute").toURL();
-            var conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
@@ -43,26 +47,46 @@ public class CodingService {
 
             int status = conn.getResponseCode();
             var inputStream = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            if (inputStream == null) {
+                return Map.of("error", "Piston 无响应, HTTP " + status);
+            }
             String response = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
 
             if (response != null && !response.isEmpty()) {
                 return mapper.readValue(response, Map.class);
             }
             return Map.of("error", "空响应, HTTP " + status);
+        } catch (java.net.SocketTimeoutException e) {
+            return Map.of("error", "Piston 执行超时");
+        } catch (java.net.ConnectException e) {
+            return Map.of("error", "Piston 服务不可达");
         } catch (Exception e) {
             return Map.of("error", "执行失败: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 
-    private String getFileName(String lang) {
+    private static final Pattern JAVA_CLASS_PATTERN = Pattern.compile("public\\s+class\\s+(\\w+)");
+
+    private String resolveFileName(String lang, String code) {
         return switch (lang) {
-            case "java" -> "Main.java";
+            case "java" -> resolveJavaFileName(code);
             case "python" -> "main.py";
             case "javascript", "js" -> "main.js";
             case "cpp", "c" -> "main.cpp";
             case "go" -> "main.go";
             default -> "code.txt";
         };
+    }
+
+    /** Extract the public class name from Java source to match filename requirement. */
+    private String resolveJavaFileName(String code) {
+        if (code != null) {
+            Matcher m = JAVA_CLASS_PATTERN.matcher(code);
+            if (m.find()) return m.group(1) + ".java";
+        }
+        return "Solution.java";
     }
 
     private String getPistonLanguage(String lang) {

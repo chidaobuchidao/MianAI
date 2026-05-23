@@ -4,12 +4,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mianmiantong.entity.resume.Resume;
 import com.mianmiantong.entity.resume.ResumeAnalysis;
+import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.mapper.resume.ResumeAnalysisMapper;
 import com.mianmiantong.mapper.resume.ResumeMapper;
+import com.mianmiantong.mapper.user.UserAiConfigMapper;
+import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.service.ai.AiService;
 import com.mianmiantong.service.document.DocumentAiService;
 import com.mianmiantong.service.document.DocumentParseResult;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -25,6 +29,12 @@ public class ResumeAnalysisService {
     private final AiService aiService;
     private final DocumentAiService documentAiService;
     private final ObjectMapper objectMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private UserAiConfigMapper aiConfigMapper;
 
     /** Phase 1: 快速评分，轻量快速 */
     private static final String QUICK_PROMPT = """
@@ -394,9 +404,29 @@ public class ResumeAnalysisService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ResumeAnalysis>()
                         .eq(ResumeAnalysis::getResumeId, resumeId));
 
-        // 解析已完成但无分析记录 → 自动触发快速评分（前端轮询 GET 即可，无需额外 POST）
+        // 解析已完成但无分析记录 → 自动触发快速评分（先校验配额再消耗）
         if (resume.getParseStatus() == 1 && analysis == null) {
             log.info("getReport自动触发快速评分: resumeId={}", resumeId);
+            Long uid = resume.getUserId();
+            if (uid != null && !JwtAuthFilter.isAdmin()) {
+                var cfg = aiConfigMapper.selectById(uid);
+                boolean hasOwnKey = cfg != null && cfg.getApiKey() != null && !cfg.getApiKey().isBlank();
+                if (!hasOwnKey) {
+                    var user = userMapper.selectById(uid);
+                    int daily = user != null && user.getDailyQuota() != null ? user.getDailyQuota() : 10;
+                    int used = user != null && user.getQuotaUsed() != null ? user.getQuotaUsed() : 0;
+                    if (used >= daily) {
+                        log.warn("配额不足，拒绝自动分析: userId={}", uid);
+                        Map<String, Object> quotaErr = new LinkedHashMap<>();
+                        quotaErr.put("resumeId", resumeId);
+                        quotaErr.put("overallScore", null);
+                        quotaErr.put("suggestion", "今日免费次数已用完，请配置 AI API Key 后继续使用");
+                        quotaErr.put("deepStatus", -1);
+                        return quotaErr;
+                    }
+                    userMapper.incrementQuota(uid, 1);
+                }
+            }
             analyzeQuickAsync(resumeId);
         }
 

@@ -10,41 +10,114 @@
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <span class="page-head__title">面试报告</span>
-        <div style="width:36px" />
+
+        <!-- Always show tabs; coding tab is dimmed when no data -->
+        <div class="page-head__tabs">
+          <button
+            class="page-head__tab"
+            :class="{ 'page-head__tab--active': activeTab === 'interview' }"
+            @click="activeTab = 'interview'"
+          >面试报告</button>
+          <button
+            class="page-head__tab"
+            :class="{ 'page-head__tab--active': activeTab === 'coding', 'page-head__tab--empty': !hasCodingReport }"
+            :disabled="!hasCodingReport"
+            @click="hasCodingReport && (activeTab = 'coding')"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+            笔试报告
+          </button>
+        </div>
+        <div :style="{ width: '36px' }" />
       </div>
 
-      <div class="score-header">
-        <div class="score-ring">
-          <svg viewBox="0 0 72 72">
-            <circle class="score-ring__bg" cx="36" cy="36" r="30"/>
-            <circle class="score-ring__fg" :class="ringColor" cx="36" cy="36" r="30"
-              :stroke-dasharray="188.5" :stroke-dashoffset="188.5 - (188.5 * (report.overallScore || 0) / 10)"/>
-          </svg>
-          <div class="score-ring__center">
-            <span class="score-ring__num">{{ report.overallScore }}</span>
-            <span class="score-ring__max">/10</span>
+      <!-- ====== 面试报告 ====== -->
+      <template v-if="activeTab === 'interview'">
+        <div class="score-header">
+          <div class="score-ring">
+            <svg viewBox="0 0 72 72">
+              <circle class="score-ring__bg" cx="36" cy="36" r="30"/>
+              <circle class="score-ring__fg" :class="ringColor" cx="36" cy="36" r="30"
+                :stroke-dasharray="188.5" :stroke-dashoffset="188.5 - (188.5 * (report.overallScore || 0) / 10)"/>
+            </svg>
+            <div class="score-ring__center">
+              <span class="score-ring__num">{{ report.overallScore }}</span>
+              <span class="score-ring__max">/10</span>
+            </div>
+          </div>
+          <div class="score-header__text">
+            <span class="score-header__verdict">{{ verdict }}</span>
+            <p class="score-header__summary">{{ report.feedback }}</p>
           </div>
         </div>
-        <div class="score-header__text">
-          <span class="score-header__verdict">{{ verdict }}</span>
-          <p class="score-header__summary">{{ report.feedback }}</p>
-        </div>
-      </div>
 
-      <div class="diag-section" v-if="dimArray.length > 0">
-        <div class="dim-card" v-for="(dim, i) in dimArray" :key="i">
-          <span class="dim-card__title">{{ dim.name }} · {{ dim.score }}/10</span>
-          <p class="dim-card__comment">{{ dim.comment }}</p>
+        <div class="diag-section" v-if="dimArray.length > 0">
+          <div class="dim-card" v-for="(dim, i) in dimArray" :key="i">
+            <span class="dim-card__title">{{ dim.name }} · {{ dim.score }}/10</span>
+            <p class="dim-card__comment">{{ dim.comment }}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="diag-section" v-if="report.suggestion">
-        <div class="dim-card">
-          <span class="dim-card__title">提升建议</span>
-          <p class="dim-card__comment">{{ report.suggestion }}</p>
+        <div class="diag-section" v-if="report.suggestion">
+          <div class="dim-card dim-card--suggestion">
+            <span class="dim-card__title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              提升建议
+            </span>
+            <p class="dim-card__comment">{{ report.suggestion }}</p>
+          </div>
         </div>
-      </div>
+      </template>
+
+      <!-- ====== 笔试报告 ====== -->
+      <template v-if="activeTab === 'coding'">
+        <template v-if="codingReview">
+          <div class="score-header">
+            <div class="score-ring">
+              <svg viewBox="0 0 72 72">
+                <circle class="score-ring__bg" cx="36" cy="36" r="30"/>
+                <circle class="score-ring__fg score-ring__fg--coding" cx="36" cy="36" r="30"
+                  :stroke-dasharray="188.5" :stroke-dashoffset="188.5 - (188.5 * (codingReview.score || 0) / 10)"/>
+              </svg>
+              <div class="score-ring__center">
+                <span class="score-ring__num">{{ codingReview.score }}</span>
+                <span class="score-ring__max">/10</span>
+              </div>
+            </div>
+            <div class="score-header__text">
+              <span class="score-header__verdict">{{ codingVerdict }}</span>
+              <p class="score-header__summary">{{ codingReview.feedback }}</p>
+            </div>
+          </div>
+
+          <div class="diag-section" v-if="codingDims.length > 0">
+            <div class="dim-card dim-card--coding" v-for="(dim, i) in codingDims" :key="i">
+              <span class="dim-card__title">{{ dim.name }} · {{ dim.score }}/10</span>
+              <p class="dim-card__comment">{{ dim.comment }}</p>
+            </div>
+          </div>
+
+          <div class="diag-section" v-if="codingReview.suggestion">
+            <div class="dim-card dim-card--coding-suggestion">
+              <span class="dim-card__title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                提升建议
+              </span>
+              <p class="dim-card__comment">{{ codingReview.suggestion }}</p>
+            </div>
+          </div>
+        </template>
+
+        <div class="coding-empty" v-else>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="coding-empty__icon">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <p class="coding-empty__title">未进行笔试环节</p>
+          <p class="coding-empty__desc">本次面试没有编程实战记录</p>
+        </div>
+      </template>
     </div>
 
     <div class="page__inner" v-else>
@@ -62,7 +135,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { get } from '@/utils/request'
 import SkeletonBar from '@/components/SkeletonBar.vue'
-import { sanitizeEndMarker, safeParseDims, type DimItem } from '@/utils/sanitize'
+import { sanitizeEndMarker, safeParseDims, extractBalancedJson, fixJsonString, scoreToVerdict, scoreToRingClass, type DimItem } from '@/utils/sanitize'
+import { type CodingReview } from '@/composables/useInterviewStream'
 
 interface Report {
   overallScore: number | null
@@ -75,7 +149,11 @@ interface Report {
 
 const route = useRoute()
 const report = ref<Report | null>(null)
+const codingReview = ref<CodingReview | null>(null)
 const loading = ref(true)
+const activeTab = ref<'interview' | 'coding'>('interview')
+
+const hasCodingReport = computed(() => codingReview.value != null)
 
 function loadFromStorage() {
   const score = sessionStorage.getItem('interviewScore')
@@ -89,6 +167,33 @@ function loadFromStorage() {
   } as Report
 }
 
+function loadCodingReview() {
+  const raw = sessionStorage.getItem('interviewCodingReview')
+  if (!raw) return null
+  try { return JSON.parse(raw) as CodingReview } catch { return null }
+}
+
+function extractCodingReviewFromMessages(messagesRaw: any): CodingReview | null {
+  if (!messagesRaw) return null
+  const text = typeof messagesRaw === 'string'
+    ? messagesRaw
+    : Array.isArray(messagesRaw) ? messagesRaw.map((m: any) => m.content || '').join('\n') : null
+  if (!text) return null
+  const idx = text.indexOf('[笔试结束]')
+  if (idx === -1) return null
+  const result = extractBalancedJson(text, idx + '[笔试结束]'.length)
+  if (!result) return null
+  try {
+    const json = JSON.parse(fixJsonString(result.json))
+    return {
+      score: Number(json.score) || 0,
+      feedback: json.feedback || '',
+      dimensions: Array.isArray(json.dimensions) ? json.dimensions : undefined,
+      suggestion: json.suggestion || ''
+    }
+  } catch { return null }
+}
+
 async function fetchReport() {
   const id = route.query.id
   if (!id) { loading.value = false; return }
@@ -96,16 +201,13 @@ async function fetchReport() {
   const cached = loadFromStorage()
   if (cached) {
     report.value = cached
-    loading.value = false
   }
 
-  // Retry up to 3 times (backend may still be saving the report)
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt))
     try {
       const r = await get<Report>(`/api/interview/${id}`)
       const raw = r.data as any
-      // Check if report data is actually populated
       if (raw && (raw.feedback || raw.overallScore != null)) {
         report.value = {
           overallScore: raw.overallScore ?? 0,
@@ -114,6 +216,14 @@ async function fetchReport() {
           dimensions: safeParseDims(raw.dimensions),
           position: raw.position,
           createTime: raw.createTime
+        }
+        // Extract coding review from messages if not already loaded via sessionStorage
+        if (!codingReview.value) {
+          const extracted = extractCodingReviewFromMessages(raw.messages)
+          if (extracted) {
+            codingReview.value = extracted
+            sessionStorage.setItem('interviewCodingReview', JSON.stringify(extracted))
+          }
         }
         loading.value = false
         sessionStorage.removeItem('interviewScore')
@@ -127,7 +237,15 @@ async function fetchReport() {
   loading.value = false
 }
 
-onMounted(() => { fetchReport() })
+onMounted(() => {
+  codingReview.value = loadCodingReview()
+  fetchReport()
+})
+
+const codingDims = computed(() => {
+  if (!codingReview.value?.dimensions) return []
+  return Array.isArray(codingReview.value.dimensions) ? codingReview.value.dimensions : []
+})
 
 const dimArray = computed(() => {
   if (!report.value) return [] as DimItem[]
@@ -135,22 +253,9 @@ const dimArray = computed(() => {
   return Array.isArray(d) ? d : []
 })
 
-const verdict = computed(() => {
-  if (!report.value) return ''
-  const s = report.value.overallScore
-  if (s >= 8) return '优秀'
-  if (s >= 6) return '良好'
-  if (s >= 4) return '一般'
-  return '需提升'
-})
-
-const ringColor = computed(() => {
-  if (!report.value) return 'score-ring__fg--muted'
-  const s = report.value.overallScore
-  if (s >= 8) return 'score-ring__fg--high'
-  if (s >= 6) return 'score-ring__fg--mid'
-  return 'score-ring__fg--low'
-})
+  const verdict = computed(() => report.value ? scoreToVerdict(report.value.overallScore ?? 0) : '')
+  const codingVerdict = computed(() => codingReview.value ? scoreToVerdict(codingReview.value.score) : '')
+  const ringColor = computed(() => report.value ? scoreToRingClass(report.value.overallScore ?? 0) : 'score-ring__fg--muted')
 </script>
 
 <style scoped>
@@ -165,10 +270,46 @@ const ringColor = computed(() => {
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-main);
+  flex-shrink: 0;
 }
-.page-head__title {
-  font-family: var(--font-serif);
-  font-size: 18px; font-weight: 600;
+
+/* ====== Tab bar ====== */
+.page-head__tabs {
+  display: flex; gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  padding: 3px;
+}
+.page-head__tab {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-light);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.page-head__tab:hover:not(:disabled) {
+  color: var(--text-main);
+}
+.page-head__tab--active {
+  background: var(--bg-paper);
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+}
+.page-head__tab--empty {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.page-head__tab--empty:hover {
+  color: var(--text-light);
+}
+.page-head__tab svg {
+  flex-shrink: 0;
 }
 
 /* Circular score ring */
@@ -231,4 +372,48 @@ const ringColor = computed(() => {
   border-radius: var(--radius-lg); font-size: 15px; font-weight: 500;
   border: none; cursor: pointer;
 }
+
+/* ====== 笔试报告 ====== */
+.score-ring__fg--coding { stroke: #6B8299; }
+
+.dim-card--coding {
+  border-left: 3px solid #6B8299;
+}
+.dim-card--coding-suggestion {
+  border-left: 3px solid #6B8299;
+}
+.dim-card--coding-suggestion .dim-card__title {
+  display: flex; align-items: center; gap: 4px;
+}
+.dim-card--coding-suggestion .dim-card__title svg {
+  color: #6B8299;
+}
+
+.dim-card--suggestion {
+  border-left: 3px solid var(--accent);
+}
+.dim-card--suggestion .dim-card__title {
+  display: flex; align-items: center; gap: 4px;
+}
+.dim-card--suggestion .dim-card__title svg {
+  color: var(--accent);
+}
+
+.coding-empty {
+  text-align: center;
+  padding: 80px 20px;
+}
+.coding-empty__icon {
+  color: #A0B0C0;
+  margin-bottom: 16px;
+}
+.coding-empty__title {
+  font-size: 16px; font-weight: 600;
+  color: #6B8299;
+  margin-bottom: 6px;
+}
+.coding-empty__desc {
+  font-size: 13px; color: #888;
+}
+
 </style>

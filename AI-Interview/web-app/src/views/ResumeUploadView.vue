@@ -77,6 +77,8 @@
         <span>{{ submitting ? 'AI 分析中...' : '开始分析' }}</span>
       </button>
 
+      <p class="quota-error" v-if="quotaError" @click="quotaError = ''">{{ quotaError }}</p>
+
       <!-- Folder history section -->
       <div class="history-section" v-if="hasHistory">
         <div class="history-divider" />
@@ -95,15 +97,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { get, postForm } from '@/utils/request'
+import { useQuota } from '@/composables/useQuota'
 import GlareCard from '@/components/GlareCard.vue'
 import Folder from '@/components/Folder.vue'
 
 const router = useRouter()
+const { fetchQuota, checkQuota } = useQuota()
 const fileInput = ref<HTMLInputElement>()
 const file = ref<File | null>(null)
 const jobDescription = ref('')
 const resumeModel = ref('deepseek-v4-flash')
 const submitting = ref(false)
+const quotaError = ref('')
 const hasHistory = ref(false)
 
 const fileIconColor = computed(() => {
@@ -173,7 +178,16 @@ function onHistoryPaperClick(index: number) {
 
 async function submitResume() {
   if (!file.value || submitting.value) return
+
+  await fetchQuota()
+  const qc = checkQuota(1, '今日剩余配额不足，请明日再试或者自行添加ApiKey')
+  if (!qc.ok) {
+    quotaError.value = qc.msg!
+    return
+  }
+
   submitting.value = true
+  quotaError.value = ''
   try {
     const fd = new FormData()
     fd.append('file', file.value)
@@ -434,7 +448,19 @@ async function submitResume() {
 }
 
 .submit-btn {
-  margin-bottom: 48px;
+  margin-bottom: 12px;
+}
+
+.quota-error {
+  text-align: center;
+  font-size: 13px;
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  margin-bottom: 32px;
+  cursor: pointer;
+  line-height: 1.5;
 }
 
 /* History folder section */

@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>论文工具 —— UI 设计稿 | Mianmian.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Georgia&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==================== Design Tokens ==================== */
+    :root {
+      --bg-canvas: #F3EFE8;
+      --bg-paper: #FDFCFB;
+      --bg-surface: #F7F7F5;
+      --bg-dark: #141413;
+
+      --text-main: #141413;
+      --text-muted: #4A4A4A;
+      --text-light: #888888;
+
+      --accent: #D9750A;
+      --color-success: #22C55E;
+      --color-danger: #EF4444;
+      --color-warning: #F59E0B;
+
+      --border-light: rgba(0, 0, 0, 0.06);
+      --border-medium: rgba(0, 0, 0, 0.10);
+
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.02);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 16px 32px rgba(0,0,0,0.10);
+      --shadow-xl: 0 24px 48px rgba(0,0,0,0.12);
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      --font-serif: 'Georgia', 'Noto Serif SC', serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      padding: 60px 40px;
+    }
+
+    /* ==================== Gallery Layout ==================== */
+    .gallery-title {
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: 36px;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .gallery-subtitle {
+      text-align: center;
+      color: var(--text-light);
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .gallery-section {
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: 22px;
+      margin: 80px 0 12px;
+      letter-spacing: -0.5px;
+      color: var(--text-muted);
+    }
+    .gallery-section-desc {
+      text-align: center;
+      color: var(--text-light);
+      margin-bottom: 40px;
+      font-size: 13px;
+    }
+    .mockup-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 36px;
+      justify-content: center;
+      margin-bottom: 80px;
+    }
+
+    /* ==================== Desktop Mockup Frame ==================== */
+    .mockup-desktop {
+      width: 100%;
+      max-width: 1200px;
+      height: 720px;
+      margin: 0 auto 48px;
+      background: var(--bg-paper);
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.1);
+      border: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mockup-desktop.wide { max-width: 1280px; height: 760px; }
+    .mockup-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: -36px;
+      margin-bottom: 60px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* ==================== Header ==================== */
+    .header {
+      padding: 18px 24px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      width: 32px; height: 32px;
+      border-radius: 8px; border: 1px solid var(--border-light);
+      background: var(--bg-paper);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-muted); cursor: pointer;
+    }
+    .brand {
+      font-family: var(--font-serif);
+      font-size: 16px; font-weight: 600; letter-spacing: -0.5px;
+    }
+    .header-tag {
+      font-size: 10px; font-weight: 600; color: var(--accent);
+      background: rgba(217,117,10,0.08);
+      padding: 3px 10px; border-radius: 100px; letter-spacing: 2px;
+    }
+
+    /* ==================== Hero ==================== */
+    .hero { padding: 8px 24px 20px; flex-shrink: 0; }
+    .hero-accent {
+      width: 28px; height: 4px;
+      background: var(--accent); border-radius: 2px;
+      margin-bottom: 12px;
+    }
+    .hero-label {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      letter-spacing: 3px; text-transform: uppercase;
+      display: block; margin-bottom: 8px;
+    }
+    .hero-title {
+      font-family: var(--font-serif);
+      font-size: 28px; line-height: 1.15; letter-spacing: -1px;
+      margin-bottom: 6px; font-weight: 600;
+    }
+    .hero-sub {
+      font-size: 13px; color: var(--text-muted); line-height: 1.6;
+      display: block; max-width: 500px;
+    }
+
+    /* ==================== Func Chips ==================== */
+    .func-chips {
+      padding: 0 24px 18px; display: flex; gap: 10px; flex-shrink: 0;
+    }
+    .func-chip {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 12px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .func-chip.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(217,117,10,0.12);
+    }
+    .func-chip-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .func-chip-icon.amber { background: rgba(217,117,10,0.08); }
+
+    /* ==================== SVG Icon Styles ==================== */
+    .icon-svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .icon-svg-sm { width: 14px; height: 14px; flex-shrink: 0; }
+    .icon-svg-lg { width: 20px; height: 20px; flex-shrink: 0; }
+    .icon-stroke-accent { stroke: var(--accent); }
+    .icon-stroke-muted { stroke: var(--text-muted); }
+    .icon-stroke-success { stroke: var(--color-success); }
+    .icon-fill-accent { fill: var(--accent); }
+    .icon-fill-none { fill: none; }
+
+    /* ==================== Main Content Area ==================== */
+    .main-area {
+      flex: 1; display: flex; gap: 0; overflow: hidden;
+      border-top: 1px solid var(--border-light);
+      min-height: 0;
+    }
+
+    /* ==================== Editor Panel ==================== */
+    .editor-panel {
+      flex: 1; display: flex; flex-direction: column;
+      border-right: 1px solid var(--border-light);
+    }
+    .editor-panel.right { border-right: none; }
+    .panel-header {
+      padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border-light);
+      flex-shrink: 0;
+    }
+    .panel-title {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+    .panel-actions { display: flex; gap: 8px; }
+    .panel-btn {
+      font-size: 11px; padding: 4px 12px;
+      border-radius: 6px; border: 1px solid var(--border-light);
+      background: var(--bg-paper); color: var(--text-muted);
+      cursor: pointer; font-family: var(--font-sans);
+    }
+    .panel-btn.accent {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+
+    .editor-body {
+      flex: 1; padding: 16px; overflow-y: auto;
+    }
+    .editor-textarea {
+      width: 100%; height: 100%; border: none; resize: none;
+      font-family: var(--font-serif); font-size: 14px; line-height: 1.8;
+      color: var(--text-main); background: transparent; outline: none;
+      padding: 8px 0;
+    }
+    .editor-textarea::placeholder {
+      color: var(--text-light); font-family: var(--font-sans); font-size: 13px;
+    }
+    .char-count {
+      position: absolute; bottom: 12px; right: 16px;
+      font-size: 11px; color: var(--text-light);
+    }
+
+    /* ==================== Result Panel ==================== */
+    .result-body {
+      flex: 1; padding: 16px; overflow-y: auto;
+      font-family: var(--font-serif); font-size: 14px; line-height: 1.8;
+      color: var(--text-main);
+    }
+    .result-body.placeholder {
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-light); font-family: var(--font-sans); font-size: 13px;
+    }
+    .diff-added {
+      background: rgba(34,197,94,0.08);
+      border-radius: 2px; padding: 0 2px;
+    }
+    .diff-removed {
+      background: rgba(239,68,68,0.06);
+      text-decoration: line-through;
+      border-radius: 2px; padding: 0 2px;
+    }
+
+    /* ==================== Control Bar ==================== */
+    .control-bar {
+      padding: 12px 24px; display: flex; gap: 12px; align-items: center;
+      border-top: 1px solid var(--border-light); flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .control-select {
+      padding: 7px 32px 7px 12px;
+      border-radius: 8px; border: 1px solid var(--border-light);
+      background: var(--bg-paper); font-size: 12px;
+      font-family: var(--font-sans); color: var(--text-main);
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .control-input {
+      padding: 7px 12px; border-radius: 8px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-paper); font-size: 12px;
+      font-family: var(--font-sans); color: var(--text-main);
+      flex: 1; max-width: 180px;
+    }
+    .control-btn {
+      padding: 8px 24px; border-radius: 10px; border: none;
+      background: var(--bg-dark); color: #fff;
+      font-size: 13px; font-weight: 600;
+      font-family: var(--font-sans); cursor: pointer;
+    }
+    .control-btn:hover { opacity: 0.9; }
+    .control-btn.accent { background: var(--accent); }
+    .control-btn.secondary {
+      background: var(--bg-surface); color: var(--text-main);
+      border: 1px solid var(--border-light);
+    }
+    .control-spacer { flex: 1; }
+
+    /* ==================== Risk Card ==================== */
+    .risk-card {
+      margin: 0 24px 12px; padding: 16px 20px;
+      background: var(--bg-paper); border: 1px solid var(--border-light);
+      border-radius: 14px; box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+    }
+    .risk-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+    }
+    .risk-score-badge {
+      padding: 6px 16px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; color: #fff;
+    }
+    .risk-score-badge.high { background: var(--color-danger); }
+    .risk-score-badge.medium { background: var(--color-warning); }
+    .risk-score-badge.low { background: var(--color-success); }
+
+    .risk-bar {
+      height: 6px; background: var(--bg-surface);
+      border-radius: 3px; overflow: hidden; margin-bottom: 10px;
+    }
+    .risk-bar-fill {
+      height: 100%; border-radius: 3px; transition: width 0.6s ease;
+    }
+    .risk-bar-fill.high { background: var(--color-danger); width: 75%; }
+    .risk-bar-fill.medium { background: var(--color-warning); width: 45%; }
+    .risk-bar-fill.low { background: var(--color-success); width: 12%; }
+
+    .risk-issues { list-style: none; }
+    .risk-issue {
+      font-size: 12px; color: var(--text-muted);
+      padding: 4px 0; display: flex; align-items: flex-start; gap: 6px;
+    }
+    .risk-issue-dot {
+      width: 6px; height: 6px; border-radius: 50%; margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .risk-issue-dot.error { background: var(--color-danger); }
+    .risk-issue-dot.warning { background: var(--color-warning); }
+
+    /* ==================== Dual Input ==================== */
+    .dual-input {
+      display: flex; gap: 0; flex: 1; min-height: 0;
+    }
+    .dual-input .editor-panel { flex: 1; border-right: 1px solid var(--border-light); }
+    .dual-input .editor-panel:last-child { border-right: none; }
+
+    /* ==================== Match Fragment ==================== */
+    .match-fragment {
+      padding: 6px 10px; margin: 4px 0;
+      background: rgba(239,68,68,0.04); border-left: 3px solid var(--color-danger);
+      font-size: 12px; color: var(--text-muted);
+      border-radius: 0 6px 6px 0;
+      font-family: var(--font-mono); line-height: 1.5;
+    }
+
+    /* ==================== Export Dropdown ==================== */
+    .export-dropdown {
+      position: relative; display: inline-block;
+    }
+    .export-menu {
+      position: absolute; bottom: 100%; right: 0; margin-bottom: 6px;
+      background: var(--bg-paper); border: 1px solid var(--border-medium);
+      border-radius: 10px; box-shadow: var(--shadow-lg);
+      min-width: 200px; overflow: hidden; z-index: 10;
+    }
+    .export-menu-item {
+      padding: 10px 14px; font-size: 12px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .export-menu-item:last-child { border-bottom: none; }
+    .export-menu-item:hover { background: var(--bg-surface); }
+    .export-menu-item .badge {
+      font-size: 10px; padding: 2px 8px; border-radius: 100px;
+      background: rgba(217,117,10,0.08); color: var(--accent);
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    /* ==================== Step Flow ==================== */
+    .step-circle {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+      font-family: var(--font-serif);
+      font-size: 20px; font-weight: 600;
+    }
+    .step-circle.one { background: rgba(217,117,10,0.08); color: var(--accent); }
+    .step-circle.two { background: rgba(217,117,10,0.14); color: var(--accent); }
+    .step-circle.three { background: rgba(34,197,94,0.08); color: var(--color-success); }
+    .step-arrow {
+      display: flex; align-items: center; padding-top: 16px;
+      color: var(--accent); font-size: 20px;
+    }
+
+    /* ==================== Home Func Icons ==================== */
+    .func-icon-box {
+      width: 40px; height: 40px;
+      background: var(--bg-surface); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .func-icon-amber { background: rgba(217,117,10,0.08); }
+    .func-tag {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      background: rgba(217,117,10,0.08);
+      padding: 3px 10px; border-radius: 100px;
+    }
+
+    /* ==================== Hero Card (Home) ==================== */
+    .hero-card {
+      position: relative; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(20,20,19,0.12);
+      height: 280px;
+    }
+    .hero-card-bg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0.38; object-fit: cover;
+    }
+    .hero-card-gradient {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(20,20,19,0.15) 0%, rgba(20,20,19,0.93) 100%);
+    }
+    .hero-card-inner {
+      position: relative; z-index: 1; height: 100%;
+      padding: 24px; display: flex; flex-direction: column;
+    }
+    .hero-card-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero-card-spacer { flex: 1; }
+    .hero-card-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .hero-card-title {
+      font-size: 20px; font-weight: 500; color: #fff;
+      display: block; margin-bottom: 4px; letter-spacing: -0.5px;
+    }
+    .hero-card-desc {
+      font-size: 12px; color: rgba(255,255,255,0.45); display: block;
+    }
+    .hero-card-circle {
+      width: 32px; height: 32px; background: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Func Grid (Home) */
+    .func-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; padding: 0 20px; margin-bottom: 32px; flex-shrink: 0;
+    }
+    .func-card {
+      background: var(--bg-paper);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 20px 16px 18px;
+      box-shadow: var(--shadow-sm);
+      position: relative; overflow: hidden;
+    }
+    .func-card.accent::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent); border-radius: 0 0 2px 2px;
+    }
+    .func-card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .func-title {
+      font-size: 15px; font-weight: 500; display: block; margin-bottom: 2px;
+    }
+    .func-desc {
+      font-size: 12px; color: var(--text-light); line-height: 1.4;
+    }
+
+    /* Section */
+    .section { padding: 0 20px; margin-bottom: 28px; flex-shrink: 0; }
+    .section-head {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .section-line {
+      width: 4px; height: 16px; background: var(--text-main); border-radius: 2px;
+    }
+    .section-label { font-size: 13px; font-weight: 600; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid var(--border-light);
+      padding: 6px 14px; border-radius: 100px;
+      font-size: 12px; background: var(--bg-paper);
+    }
+    .chip.active { background: var(--bg-dark); color: #fff; border-color: var(--bg-dark); }
+
+    /* Back header */
+    .back-header {
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+    }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-medium);
+      background: var(--bg-paper);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .avatar-letter {
+      font-family: var(--font-serif);
+      font-size: 14px; font-weight: 600;
+    }
+
+    /* Notice box */
+    .notice-box {
+      margin-top: 24px; padding: 12px 16px;
+      background: var(--bg-surface); border-radius: 10px;
+      font-size: 11px; color: var(--text-muted); text-align: center;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
+
+    /* Separator dot */
+    .sep-dot { color: var(--text-light); margin: 0 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <h1 class="gallery-title">论文工具 &mdash; UI 设计稿</h1>
+  <p class="gallery-subtitle">Mianmian. 论文工具集 &middot; Warm Tech 设计系统 &middot; 2026-05-23</p>
+
+  <!-- ============================================================ -->
+  <!-- 1. 学术润色 -->
+  <!-- ============================================================ -->
+  <h2 class="gallery-section">1. 学术润色</h2>
+  <p class="gallery-section-desc">精准优化论文表达，从语法修正到逻辑强化，全面提升论文质量</p>
+
+  <div class="mockup-desktop wide">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="back-btn">
+          <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <span class="brand">Mianmian.</span>
+        <span class="header-tag">论文工具</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="export-dropdown">
+          <button class="panel-btn">导出</button>
+          <div class="export-menu">
+            <div class="export-menu-item">
+              <svg class="icon-svg-sm icon-stroke-accent icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              保留原格式导出
+              <span class="badge">推荐</span>
+            </div>
+            <div class="export-menu-item">
+              <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              标准 Word 导出
+            </div>
+            <div class="export-menu-item">
+              <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              复制到剪贴板
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-accent"></div>
+      <span class="hero-label">学术润色</span>
+      <h2 class="hero-title">学术润色</h2>
+      <span class="hero-sub">精准优化论文表达，从语法修正到逻辑强化，全面提升论文质量</span>
+    </div>
+
+    <!-- Func Chips -->
+    <div class="func-chips">
+      <div class="func-chip active">
+        <div class="func-chip-icon amber">
+          <svg class="icon-svg icon-stroke-accent icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+        语法修正
+      </div>
+      <div class="func-chip">
+        <div class="func-chip-icon amber">
+          <svg class="icon-svg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        词汇优化
+      </div>
+      <div class="func-chip">
+        <div class="func-chip-icon amber">
+          <svg class="icon-svg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><polyline points="4 7 12 21 20 7"/><polyline points="7 13 17 13"/></svg>
+        </div>
+        逻辑强化
+      </div>
+      <div class="func-chip">
+        <div class="func-chip-icon amber">
+          <svg class="icon-svg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        全面润色
+      </div>
+      <div class="func-chip">
+        <div class="func-chip-icon amber">
+          <svg class="icon-svg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        翻译润色
+      </div>
+    </div>
+
+    <!-- Editor + Result -->
+    <div class="main-area">
+      <div class="editor-panel" style="flex:4.5;">
+        <div class="panel-header">
+          <span class="panel-title">原文输入</span>
+          <button class="panel-btn">上传 DOCX</button>
+        </div>
+        <div class="editor-body" style="position:relative;">
+          <textarea class="editor-textarea" placeholder="粘贴或拖拽上传论文正文...
+
+支持 .docx 文件直接导入，格式将自动保留"></textarea>
+          <span class="char-count">0 字</span>
+        </div>
+      </div>
+      <div class="editor-panel right" style="flex:5.5;">
+        <div class="panel-header">
+          <span class="panel-title">润色结果</span>
+          <span style="font-size:11px;color:var(--text-light);">实时预览</span>
+        </div>
+        <div class="result-body">
+          <p>近年来，<span class="diff-added">随着深度学习技术的迅速发展</span>，自然语言处理领域取得了<span class="diff-added">突破性进展</span>。<span class="diff-removed">很多</span><span class="diff-added">大量</span>研究<span class="diff-added">工作</span>聚焦于<span class="diff-added">基于 Transformer 架构的</span>预训练语言模型<span class="diff-added">的优化与应用</span>。</p>
+          <p style="margin-top:12px;">然而，<span class="diff-removed">目前</span><span class="diff-added">现有研究在</span>模型轻量化<span class="diff-added">部署</span>方面<span class="diff-removed">还是</span><span class="diff-added">仍</span>存在<span class="diff-added">若干</span>挑战。<span class="diff-removed">大家</span><span class="diff-added">学界</span>普遍<span class="diff-added">地</span>关注模型精度<span class="diff-removed">，很少</span><span class="diff-added">的提升，而对推理效率与资源消耗的系统性优化则关注不足</span>。</p>
+          <p style="margin-top:12px;color:var(--text-light);font-family:var(--font-sans);font-size:11px;">&rsaquo; 流式打字中...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Bar -->
+    <div class="control-bar">
+      <select class="control-select">
+        <option>章节正文</option><option>摘要</option><option>引言</option><option>结论</option><option>自定义段落</option>
+      </select>
+      <select class="control-select">
+        <option>全面润色</option><option>语法修正</option><option>词汇优化</option><option>逻辑强化</option>
+      </select>
+      <select class="control-select">
+        <option>标准模式</option><option>学术强化</option><option>结构重组</option><option>精炼压缩</option>
+      </select>
+      <input class="control-input" placeholder="主题/章节（可选）">
+      <span class="control-spacer"></span>
+      <button class="control-btn accent">开始润色</button>
+    </div>
+  </div>
+  <p class="mockup-label">学术润色 —— 三栏布局 + SSE 流式渲染 + Diff 对比</p>
+
+
+  <!-- ============================================================ -->
+  <!-- 2. 降AI检测 -->
+  <!-- ============================================================ -->
+  <h2 class="gallery-section">2. 降AI检测</h2>
+  <p class="gallery-section-desc">识别并弱化AI写作痕迹，使文本风格更接近真实学者写作</p>
+
+  <div class="mockup-desktop wide">
+    <div class="header">
+      <div class="header-left">
+        <div class="back-btn">
+          <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <span class="brand">Mianmian.</span>
+        <span class="header-tag">论文工具</span>
+      </div>
+      <div class="export-dropdown">
+        <button class="panel-btn">导出</button>
+        <div class="export-menu">
+          <div class="export-menu-item">
+            <svg class="icon-svg-sm icon-stroke-accent icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            保留原格式导出 <span class="badge">推荐</span>
+          </div>
+          <div class="export-menu-item">
+            <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            标准 Word 导出
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-accent"></div>
+      <span class="hero-label">降AI检测</span>
+      <h2 class="hero-title">降AI检测</h2>
+      <span class="hero-sub">识别并弱化AI写作模式，使文本风格更接近真实学者写作</span>
+    </div>
+
+    <!-- Risk Card -->
+    <div class="risk-card">
+      <div class="risk-header">
+        <span style="font-size:13px;font-weight:600;">AI 痕迹风险</span>
+        <span class="risk-score-badge high"高风险 &middot; 75%</span>
+      </div>
+      <div class="risk-bar"><div class="risk-bar-fill high"></div></div>
+      <ul class="risk-issues">
+        <li class="risk-issue">
+          <span class="risk-issue-dot error"></span>
+          <span>发现高频模板表达：首先..其次..最后、综上所述"</span>
+        </li>
+        <li class="risk-issue">
+          <span class="risk-issue-dot error"></span>
+          <span>句子长度分布过于均匀（方差=89），存在模板化生成倾向</span>
+        </li>
+        <li class="risk-issue">
+          <span class="risk-issue-dot warning"></span>
+          <span>连接词使用偏密集，共出现 23 次："然而""因此""此外""同时"</span>
+        </li>
+        <li class="risk-issue">
+          <span class="risk-issue-dot warning"></span>
+          <span>段落长度过于整齐，存在统一模板痕迹</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="main-area">
+      <div class="editor-panel" style="flex:4.5;">
+        <div class="panel-header">
+          <span class="panel-title">原文输入</span>
+          <button class="panel-btn">上传 DOCX</button>
+        </div>
+        <div class="editor-body" style="position:relative;">
+          <textarea class="editor-textarea" placeholder="粘贴待检测的论文正文..."></textarea>
+          <span class="char-count">1,248 字</span>
+        </div>
+      </div>
+      <div class="editor-panel right" style="flex:5.5;">
+        <div class="panel-header">
+          <span class="panel-title">改写结果</span>
+          <span style="font-size:11px;color:var(--text-light);">等待处理</span>
+        </div>
+        <div class="result-body placeholder">
+          点击「扫描痕迹」先检测 → 选择改写强度 → 点击「开始改写」
+        </div>
+      </div>
+    </div>
+
+    <div class="control-bar">
+      <button class="control-btn secondary">扫描痕迹</button>
+      <span class="sep-dot">|</span>
+      <span style="font-size:12px;color:var(--text-muted);margin-right:8px;">改写强度:</span>
+      <select class="control-select">
+        <option>轻度</option><option>深度重构</option><option>学术拟合</option>
+      </select>
+      <span class="control-spacer"></span>
+      <button class="control-btn accent">开始改写</button>
+    </div>
+  </div>
+  <p class="mockup-label">降AI检测 —— 扫描 → 风险展示 → 选择强度 → 改写</p>
+
+
+  <!-- ============================================================ -->
+  <!-- 3. 降查重 -->
+  <!-- ============================================================ -->
+  <h2 class="gallery-section">3. 降查重</h2>
+  <p class="gallery-section-desc">预检重复表达风险，逐段优化降低查重率，保留引文标记</p>
+
+  <div class="mockup-desktop wide">
+    <div class="header">
+      <div class="header-left">
+        <div class="back-btn">
+          <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <span class="brand">Mianmian.</span>
+        <span class="header-tag">论文工具</span>
+      </div>
+      <div class="export-dropdown">
+        <button class="panel-btn">导出</button>
+        <div class="export-menu">
+          <div class="export-menu-item">
+            <svg class="icon-svg-sm icon-stroke-accent icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            保留原格式导出 <span class="badge">推荐</span>
+          </div>
+          <div class="export-menu-item">
+            <svg class="icon-svg-sm icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            标准 Word 导出
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-accent"></div>
+      <span class="hero-label">降查重</span>
+      <h2 class="hero-title">降查重</h2>
+      <span class="hero-sub">预检重复表达风险，逐段优化降低查重率，保留引文标记</span>
+    </div>
+
+    <!-- Dual Input Row -->
+    <div class="dual-input" style="flex:none;height:160px;">
+      <div class="editor-panel">
+        <div class="panel-header">
+          <span class="panel-title">待检测正文</span>
+          <button class="panel-btn">上传 DOCX</button>
+        </div>
+        <div class="editor-body" style="position:relative;">
+          <textarea class="editor-textarea" placeholder="粘贴论文正文..." style="font-size:12px;">近年来，深度学习技术在自然语言处理领域取得了突破性进展。大量研究工作聚焦于预训练语言模型的优化策略，包括模型压缩、知识蒸馏和推理加速等方面。本文提出了一种基于知识蒸馏的模型轻量化方法，在保持模型精度的同时显著降低了推理资源消耗。</textarea>
+        </div>
+      </div>
+      <div class="editor-panel">
+        <div class="panel-header">
+          <span class="panel-title">重复源 / 查重报告（可选）</span>
+        </div>
+        <div class="editor-body">
+          <textarea class="editor-textarea" placeholder="粘贴查重报告中的重复片段，或直接留空进行通用降重..." style="font-size:12px;color:var(--text-muted);">深度学习技术推动了自然语言处理的快速发展。许多研究集中在预训练语言模型的改进上，涉及模型压缩、知识蒸馏等方面。本文介绍了一种知识蒸馏的模型轻量化方案，目的是保证精度的同时减少推理开销。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk Card -->
+    <div class="risk-card" style="margin-top:0;border-top:none;border-radius:0 0 14px 14px;">
+      <div class="risk-header">
+        <span style="font-size:13px;font-weight:600;">模拟查重率</span>
+        <span class="risk-score-badge high"高风险 &middot; 42.3%</span>
+        <span style="font-size:11px;color:var(--text-light);">重复短语: 8处 · 风险段落: 2处 · 源重叠: 38.5%</span>
+      </div>
+      <div class="risk-bar"><div class="risk-bar-fill high" style="width:42%;"></div></div>
+      <div class="match-fragment">"深度学习技术...自然语言处理领域...突破性进展"</div>
+      <div class="match-fragment">"模型压缩、知识蒸馏...模型轻量化...推理资源消耗"</div>
+    </div>
+
+    <!-- Editor + Result -->
+    <div class="main-area">
+      <div class="editor-panel" style="flex:4.5;">
+        <div class="panel-header">
+          <span class="panel-title">原文输入</span>
+          <span style="font-size:11px;color:var(--text-light);">标记段落将被改写</span>
+        </div>
+        <div class="editor-body" style="position:relative;">
+          <textarea class="editor-textarea" placeholder="点击「扫描风险」检测..." style="font-size:13px;">近年来，深度学习技术在自然语言处理领域取得了突破性进展。大量研究工作聚焦于预训练语言模型的优化策略，包括模型压缩、知识蒸馏和推理加速等方面。本文提出了一种基于知识蒸馏的模型轻量化方法，在保持模型精度的同时显著降低了推理资源消耗。</textarea>
+          <span class="char-count">156 字</span>
+        </div>
+      </div>
+      <div class="editor-panel right" style="flex:5.5;">
+        <div class="panel-header">
+          <span class="panel-title">降重结果</span>
+          <span style="font-size:11px;color:var(--text-light);">等待处理</span>
+        </div>
+        <div class="result-body placeholder">
+          点击「扫描风险」先检测 → 选择降重强度 → 点击「开始降重」
+        </div>
+      </div>
+    </div>
+
+    <div class="control-bar">
+      <button class="control-btn secondary">扫描风险</button>
+      <span class="sep-dot">|</span>
+      <span style="font-size:12px;color:var(--text-muted);margin-right:8px;">改写强度:</span>
+      <select class="control-select">
+        <option>轻度</option><option>中度</option><option>深度</option>
+      </select>
+      <span class="control-spacer"></span>
+      <button class="control-btn accent">开始降重</button>
+    </div>
+  </div>
+  <p class="mockup-label">降查重 —— 双输入对比 + 匹配片段 + 逐段改写</p>
+
+
+  <!-- ============================================================ -->
+  <!-- 4. 格式保留导出流程 -->
+  <!-- ============================================================ -->
+  <h2 class="gallery-section">4. 格式保留导出</h2>
+  <p class="gallery-section-desc">段落 ID 标记法 —— 保证原文档格式不丢失</p>
+
+  <div style="max-width:1100px;margin:0 auto 48px;background:var(--bg-paper);border-radius:16px;border:1px solid var(--border-light);box-shadow:var(--shadow-lg);padding:32px;">
+    <div style="display:flex;justify-content:space-around;align-items:flex-start;gap:32px;">
+      <!-- Step 1 -->
+      <div style="text-align:center;flex:1;">
+        <div class="step-circle one">1</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">1. 解析 DOCX</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-light);line-height:1.6;">
+          Para 0: "引言" H1 黑体 16pt<br>
+          Para 1: "近年来..." 正文 宋体 12pt<br>
+          Para 2: "本文提出..." 正文 宋体 12pt<br>
+          Para 3: "实验表明..." 正文 宋体 12pt
+        </div>
+      </div>
+
+      <div class="step-arrow">&rarr;</div>
+
+      <!-- Step 2 -->
+      <div style="text-align:center;flex:1;">
+        <div class="step-circle two">2</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">2. AI 逐段改写</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-light);line-height:1.6;">
+          提示词:<br>
+          [P0] 引言<br>
+          [P1] 近年来...<br>
+          [P2] 本文提出...<br>
+          [P3] 实验表明...<br>
+          <span style="color:var(--accent);">&rarr; 保持 [Pn] 标记不变</span>
+        </div>
+      </div>
+
+      <div class="step-arrow">&rarr;</div>
+
+      <!-- Step 3 -->
+      <div style="text-align:center;flex:1;">
+        <div class="step-circle three">3</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">3. 写回原 DOCX</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-light);line-height:1.6;">
+          Para 0: "引言" <span style="color:var(--color-success);">&rarr; 黑体 16pt &check;</span><br>
+          Para 1: "近些年..." <span style="color:var(--color-success);">&rarr; 宋体 12pt &check;</span><br>
+          Para 2: "本研究..." <span style="color:var(--color-success);">&rarr; 宋体 12pt &check;</span><br>
+          Para 3: "实验..." <span style="color:var(--color-success);">&rarr; 宋体 12pt &check;</span><br>
+          <span style="color:var(--accent);">保留所有原始格式</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice-box">
+      若段落结构偏差超过 20%，自动回退到标准 Markdown → DOCX 导出。
+    </div>
+  </div>
+  <p class="mockup-label">格式保留导出 —— 段落 ID 标记法 · 1:1 映射无需模糊匹配</p>
+
+
+  <!-- ============================================================ -->
+  <!-- 5. 首页导航入口 -->
+  <!-- ============================================================ -->
+  <h2 class="gallery-section">5. 首页导航入口</h2>
+  <p class="gallery-section-desc">在现有 func-grid 中新增「论文工具」入口卡片</p>
+
+  <div style="max-width:420px;margin:0 auto 48px;background:var(--bg-paper);border-radius:20px;border:1px solid var(--border-light);box-shadow:var(--shadow-lg);padding:24px;">
+    <!-- Header -->
+    <div class="header" style="border:none;padding:0 0 16px;">
+      <span class="brand">Mianmian.</span>
+      <div class="avatar"><span class="avatar-letter">U</span></div>
+    </div>
+
+    <!-- Hero Card -->
+    <div class="hero-card" style="height:200px;margin-bottom:20px;">
+      <div class="hero-card-gradient"></div>
+      <div class="hero-card-inner">
+        <div class="hero-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="hero-card-spacer"></div>
+        <div class="hero-card-row">
+          <div>
+            <span class="hero-card-title">今日准备</span>
+            <span class="hero-card-desc">继续上次的面试练习</span>
+          </div>
+          <div class="hero-card-circle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--bg-dark)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Function Grid -->
+    <div class="func-grid" style="padding:0;margin-bottom:0;">
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg class="icon-svg-lg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <span class="func-tag">热门</span>
+        </div>
+        <span class="func-title">AI 面试</span>
+        <span class="func-desc">多轮对话 · 流式回复</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg class="icon-svg-lg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+        </div>
+        <span class="func-title">查看题库</span>
+        <span class="func-desc">8 大类 · 逐题精学</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg class="icon-svg-lg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+        </div>
+        <span class="func-title">简历优化</span>
+        <span class="func-desc">上传解析 · AI 深度优化</span>
+      </div>
+      <!-- NEW: Paper Tools -->
+      <div class="func-card accent">
+        <div class="func-card-top">
+          <div class="func-icon-box func-icon-amber">
+            <svg class="icon-svg-lg icon-stroke-accent icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <span class="func-tag">新功能</span>
+        </div>
+        <span class="func-title">论文工具</span>
+        <span class="func-desc">润色 · 降AI · 降查重</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg class="icon-svg-lg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        </div>
+        <span class="func-title">自由刷题</span>
+        <span class="func-desc">随机组卷 · 即时判分</span>
+      </div>
+      <div class="func-card">
+        <div class="func-card-top">
+          <div class="func-icon-box">
+            <svg class="icon-svg-lg icon-stroke-muted icon-fill-none" viewBox="0 0 24 24" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+        </div>
+        <span class="func-title">错题本</span>
+        <span class="func-desc">错题记录 · 巩固复习</span>
+      </div>
+    </div>
+  </div>
+  <p class="mockup-label">首页 —— 新增「论文工具」卡片 with accent bar + 新功能 tag</p>
+
+</body>
+</html>

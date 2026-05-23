@@ -18,6 +18,12 @@ public class UserAiConfigService {
         return mapper.selectById(userId);
     }
 
+    public boolean hasApiKey(Long userId) {
+        if (userId == null) return false;
+        UserAiConfig config = mapper.selectById(userId);
+        return config != null && config.getApiKey() != null && !config.getApiKey().isBlank();
+    }
+
     public void save(Long userId, String provider, String apiKey, String model) {
         // apiKey为空时删除记录，回退使用系统默认Key
         if (apiKey == null || apiKey.isBlank()) {

@@ -34,8 +34,9 @@ public class InterviewController {
     /** 回答问题 - 流式SSE */
     @PostMapping("/{sessionId}/answer/stream")
     public SseEmitter answerStream(@PathVariable Long sessionId,
-                                   @Valid @RequestBody InterviewAnswerRequest request) {
-        return interviewService.answerStream(sessionId, request.getAnswer());
+                                   @RequestBody InterviewAnswerRequest request) {
+        return interviewService.answerStream(sessionId, request.getAnswer(),
+                request.getCode(), request.getCodeLang(), request.getCodeFile());
     }
 
     /** 手动结束面试 */

@@ -6,6 +6,7 @@ import com.mianmiantong.dto.user.UserAiConfigRequest;
 import com.mianmiantong.entity.user.UserAiConfig;
 import com.mianmiantong.mapper.exam.AnswerRecordMapper;
 import com.mianmiantong.mapper.interview.InterviewSessionMapper;
+import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.mapper.wrongbook.WrongQuestionMapper;
 import com.mianmiantong.service.user.UserAiConfigService;
 import org.springframework.web.bind.annotation.*;
@@ -21,15 +22,18 @@ public class UserController {
     private final InterviewSessionMapper interviewSessionMapper;
     private final WrongQuestionMapper wrongQuestionMapper;
     private final UserAiConfigService userAiConfigService;
+    private final UserMapper userMapper;
 
     public UserController(AnswerRecordMapper answerRecordMapper,
                           InterviewSessionMapper interviewSessionMapper,
                           WrongQuestionMapper wrongQuestionMapper,
-                          UserAiConfigService userAiConfigService) {
+                          UserAiConfigService userAiConfigService,
+                          UserMapper userMapper) {
         this.answerRecordMapper = answerRecordMapper;
         this.interviewSessionMapper = interviewSessionMapper;
         this.wrongQuestionMapper = wrongQuestionMapper;
         this.userAiConfigService = userAiConfigService;
+        this.userMapper = userMapper;
     }
 
     /** 获取用户统计数据 */
@@ -74,5 +78,25 @@ public class UserController {
         Long userId = JwtAuthFilter.getCurrentUserId();
         userAiConfigService.save(userId, req.getProvider(), req.getApiKey(), req.getModel());
         return Result.ok(null);
+    }
+
+    /** 获取用户配额：每日免费 AI 调用次数剩余 */
+    @GetMapping("/quota")
+    public Result<Map<String, Object>> quota() {
+        Long userId = JwtAuthFilter.getCurrentUserId();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("hasApiKey", userAiConfigService.hasApiKey(userId));
+        boolean isAdmin = JwtAuthFilter.isAdmin();
+        int dailyQuota = 10, quotaUsed = 0;
+        if (userId != null) {
+            var user = userMapper.selectById(userId);
+            dailyQuota = user != null && user.getDailyQuota() != null ? user.getDailyQuota() : 10;
+            quotaUsed = user != null && user.getQuotaUsed() != null ? user.getQuotaUsed() : 0;
+        }
+        result.put("isAdmin", isAdmin);
+        result.put("dailyQuota", dailyQuota);
+        result.put("quotaUsed", quotaUsed);
+        result.put("quotaRemaining", Math.max(0, dailyQuota - quotaUsed));
+        return Result.ok(result);
     }
 }

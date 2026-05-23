@@ -85,6 +85,12 @@ const router = createRouter({
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ],
   scrollBehavior() {
@@ -93,19 +99,18 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  if (to.path === '/login') {
+  if (to.path === '/login' || to.path === '/') {
     next()
     return
   }
   const userStore = useUserStore()
-  // Auto-generate dev token if not logged in
   if (!userStore.token) {
-    userStore.setUser({
-      userId: 1,
-      nickname: '开发者',
-      avatarUrl: '',
-      token: 'dev-token-' + Date.now()
-    })
+    next('/login')
+    return
+  }
+  if (to.meta.requiresAdmin && !userStore.isAdmin) {
+    next('/profile')
+    return
   }
   next()
 })

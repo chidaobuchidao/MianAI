@@ -18,6 +18,8 @@
         <div style="width:36px" />
       </div>
 
+      <div class="quota-error" v-if="quotaError" @click="quotaError = ''">{{ quotaError }}</div>
+
       <!-- Score hero with grid scan background -->
       <div class="score-hero">
         <!-- 卡片扫描动画配置
@@ -98,6 +100,7 @@
           <button class="btn btn--primary btn--full" @click="startDeep">
             <span>开始深度优化</span>
           </button>
+          <p class="quota-error" v-if="quotaError" @click="quotaError = ''">{{ quotaError }}</p>
         </div>
 
         <!-- Running -->
@@ -165,6 +168,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { get, post } from '@/utils/request'
+import { useQuota } from '@/composables/useQuota'
 import GridScan from '@/components/GridScan.vue'
 import UnifiedDiff from '@/components/UnifiedDiff.vue'
 
@@ -179,8 +183,10 @@ interface Report {
 
 const route = useRoute()
 const router = useRouter()
+const { fetchQuota, checkQuota } = useQuota()
 
 const loading = ref(true)
+const quotaError = ref('')
 const loadingText = ref('AI 正在分析简历...')
 const report = ref<Report | null>(null)
 const score = ref(0)
@@ -251,8 +257,24 @@ onMounted(async () => {
     if (r.data.parseStatus === -1) { loading.value = false; return }
   }
 
-  // Phase 2: trigger analysis
+  // Check if backend blocked auto-analysis due to quota
+  const quotaMsg = (r.data as any)?.suggestion
+  if (quotaMsg && quotaMsg.includes('免费次数已用完')) {
+    quotaError.value = quotaMsg
+    report.value = r.data as any
+    loading.value = false
+    return
+  }
+
+  // Phase 2: trigger analysis only if quota allows
   if (r.data?.parseStatus === 1) {
+    await fetchQuota()
+    const qc = checkQuota(1)
+    if (!qc.ok) {
+      quotaError.value = qc.msg!
+      loading.value = false
+      return
+    }
     await post(`/api/resume/${resumeId}/analyze`).catch(() => { })
   }
 
@@ -277,14 +299,22 @@ function loadRetryStatus(resumeId: number) {
 async function startDeep() {
   if (!report.value) return
   const resumeId = report.value.resumeId
+  await fetchQuota()
+  const needed = deepModel.value.includes('pro') ? 2 : 1
+  const qc = checkQuota(needed)
+  if (!qc.ok) { quotaError.value = qc.msg!; return }
   deepStatus.value = 1
   deepElapsed.value = 0
   deepTimer = setInterval(() => deepElapsed.value++, 1000)
   streamDeep(resumeId)
 }
 
-function retryDeep() {
+async function retryDeep() {
   if (!report.value) return
+  await fetchQuota()
+  const needed = deepModel.value.includes('pro') ? 2 : 1
+  const qc = checkQuota(needed)
+  if (!qc.ok) { quotaError.value = qc.msg!; return }
   deepStatus.value = 1
   deepElapsed.value = 0
   deepTimer = setInterval(() => deepElapsed.value++, 1000)
@@ -823,5 +853,11 @@ onUnmounted(() => { cleanupStream() })
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.quota-error {
+  margin-top: 12px; padding: 10px 14px;
+  background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);
+  border-radius: 8px; color: #EF4444;
+  font-size: 13px; text-align: center; cursor: pointer;
 }
 </style>

@@ -34,20 +34,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = extractToken(request);
 
-        // 开发模式：dev-token- 前缀直接当 userId=1
-        if (StringUtils.hasText(token) && token.startsWith("dev-token-")) {
-            UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(1L, null, Collections.emptyList());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
             Long userId = jwtUtil.getUserId(token);
+            int role = jwtUtil.getRole(token);
 
-            UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+            var authentication = new UsernamePasswordAuthenticationToken(userId, role, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
@@ -75,5 +66,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return (Long) principal;
         }
         return null;
+    }
+
+    /** 从SecurityContext获取当前用户角色（0=普通用户, 1=管理员） */
+    public static int getCurrentUserRole() {
+        Object cred = SecurityContextHolder.getContext().getAuthentication().getCredentials();
+        return cred instanceof Integer ? (Integer) cred : 0;
+    }
+
+    public static boolean isAdmin() {
+        return getCurrentUserRole() == 1;
     }
 }
