@@ -91,6 +91,14 @@ const router = createRouter({
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/paper-tools',
+      children: [
+        { path: 'polish', name: 'Polish', component: () => import('@/views/PolishView.vue') },
+        { path: 'ai-reduce', name: 'AiReduce', component: () => import('@/views/AiReduceView.vue') },
+        { path: 'plagiarism-reduce', name: 'PlagiarismReduce', component: () => import('@/views/PlagiarismReduceView.vue') },
+      ]
     }
   ],
   scrollBehavior() {

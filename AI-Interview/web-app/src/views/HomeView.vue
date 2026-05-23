@@ -130,6 +130,21 @@
             <span class="func-card__title">错题本</span>
             <span class="func-card__desc">记录薄弱环节，反复巩固</span>
           </PixelCard>
+
+          <PixelCard :gap="10" :dotRadius="1.0" colors="#ffedd5,#fdba74,#D9750A" :opacityMin="0.15" :opacityMax="0.55"
+            className="func-card func-card--accent" @click="$router.push('/paper-tools/polish')">
+            <div class="func-card__top">
+              <div class="func-icon func-icon--amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </div>
+              <span class="func-card__tag">NEW</span>
+            </div>
+            <span class="func-card__title">论文工具</span>
+            <span class="func-card__desc">润色 · 降AI · 降查重</span>
+          </PixelCard>
         </section>
       </ScrollReveal>
 
