@@ -23,7 +23,7 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private static final String ADMIN_USERNAME = "chidao";
-    private static final String ADMIN_PASSWORD = "2219909857";
+    private static final String ADMIN_PASSWORD = System.getenv().getOrDefault("ADMIN_PASSWORD", "change-me");
 
     public AuthService(UserMapper userMapper, JwtUtil jwtUtil) {
         this.userMapper = userMapper;
