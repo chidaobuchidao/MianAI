@@ -1,5 +1,6 @@
 package com.mianmiantong.service.paper;
 
+import com.mianmiantong.dto.paper.PlagiarismReduceRequest;
 import com.mianmiantong.service.ai.AiService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -141,8 +142,140 @@ public class PlagiarismReduceService {
         return r;
     }
 
+    /** 6-gram 索引 + 双向扩展：找出 text 与 sourceText 的重叠片段 */
+    public List<MatchingFragment> findOverlappingFragments(String text, String sourceText) {
+        List<MatchingFragment> result = new ArrayList<>();
+        if (text == null || sourceText == null || text.length() < 6 || sourceText.length() < 6) {
+            return result;
+        }
+
+        // 对 sourceText 建 6-gram 索引
+        Map<String, List<Integer>> index = new HashMap<>();
+        for (int i = 0; i <= sourceText.length() - 6; i++) {
+            String gram = sourceText.substring(i, i + 6);
+            index.computeIfAbsent(gram, k -> new ArrayList<>()).add(i);
+        }
+
+        // 遍历 text 的 6-gram，查找匹配并双向扩展
+        Map<Integer, Integer> expanded = new LinkedHashMap<>(); // key=targetStart, value=length
+        for (int i = 0; i <= text.length() - 6; i++) {
+            String gram = text.substring(i, i + 6);
+            List<Integer> sourcePositions = index.get(gram);
+            if (sourcePositions == null) continue;
+
+            for (int srcPos : sourcePositions) {
+                // 双向扩展
+                int extLeft = 0;
+                while (i - extLeft - 1 >= 0 && srcPos - extLeft - 1 >= 0
+                    && text.charAt(i - extLeft - 1) == sourceText.charAt(srcPos - extLeft - 1)) {
+                    extLeft++;
+                }
+                int extRight = 6;
+                while (i + extRight < text.length() && srcPos + extRight < sourceText.length()
+                    && text.charAt(i + extRight) == sourceText.charAt(srcPos + extRight)) {
+                    extRight++;
+                }
+
+                int targetStart = i - extLeft;
+                int length = extLeft + extRight;
+                if (length >= 10) {
+                    expanded.merge(targetStart, length, Math::max);
+                }
+            }
+        }
+
+        // 过滤被更长匹配覆盖的片段，转为结果列表
+        List<int[]> frags = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> e : expanded.entrySet()) {
+            int start = e.getKey();
+            int len = e.getValue();
+            boolean covered = false;
+            for (int[] f : frags) {
+                if (f[0] <= start && start + len <= f[0] + f[1]) {
+                    covered = true;
+                    break;
+                }
+            }
+            if (!covered) {
+                frags.add(new int[]{start, len});
+            }
+        }
+
+        // 按长度降序，取 Top 20
+        frags.sort((a, b) -> Integer.compare(b[1], a[1]));
+        for (int i = 0; i < Math.min(20, frags.size()); i++) {
+            int[] f = frags.get(i);
+            int targetStart = f[0];
+            int length = f[1];
+            // 从 sourceText 中找对应的 source 位置（用 6-gram 反查）
+            String targetGram = text.substring(targetStart, Math.min(targetStart + 6, text.length()));
+            List<Integer> srcPositions = index.get(targetGram);
+            int srcStart = srcPositions != null ? srcPositions.get(0) : -1;
+
+            String targetExcerpt = text.substring(targetStart, Math.min(targetStart + Math.min(length, 80), text.length()));
+            String sourceExcerpt = "";
+            if (srcStart >= 0) {
+                sourceExcerpt = sourceText.substring(srcStart,
+                    Math.min(srcStart + Math.min(length, 80), sourceText.length()));
+            }
+            result.add(new MatchingFragment(sourceExcerpt, targetExcerpt, length, srcStart, targetStart));
+        }
+
+        return result;
+    }
+
+    /** 计算重叠统计 */
+    public OverlapResult calculateOverlap(String text, String sourceText) {
+        OverlapResult r = new OverlapResult();
+        if (text == null || sourceText == null || text.isEmpty()) return r;
+
+        List<MatchingFragment> fragments = findOverlappingFragments(text, sourceText);
+        r.setTopFragments(fragments);
+
+        // 去重覆盖范围的总重叠字符数
+        if (text.length() < 5000) {
+            boolean[] covered = new boolean[text.length()];
+            for (MatchingFragment f : fragments) {
+                int end = Math.min(f.getTargetStart() + f.getLength(), text.length());
+                for (int i = f.getTargetStart(); i < end; i++) covered[i] = true;
+            }
+            int overlapChars = 0;
+            for (boolean b : covered) { if (b) overlapChars++; }
+            r.setOverlapChars(overlapChars);
+            r.setOverlapRatio(Math.round(overlapChars * 1000.0 / text.length()) / 10.0);
+        } else {
+            // 大文本用估算：取最长 Top 50 片段
+            int estimated = fragments.stream().mapToInt(MatchingFragment::getLength).limit(50).sum();
+            r.setOverlapChars(estimated);
+            r.setOverlapRatio(Math.round(estimated * 1000.0 / text.length()) / 10.0);
+        }
+
+        return r;
+    }
+
+    /** 模拟查重率 */
+    public double calculateSimulatedRate(RepetitionResult repetition, SimilarityResult similarity,
+                                          OverlapResult overlap, String text) {
+        if (text == null || text.isEmpty()) return 0.0;
+        if (overlap != null && overlap.getOverlapRatio() > 0) {
+            double simRate = similarity != null ? similarity.getSimilarity() : 0;
+            double rate = simRate * 0.45 + overlap.getOverlapRatio() * 0.55;
+            return Math.round(Math.min(100, rate) * 10.0) / 10.0;
+        } else {
+            int repCount = repetition != null && repetition.getRepeatedPhrases() != null
+                ? repetition.getRepeatedPhrases().size() : 0;
+            int longCount = repetition != null && repetition.getLongSentences() != null
+                ? repetition.getLongSentences().size() : 0;
+            int riskCount = repetition != null && repetition.getRiskParagraphs() != null
+                ? repetition.getRiskParagraphs().size() : 0;
+            double localRisk = Math.min(100, repCount * 3 + longCount * 2 + riskCount * 5);
+            return Math.round(localRisk * 0.9 * 10.0) / 10.0;
+        }
+    }
+
     /** SSE 流式降重改写 */
-    public SseEmitter reduce(String text, String sourceText, String mode) {
+    public SseEmitter reduce(String text, String sourceText, String mode, String model,
+                              List<com.mianmiantong.dto.paper.PlagiarismReduceRequest.ReportAnnotation> annotations) {
         SseEmitter emitter = new SseEmitter(120_000L);
 
         Map<String, String> modeLabels = Map.of("light", "轻度降重", "medium", "中度降重", "deep", "深度降重");
@@ -151,12 +284,16 @@ public class PlagiarismReduceService {
         String safeText = text != null ? text : "";
         String safeSource = sourceText != null ? sourceText : "";
 
+        // 构建报告标注的待改写片段列表
+        String flaggedPassages = buildFlaggedPassages(annotations);
+
         String systemPrompt = getSystemPrompt("prompts/plagiarism_transform.txt");
         String userPrompt = renderPrompt("prompts/plagiarism_transform.txt", Map.of(
             "text", safeText,
             "source_text", safeSource,
             "mode", safeMode,
-            "mode_label", modeLabel
+            "mode_label", modeLabel,
+            "flagged_passages", flaggedPassages
         ));
 
         List<Map<String, String>> messages = List.of(
@@ -170,7 +307,7 @@ public class PlagiarismReduceService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, null, token -> {
+                aiService.streamChat(systemPrompt, messages, null, model, token -> {
                     safeSend(emitter, "token", token);
                 });
 
@@ -185,6 +322,27 @@ public class PlagiarismReduceService {
         });
 
         return emitter;
+    }
+
+    /** 将报告标注构建为 AI 易处理的标注片段列表 */
+    private String buildFlaggedPassages(List<PlagiarismReduceRequest.ReportAnnotation> annotations) {
+        if (annotations == null || annotations.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        int idx = 1;
+        for (var ann : annotations) {
+            String text = ann.getText();
+            if (text == null || text.isBlank()) continue;
+            String level = ann.getRiskLevel() != null ? ann.getRiskLevel() : "medium";
+            String label = switch (level) {
+                case "high" -> "【高危】";
+                case "low" -> "【低危】";
+                default -> "【中危】";
+            };
+            String excerpt = text.length() > 120 ? text.substring(0, 120) + "…" : text;
+            sb.append(idx).append(". ").append(label).append(" ").append(excerpt).append("\n");
+            idx++;
+        }
+        return sb.toString();
     }
 
     private void safeSend(SseEmitter emitter, String name, String data) {
@@ -257,5 +415,23 @@ public class PlagiarismReduceService {
         private int referenceCount;
         private boolean hasReferenceSection;
         private List<String> issues = new ArrayList<>();
+    }
+
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class MatchingFragment {
+        private String sourceExcerpt;
+        private String targetExcerpt;
+        private int length;
+        private int sourceStart;
+        private int targetStart;
+    }
+
+    @lombok.Data
+    public static class OverlapResult {
+        private int overlapChars;
+        private double overlapRatio;
+        private List<MatchingFragment> topFragments = new ArrayList<>();
     }
 }

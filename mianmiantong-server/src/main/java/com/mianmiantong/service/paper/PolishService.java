@@ -34,7 +34,6 @@ public class PolishService {
             "text", req.getText() != null ? req.getText() : "",
             "task_type", req.getTaskType() != null ? req.getTaskType() : "章节正文",
             "polish_type", req.getPolishType() != null ? req.getPolishType() : "full",
-            "execution_mode", req.getExecutionMode() != null ? req.getExecutionMode() : "标准模式",
             "topic", req.getTopic() != null ? req.getTopic() : "",
             "notes", req.getNotes() != null ? req.getNotes() : ""
         ));
@@ -50,7 +49,7 @@ public class PolishService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, null, token -> {
+                aiService.streamChat(systemPrompt, messages, null, req.getModel(), token -> {
                     safeSend(emitter, "token", token);
                 });
 

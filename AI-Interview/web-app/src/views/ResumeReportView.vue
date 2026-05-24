@@ -133,14 +133,34 @@
 
           <!-- Optimized text -->
           <div v-if="report.optimizedText" class="deep-result">
-            <span class="card-sub-label">优化后简历</span>
-            <div class="btn-row" style="margin-bottom:12px;">
-              <button class="btn btn--outline" @click="copyText">复制</button>
-              <button class="btn btn--outline" @click="previewWord">预览</button>
-              <a class="btn btn--accent" :href="downloadUrl" target="_blank">下载 Word</a>
+            <div class="result-toolbar">
+              <span class="card-sub-label">优化后简历</span>
+              <div class="result-actions">
+                <button class="btn btn--outline" @click="copyText">复制</button>
+                <button class="btn btn--outline" @click="previewWord">预览</button>
+                <div class="export-dropdown">
+                  <button class="btn btn--accent" @click="showExport = !showExport">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    导出 Word
+                  </button>
+                  <div v-if="showExport" class="export-menu">
+                    <div class="export-item" @click="exportDoc('preserve')">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      保留原模板导出<span class="export-badge">推荐</span>
+                    </div>
+                    <div class="export-item" @click="exportDoc('standard')">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      标准 Word 导出
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="opt-box">
-              <pre class="opt-text">{{ report.optimizedText }}</pre>
+              <template v-for="(block, i) in renderedBlocks" :key="'b-'+i">
+                <div v-if="block.type === 'heading'" class="fp-heading">{{ block.text }}</div>
+                <div v-else class="fp-body">{{ block.text }}</div>
+              </template>
             </div>
           </div>
 
@@ -215,9 +235,47 @@ const iqList = computed(() => {
   return Array.isArray(q) ? q : []
 })
 
+const showExport = ref(false)
 const scoreClass = computed(() => score.value >= 7 ? 'great' : score.value >= 4 ? 'ok' : 'low')
 const ringStroke = computed(() => score.value >= 7 ? '#22C55E' : score.value >= 4 ? '#D9770A' : '#EF4444')
-const downloadUrl = computed(() => report.value ? `/api/resume/${report.value.resumeId}/export-word` : '#')
+
+// Markdown 解析为渲染块
+interface RenderBlock { type: 'heading' | 'body'; text: string }
+const renderedBlocks = computed<RenderBlock[]>(() => {
+  const md = report.value?.optimizedText
+  if (!md) return []
+  return md.split('\n').reduce<RenderBlock[]>((blocks, line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return blocks
+    // 标题行：## / # / ### 开头
+    if (/^#{1,3}\s/.test(trimmed)) {
+      blocks.push({ type: 'heading', text: trimmed.replace(/^#{1,3}\s+/, '') })
+    } else {
+      blocks.push({ type: 'body', text: trimmed })
+    }
+    return blocks
+  }, [])
+})
+
+async function exportDoc(mode: string) {
+  showExport.value = false
+  if (!report.value) return
+  const resumeId = report.value.resumeId
+  const token = localStorage.getItem('token') || ''
+  const url = mode === 'preserve'
+    ? `/api/resume/${resumeId}/export-preserve-format`
+    : `/api/resume/${resumeId}/export-word`
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok) {
+      const blob = await res.blob()
+      const objUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objUrl; a.download = `resume-optimized.docx`; a.click()
+      URL.revokeObjectURL(objUrl)
+    }
+  } catch (e) { console.error('Export failed:', e) }
+}
 
 function isValidReport(d: unknown): d is Report {
   return d != null && typeof d === 'object' && 'resumeId' in (d as any)
@@ -795,21 +853,85 @@ onUnmounted(() => { cleanupStream() })
   margin-top: 8px;
 }
 
+.result-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-dropdown {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  min-width: 200px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.export-item {
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s;
+}
+
+.export-item:last-child { border-bottom: none; }
+.export-item:hover { background: var(--bg-surface); }
+
+.export-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(217,117,10,0.08);
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: auto;
+}
+
 .opt-box {
   background: var(--bg-surface);
   border-radius: var(--radius-md);
-  padding: 18px;
-  max-height: 500px;
+  padding: 24px 28px;
+  max-height: 600px;
   overflow-y: auto;
 }
 
-.opt-text {
+.fp-heading {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 18px 0 8px;
+  line-height: 1.4;
+}
+
+.fp-heading:first-child { margin-top: 0; }
+
+.fp-body {
   font-size: 14px;
   color: var(--text-main);
   line-height: 1.8;
-  white-space: pre-wrap;
-  margin: 0;
-  font-family: inherit;
+  margin: 0 0 6px;
 }
 
 /* Interview questions */

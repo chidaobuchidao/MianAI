@@ -1,11 +1,6 @@
 package com.mianmiantong.controller.resume;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mianmiantong.config.JwtAuthFilter;
-import com.mianmiantong.entity.user.UserAiConfig;
-import com.mianmiantong.mapper.user.UserAiConfigMapper;
-import com.mianmiantong.mapper.user.UserMapper;
-import java.time.LocalDate;
 import com.mianmiantong.common.JwtUtil;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.entity.resume.Resume;
@@ -14,17 +9,22 @@ import com.mianmiantong.service.document.TemplatePreservingExportService;
 import com.mianmiantong.service.document.WordExportService;
 import com.mianmiantong.service.resume.ResumeAnalysisService;
 import com.mianmiantong.service.resume.ResumeService;
+import com.mianmiantong.service.user.QuotaService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.mianmiantong.service.document.ParagraphProfile;
+import lombok.extern.slf4j.Slf4j;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/resume")
 public class ResumeController {
@@ -35,9 +35,7 @@ public class ResumeController {
     private final TemplatePreservingExportService templateExportService;
     private final HtmlPreviewService htmlPreviewService;
     private final JwtUtil jwtUtil;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final UserMapper userMapper;
-    private final UserAiConfigMapper aiConfigMapper;
+    private final QuotaService quotaService;
 
     public ResumeController(ResumeService resumeService,
                            ResumeAnalysisService analysisService,
@@ -45,16 +43,14 @@ public class ResumeController {
                            TemplatePreservingExportService templateExportService,
                            HtmlPreviewService htmlPreviewService,
                            JwtUtil jwtUtil,
-                           UserMapper userMapper,
-                           UserAiConfigMapper aiConfigMapper) {
+                           QuotaService quotaService) {
         this.resumeService = resumeService;
         this.analysisService = analysisService;
         this.wordExportService = wordExportService;
         this.templateExportService = templateExportService;
         this.htmlPreviewService = htmlPreviewService;
         this.jwtUtil = jwtUtil;
-        this.userMapper = userMapper;
-        this.aiConfigMapper = aiConfigMapper;
+        this.quotaService = quotaService;
     }
 
     /** 上传简历 */
@@ -72,23 +68,8 @@ public class ResumeController {
     }
 
     /** Phase 1: 快速评分（异步后台执行，前端轮询 GET /analysis） */
-    /** 校验并消耗配额。配额不足抛异常。Flash=1, Pro=2 */
     private void consumeResumeQuota(String model) {
-        Long userId = JwtAuthFilter.getCurrentUserId();
-        if (userId == null || JwtAuthFilter.isAdmin()) return;
-        UserAiConfig config = aiConfigMapper.selectById(userId);
-        if (config != null && config.getApiKey() != null && !config.getApiKey().isBlank()) return;
-        var user = userMapper.selectById(userId);
-        if (user == null) throw new IllegalArgumentException("用户不存在");
-        int daily = user.getDailyQuota() != null ? user.getDailyQuota() : 10;
-        int used = user.getQuotaUsed() != null ? user.getQuotaUsed() : 0;
-        // Reset if new day
-        if (!java.time.LocalDate.now().equals(user.getQuotaDate())) { used = 0; }
-        if (used >= daily) {
-            throw new IllegalArgumentException("今日免费次数已用完（" + daily + "次/天），请配置 AI API Key 后无限使用");
-        }
-        int steps = (model != null && model.toLowerCase().contains("pro")) ? 2 : 1;
-        userMapper.incrementQuota(userId, steps);
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), model);
     }
     @PostMapping("/{resumeId}/analyze")
     public Result<?> analyze(@PathVariable Long resumeId) {
@@ -157,9 +138,8 @@ public class ResumeController {
         }
         String fileName = String.valueOf(report.getOrDefault("fileName", "简历优化"));
 
-        // 直接使用优化后的 Markdown 生成 Word，不尝试保留原模板
-        // 模板保留需要 AI 的 before 文本与原始文档精确匹配，实际很难做到
-        // 用户通过页面上的 Diff 对比视图查看具体修改点
+        // 直接使用优化后的 Markdown 生成 Word（标准导出，不保留原模板格式）
+        // 如需保留原模板格式，请使用 export-preserve-format 端点
         byte[] docx = wordExportService.exportMarkdown(optimizedText, fileName);
 
         response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -172,6 +152,71 @@ public class ResumeController {
         } catch (Exception e) {
             throw new RuntimeException("导出失败", e);
         }
+    }
+
+    /** 保留原模板格式导出优化简历。使用语义匹配定位段落，匹配失败自动回退标准导出。 */
+    @GetMapping("/{resumeId}/export-preserve-format")
+    public void exportPreserveFormat(@PathVariable Long resumeId, HttpServletResponse response) {
+        Resume resume = resumeService.getById(resumeId);
+        var report = analysisService.getReport(resumeId);
+        String optimizedText = (String) report.get("optimizedText");
+        if (optimizedText == null || optimizedText.isBlank()) {
+            throw new IllegalArgumentException("优化简历内容为空，请先完成深度优化");
+        }
+        String fileName = String.valueOf(report.getOrDefault("fileName", "简历"));
+
+        byte[] docx;
+        byte[] fileData = resume.getFileData();
+        if (fileData != null && fileData.length > 0 && "docx".equalsIgnoreCase(resume.getFileType())) {
+            try {
+                List<ParagraphProfile> profiles = templateExportService.parseParagraphs(fileData);
+
+                // 获取 AI 返回的 highlights（含 before/after 对照文本）
+                Object highlightsObj = report.get("highlights");
+                List<Map<String, Object>> highlights = castToHighlightList(highlightsObj);
+
+                // 语义匹配：用 before 文本在 DOCX 中模糊定位段落（仅 highlights，不碰未标记段落）
+                Map<Integer, String> mappings = templateExportService.buildMappingsFromHighlights(profiles, highlights);
+
+                if (mappings.isEmpty()) {
+                    log.warn("语义匹配未找到任何对应段落，回退标准导出");
+                    docx = wordExportService.exportMarkdown(optimizedText, fileName);
+                } else {
+                    docx = templateExportService.writeBack(fileData, mappings, true);
+                }
+            } catch (Exception e) {
+                log.warn("保留格式导出失败，回退标准导出: {}", e.getMessage());
+                docx = wordExportService.exportMarkdown(optimizedText, fileName);
+            }
+        } else {
+            docx = wordExportService.exportMarkdown(optimizedText, fileName);
+        }
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        response.setHeader("Content-Disposition",
+                "attachment; filename*=UTF-8''" + URLEncoder.encode(
+                        fileName.replaceAll("\\.[^.]+$", "") + "_优化版.docx", StandardCharsets.UTF_8));
+        response.setContentLength(docx.length);
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(docx);
+        } catch (Exception e) {
+            throw new RuntimeException("导出失败", e);
+        }
+    }
+
+    /** 将 report 中的 highlights 对象安全转换为 List&lt;Map&gt; */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> castToHighlightList(Object obj) {
+        if (obj instanceof List<?> list) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map) {
+                    result.add((Map<String, Object>) item);
+                }
+            }
+            return result;
+        }
+        return List.of();
     }
 
     /** 预览优化简历为 HTML（小程序 web-view 内使用） */

@@ -3,6 +3,28 @@
     <ParticleBg :particleCount="180" :particleSpread="12" :speed="0.08" :alphaParticles="true" :particleBaseSize="80"
       :sizeRandomness="0.8" :moveOnHover="true" :hoverFactor="0.6" :disableRotation="false" />
 
+    <!-- Lanyard announcement -->
+    <div class="lanyard" v-if="announcement">
+      <div class="lanyard__nail" />
+      <div class="lanyard__cord" />
+      <div class="lanyard__handle" @click="showAnn = !showAnn" :class="{ 'lanyard__handle--pulled': showAnn }">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+      </div>
+      <transition name="card-drop">
+        <div class="lanyard-card" v-if="showAnn">
+          <div class="lanyard-card__inner">
+            <div class="lanyard-card__head">
+              <span class="lanyard-card__title">{{ announcement.title }}</span>
+              <button class="lanyard-card__close" @click="dismissAnn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="lanyard-card__body" v-html="renderedAnnContent" />
+          </div>
+        </div>
+      </transition>
+    </div>
+
     <div class="home__inner">
       <!-- Header -->
       <header class="header">
@@ -69,8 +91,8 @@
       <!-- Feature Cards Grid -->
       <ScrollReveal :stagger="0.1" :y="30" :duration="0.7">
         <section class="func-grid">
-          <PixelCard :gap="10" :dotRadius="1.0" colors="#fef08a,#fde047,#eab308" :opacityMin="0.15" :opacityMax="0.5"
-            className="func-card func-card--accent" @click="$router.push('/resume/upload')">
+          <PixelCard :gap="5" :speed="20" colors="#fef08a,#fde047,#eab308" className="func-card func-card--accent"
+            @click="$router.push('/resume/upload')">
             <div class="func-card__top">
               <div class="func-icon func-icon--amber">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
@@ -80,12 +102,27 @@
               </div>
               <span class="func-card__tag">推荐</span>
             </div>
-            <span class="func-card__title">简历深度诊断</span>
+            <span class="func-card__title">简历诊断</span>
             <span class="func-card__desc">上传 PDF，AI 定位项目薄弱点</span>
           </PixelCard>
 
-          <PixelCard :gap="10" :dotRadius="1.0" colors="#e0f2fe,#7dd3fc,#0ea5e9" :opacityMin="0.15" :opacityMax="0.5"
-            className="func-card" @click="$router.push('/practice')">
+          <PixelCard :gap="5" colors="#ffedd5,#fdba74,#D9750A" :speed="25" className="func-card func-card--accent"
+            @click="showToolPicker = true">
+            <div class="func-card__top">
+              <div class="func-icon func-icon--amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </div>
+              <span class="func-card__tag">NEW</span>
+            </div>
+            <span class="func-card__title">文章助手</span>
+            <span class="func-card__desc">润色 · 降AI · 降查重</span>
+          </PixelCard>
+
+          <PixelCard :gap="5" colors="#e0f2fe,#7dd3fc,#0ea5e9" :speed="35" className="func-card"
+            @click="$router.push('/practice')">
             <div class="func-card__top">
               <div class="func-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5">
@@ -99,8 +136,8 @@
             <span class="func-card__desc">随机组卷 · 按专题练习</span>
           </PixelCard>
 
-          <PixelCard :gap="10" :dotRadius="1.0" colors="#f8fafc,#f1f5f9,#cbd5e1" :opacityMin="0.12" :opacityMax="0.4"
-            className="func-card" @click="$router.push('/questions')">
+          <PixelCard :gap="5" colors="#f8fafc,#f1f5f9,#cbd5e1" :speed="25" className="func-card"
+            @click="$router.push('/questions')">
             <div class="func-card__top">
               <div class="func-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5">
@@ -115,8 +152,8 @@
             <span class="func-card__desc">分类浏览 · 逐题精学</span>
           </PixelCard>
 
-          <PixelCard :gap="10" :dotRadius="1.0" colors="#fecdd3,#fda4af,#e11d48" :opacityMin="0.15" :opacityMax="0.5"
-            className="func-card" @click="$router.push('/wrong-book')">
+          <PixelCard :gap="6" colors="#fecdd3,#fda4af,#e11d48" :speed="35" className="func-card"
+            @click="$router.push('/wrong-book')">
             <div class="func-card__top">
               <div class="func-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5">
@@ -131,22 +168,51 @@
             <span class="func-card__desc">记录薄弱环节，反复巩固</span>
           </PixelCard>
 
-          <PixelCard :gap="10" :dotRadius="1.0" colors="#ffedd5,#fdba74,#D9750A" :opacityMin="0.15" :opacityMax="0.55"
-            className="func-card func-card--accent" @click="$router.push('/paper-tools/polish')">
-            <div class="func-card__top">
-              <div class="func-icon func-icon--amber">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                </svg>
-              </div>
-              <span class="func-card__tag">NEW</span>
-            </div>
-            <span class="func-card__title">论文工具</span>
-            <span class="func-card__desc">润色 · 降AI · 降查重</span>
-          </PixelCard>
         </section>
       </ScrollReveal>
+
+      <!-- Tool Picker Modal -->
+      <Teleport to="body">
+        <Transition name="picker-fade">
+          <div v-if="showToolPicker" class="picker-overlay" @click.self="showToolPicker = false">
+            <div class="picker-modal">
+              <h3 class="picker-title">选择工具</h3>
+              <div class="picker-grid">
+                <button class="picker-card" @click="router.push('/paper-tools/polish')">
+                  <div class="picker-icon picker-icon--polish">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                  </div>
+                  <span class="picker-label">学术润色</span>
+                  <span class="picker-desc">语法修正 · 词汇升级 · 逻辑重构</span>
+                </button>
+                <button class="picker-card" @click="router.push('/paper-tools/ai-reduce')">
+                  <div class="picker-icon picker-icon--paper">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg>
+                  </div>
+                  <span class="picker-label">降AI检测</span>
+                  <span class="picker-desc">风险扫描 · 深度改写 · 去AI痕迹</span>
+                </button>
+                <button class="picker-card" @click="router.push('/paper-tools/plagiarism-reduce')">
+                  <div class="picker-icon picker-icon--polish">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                  </div>
+                  <span class="picker-label">降查重</span>
+                  <span class="picker-desc">重复检测 · 降重优化 · 引用检查</span>
+                </button>
+              </div>
+              <button class="picker-close" @click="showToolPicker = false">取消</button>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
 
       <!-- Hot Topics -->
       <ScrollReveal :stagger="0.06" :y="20" :duration="0.6">
@@ -184,7 +250,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { get } from '@/utils/request'
@@ -196,19 +262,80 @@ import ScrollReveal from '@/components/ScrollReveal.vue'
 import DecryptedText from '@/components/DecryptedText.vue'
 
 interface Category { id: number; name: string; icon?: string; sortOrder: number }
+interface Announcement { id: number; title: string; content: string }
 
 const router = useRouter()
 const userStore = useUserStore()
+const showToolPicker = ref(false)
 
 const hotTopics = ['Redis 穿透', 'MySQL 索引优化', 'ConcurrentHashMap', 'AQS 源码分析', 'TCP 拥塞控制']
 const categories = ref<Category[]>([])
+
+// Announcement
+const announcement = ref<Announcement | null>(null)
+const showAnn = ref(false)
+const annDismissed = ref(false)
+const renderedAnnContent = computed(() => {
+  if (!announcement.value) return ''
+  return renderMarkdown(announcement.value.content)
+})
 
 onMounted(async () => {
   try {
     const res = await get<Category[]>('/api/questions/categories')
     categories.value = res.data || []
   } catch { /* ignore */ }
+  // 公告：每次登录或切换用户后展示一次
+  const token = localStorage.getItem('token')
+  const dismissedKey = 'annDismissed_' + (token ? token.substring(0, 20) : '') + '_' + (userStore.userId?.value || 0)
+  if (sessionStorage.getItem(dismissedKey)) {
+    annDismissed.value = true
+  }
+  try {
+    const r = await get<Announcement>('/api/announcement/latest')
+    if (r.data?.id) {
+      announcement.value = r.data
+      if (!annDismissed.value) showAnn.value = true
+    }
+  } catch {}
 })
+
+function dismissAnn() {
+  showAnn.value = false
+  annDismissed.value = true
+  const token = localStorage.getItem('token')
+  const dismissedKey = 'annDismissed_' + (token ? token.substring(0, 20) : '') + '_' + (userStore.userId?.value || 0)
+  sessionStorage.setItem(dismissedKey, '1')
+}
+
+function renderMarkdown(md: string): string {
+  if (!md) return ''
+  let html = md
+  // 代码块
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+  // 行内代码
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+  // 图片
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%">')
+  // 链接
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+  // 标题
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  // 粗体/斜体
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  // 无序列表
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>')
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+  // 段落
+  html = html.replace(/\n\n/g, '</p><p>')
+  html = '<p>' + html + '</p>'
+  // 清理空段落
+  html = html.replace(/<p>\s*<\/p>/g, '')
+  return html
+}
 
 function goTopic(t: string) {
   router.push(`/questions?tag=${encodeURIComponent(t)}`)
@@ -562,5 +689,213 @@ function goCategory(c: Category) {
   .func-grid {
     gap: 18px;
   }
+}
+
+/* Tool Picker Modal */
+.picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 19, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.picker-modal {
+  background: #FDFCFB;
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  max-width: 620px;
+  width: 90%;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.picker-title {
+  font-family: Georgia, 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: #141413;
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.picker-card {
+  flex: 1;
+  background: #F5F4F1;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 28px 20px 24px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.4, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
+}
+
+.picker-card:hover {
+  background: #FDFCFB;
+  border-color: #D9750A;
+  box-shadow: 0 8px 24px rgba(217, 117, 10, 0.12);
+  transform: translateY(-2px);
+}
+
+.picker-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.picker-icon--polish {
+  background: rgba(217, 117, 10, 0.08);
+}
+
+.picker-icon--paper {
+  background: rgba(217, 117, 10, 0.08);
+}
+
+.picker-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #141413;
+}
+
+.picker-desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.4;
+}
+
+.picker-close {
+  font-size: 13px;
+  color: #888;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 20px;
+  border-radius: 8px;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.picker-close:hover {
+  color: #141413;
+}
+
+.picker-fade-enter-active {
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.4, 1);
+}
+
+.picker-fade-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.picker-fade-enter-from,
+.picker-fade-leave-to {
+  opacity: 0;
+}
+
+.picker-fade-enter-from .picker-modal {
+  transform: scale(0.95) translateY(12px);
+}
+
+.picker-fade-leave-to .picker-modal {
+  transform: scale(0.97);
+}
+
+/* ====== Lanyard Announcement ====== */
+.lanyard {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+  z-index: 200; display: flex; flex-direction: column; align-items: center;
+}
+.lanyard__nail {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #888; margin-top: 6px; flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.lanyard__cord {
+  width: 1.5px; height: 28px; background: #999; flex-shrink: 0;
+}
+.lanyard__handle {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; border: 2px solid #ccc;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  color: #999; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.lanyard__handle:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 3px 10px rgba(0,0,0,0.18); }
+.lanyard__handle--pulled { transform: translateY(4px); border-color: var(--accent); color: var(--accent); }
+
+.lanyard-card {
+  position: fixed; top: 62px; left: 50%; transform: translateX(-50%);
+  z-index: 199; perspective: 800px;
+}
+.lanyard-card__inner {
+  width: 520px; max-width: calc(100vw - 32px);
+  max-height: 65vh; overflow-y: auto;
+  background: var(--bg-paper); border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl); box-shadow: 0 24px 64px rgba(0,0,0,0.14), 0 8px 16px rgba(0,0,0,0.06);
+  padding: 28px 30px;
+}
+.lanyard-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.lanyard-card__title {
+  font-family: var(--font-serif); font-size: 18px; font-weight: 600;
+}
+.lanyard-card__close {
+  width: 30px; height: 30px; border-radius: 50%; border: none;
+  background: var(--bg-surface); cursor: pointer; color: var(--text-light);
+  display: flex; align-items: center; justify-content: center;
+}
+.lanyard-card__close:hover { background: var(--border-light); color: var(--text-main); }
+.lanyard-card__body { font-size: 14px; line-height: 1.8; color: var(--text-muted); }
+.lanyard-card__body :deep(h1), .lanyard-card__body :deep(h2), .lanyard-card__body :deep(h3) {
+  font-family: var(--font-serif); color: var(--text-main); margin: 16px 0 8px;
+}
+.lanyard-card__body :deep(h1) { font-size: 20px; }
+.lanyard-card__body :deep(h2) { font-size: 17px; }
+.lanyard-card__body :deep(h3) { font-size: 15px; }
+.lanyard-card__body :deep(p) { margin: 0 0 10px; }
+.lanyard-card__body :deep(ul) { padding-left: 20px; margin: 0 0 10px; }
+.lanyard-card__body :deep(code) {
+  background: var(--bg-surface); padding: 1px 6px; border-radius: 4px; font-size: 13px;
+}
+.lanyard-card__body :deep(pre) {
+  background: var(--bg-dark); color: #ddd; padding: 14px 18px; border-radius: var(--radius-md);
+  overflow-x: auto; font-size: 13px; margin: 0 0 12px;
+}
+.lanyard-card__body :deep(pre code) { background: none; padding: 0; color: inherit; }
+.lanyard-card__body :deep(img) { max-width: 100%; border-radius: var(--radius-md); margin: 8px 0; }
+.lanyard-card__body :deep(a) { color: var(--accent); text-decoration: underline; }
+.lanyard-card__body :deep(strong) { font-weight: 600; color: var(--text-main); }
+
+/* Card drop spring animation */
+.card-drop-enter-active { transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.card-drop-leave-active { transition: all 0.3s cubic-bezier(0.4, 0, 0.6, 1); }
+.card-drop-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-80px) rotateX(30deg);
+}
+.card-drop-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-40px) rotateX(15deg);
 }
 </style>

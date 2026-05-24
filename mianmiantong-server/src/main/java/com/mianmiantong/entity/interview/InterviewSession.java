@@ -18,6 +18,10 @@ public class InterviewSession {
     private Integer overallScore;
     private String dimensions;
     private String feedback;
+    private Integer codingScore;
+    private String codingDimensions;
+    private String codingFeedback;
+    private String codingSuggestion;
     private Integer status;
     private String model;
     private LocalDateTime createTime;

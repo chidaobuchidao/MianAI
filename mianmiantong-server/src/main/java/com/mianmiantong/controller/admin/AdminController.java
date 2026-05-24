@@ -2,13 +2,16 @@ package com.mianmiantong.controller.admin;
 
 import com.mianmiantong.common.Result;
 import com.mianmiantong.config.JwtAuthFilter;
+import com.mianmiantong.entity.Announcement;
 import com.mianmiantong.entity.user.User;
+import com.mianmiantong.mapper.AnnouncementMapper;
 import com.mianmiantong.mapper.interview.InterviewSessionMapper;
 import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.mapper.user.UserAiConfigMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -18,15 +21,18 @@ public class AdminController {
     private final UserMapper userMapper;
     private final UserAiConfigMapper aiConfigMapper;
     private final InterviewSessionMapper sessionMapper;
+    private final AnnouncementMapper announcementMapper;
 
     @Value("${DEEPSEEK_API_KEY:}")
     private String systemApiKey;
 
     public AdminController(UserMapper userMapper, UserAiConfigMapper aiConfigMapper,
-                           InterviewSessionMapper sessionMapper) {
+                           InterviewSessionMapper sessionMapper,
+                           AnnouncementMapper announcementMapper) {
         this.userMapper = userMapper;
         this.aiConfigMapper = aiConfigMapper;
         this.sessionMapper = sessionMapper;
+        this.announcementMapper = announcementMapper;
     }
 
     /** All admin endpoints require role=1 */
@@ -169,13 +175,73 @@ public class AdminController {
         return Result.ok(Map.of("message", "已清空所有面试记录"));
     }
 
-    /** Clear ALL test data (sessions + answers + wrong questions + resumes) */
+    /** Clear ALL test data */
     @PostMapping("/clear-all")
     public Result<?> clearAll() {
         requireAdmin();
         sessionMapper.delete(null);
-        // Use raw queries for other tables
-        sessionMapper.delete(null); // interview_session
-        return Result.ok(Map.of("message", "已清空面试记录（answer_record/wrong_question/resume 需手动 TRUNCATE）"));
+        return Result.ok(Map.of("message", "已清空面试记录"));
+    }
+
+    // ==================== 公告管理 ====================
+
+    @GetMapping("/announcements")
+    public Result<List<Announcement>> listAnnouncements() {
+        requireAdmin();
+        return Result.ok(announcementMapper.selectList(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Announcement>()
+                .orderByDesc(Announcement::getCreateTime)));
+    }
+
+    @PostMapping("/announcement")
+    public Result<Announcement> createAnnouncement(@RequestBody Announcement a) {
+        requireAdmin();
+        a.setCreatedBy(getUserId());
+        a.setIsPublished(1);
+        announcementMapper.insert(a);
+        cleanupAnnouncements();
+        return Result.ok(a);
+    }
+
+    @PutMapping("/announcement/{id}")
+    public Result<?> updateAnnouncement(@PathVariable Long id, @RequestBody Announcement a) {
+        requireAdmin();
+        a.setId(id);
+        a.setUpdateTime(LocalDateTime.now());
+        announcementMapper.updateById(a);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/announcement/{id}")
+    public Result<?> deleteAnnouncement(@PathVariable Long id) {
+        requireAdmin();
+        announcementMapper.deleteById(id);
+        return Result.ok();
+    }
+
+    @PostMapping("/announcement/{id}/publish")
+    public Result<?> togglePublish(@PathVariable Long id) {
+        requireAdmin();
+        Announcement a = announcementMapper.selectById(id);
+        if (a != null) {
+            a.setIsPublished(a.getIsPublished() == 1 ? 0 : 1);
+            announcementMapper.updateById(a);
+        }
+        return Result.ok(Map.of("published", a != null && a.getIsPublished() == 1));
+    }
+
+    private void cleanupAnnouncements() {
+        List<Announcement> all = announcementMapper.selectList(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Announcement>()
+                .orderByDesc(Announcement::getCreateTime));
+        if (all.size() > 5) {
+            for (int i = 5; i < all.size(); i++) {
+                announcementMapper.deleteById(all.get(i).getId());
+            }
+        }
+    }
+
+    private Long getUserId() {
+        return JwtAuthFilter.getCurrentUserId();
     }
 }

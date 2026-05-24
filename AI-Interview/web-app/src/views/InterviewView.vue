@@ -440,6 +440,7 @@ const progressItems = ref<ProgressItem[]>([])
 
 // ===== Interview flow =====
 async function startInterview(position: string) {
+  if (loading.value) return  // 防止重复点击
   // Pre-check quota before API call
   await fetchQuota()
   const needed = interviewModel.value.includes('pro') ? 2 : 1
@@ -463,6 +464,11 @@ async function startInterview(position: string) {
       resumeId: resumeId || undefined
     })
     const session = res.data
+    if (!session) {
+      errorMsg.value = '启动面试失败，请重试'
+      loading.value = false
+      return
+    }
     sessionId.value = session.sessionId
     currentCode.value = session.codeSnippet || ''
     messages.value = [{
@@ -494,23 +500,9 @@ async function handleFinish(data: ReportData) {
   advancePipeline('summary')
   for (const item of progressItems.value) { item.done = true; item.active = false; item.status = 'Completed' }
 
-  // If interview report not already saved (e.g. coding path saved it before coding started),
-  // fetch it from the end API. Only fetch if no data in sessionStorage.
-  const alreadySaved = sessionStorage.getItem('interviewScore') || sessionStorage.getItem('interviewFeedback')
-  if (!alreadySaved && data.score == null && !data.feedback) {
-    try {
-      const token = localStorage.getItem('token') || ''
-      const res = await fetch(`/api/interview/${sessionId.value}/end`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-      })
-      const result = await res.json()
-      if (result.data?.report) {
-        data = result.data.report
-      }
-    } catch { /* fall through */ }
-  }
-
+  // 面试报告在进入笔试时已由后台生成存入 DB，报告页从 API 读取
+  // 笔试报告也在后端 finish handler 中存入了 DB
+  // sessionStorage 仅作为缓存
   if (data.score != null) {
     sessionStorage.setItem('interviewScore', String(data.score))
   }
@@ -564,8 +556,7 @@ function enterCoding() {
   showCodingInvite.value = false
   advancePipeline('coding')
   showCodePanel.value = true
-  // Fire-and-forget: generate interview report async while user reads the problem
-  endInterviewAndSaveReport()
+  // 后端 answerStream 收到 [进入编程环节] 时会自动后台生成面试报告
   sendAnswer('[进入编程环节]')
 }
 

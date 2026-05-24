@@ -135,7 +135,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { get } from '@/utils/request'
 import SkeletonBar from '@/components/SkeletonBar.vue'
-import { sanitizeEndMarker, safeParseDims, extractBalancedJson, fixJsonString, scoreToVerdict, scoreToRingClass, type DimItem } from '@/utils/sanitize'
+import { sanitizeEndMarker, safeParseDims, scoreToVerdict, scoreToRingClass, type DimItem } from '@/utils/sanitize'
 import { type CodingReview } from '@/composables/useInterviewStream'
 
 interface Report {
@@ -173,27 +173,6 @@ function loadCodingReview() {
   try { return JSON.parse(raw) as CodingReview } catch { return null }
 }
 
-function extractCodingReviewFromMessages(messagesRaw: any): CodingReview | null {
-  if (!messagesRaw) return null
-  const text = typeof messagesRaw === 'string'
-    ? messagesRaw
-    : Array.isArray(messagesRaw) ? messagesRaw.map((m: any) => m.content || '').join('\n') : null
-  if (!text) return null
-  const idx = text.indexOf('[笔试结束]')
-  if (idx === -1) return null
-  const result = extractBalancedJson(text, idx + '[笔试结束]'.length)
-  if (!result) return null
-  try {
-    const json = JSON.parse(fixJsonString(result.json))
-    return {
-      score: Number(json.score) || 0,
-      feedback: json.feedback || '',
-      dimensions: Array.isArray(json.dimensions) ? json.dimensions : undefined,
-      suggestion: json.suggestion || ''
-    }
-  } catch { return null }
-}
-
 async function fetchReport() {
   const id = route.query.id
   if (!id) { loading.value = false; return }
@@ -208,7 +187,9 @@ async function fetchReport() {
     try {
       const r = await get<Report>(`/api/interview/${id}`)
       const raw = r.data as any
-      if (raw && (raw.feedback || raw.overallScore != null)) {
+      const hasInterview = raw.feedback || raw.overallScore != null
+      const hasCoding = raw.codingFeedback || raw.codingScore != null
+      if (raw && (hasInterview || hasCoding)) {
         report.value = {
           overallScore: raw.overallScore ?? 0,
           feedback: sanitizeEndMarker(raw.feedback || ''),
@@ -217,12 +198,13 @@ async function fetchReport() {
           position: raw.position,
           createTime: raw.createTime
         }
-        // Extract coding review from messages if not already loaded via sessionStorage
-        if (!codingReview.value) {
-          const extracted = extractCodingReviewFromMessages(raw.messages)
-          if (extracted) {
-            codingReview.value = extracted
-            sessionStorage.setItem('interviewCodingReview', JSON.stringify(extracted))
+        // 笔试报告从独立 DB 字段读取
+        if (!codingReview.value && (raw.codingScore != null || raw.codingFeedback)) {
+          codingReview.value = {
+            score: Number(raw.codingScore) || 0,
+            feedback: sanitizeEndMarker(raw.codingFeedback || ''),
+            dimensions: safeParseDims(raw.codingDimensions),
+            suggestion: sanitizeEndMarker(raw.codingSuggestion || '')
           }
         }
         loading.value = false

@@ -83,6 +83,8 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
   const { sessionId, messages, loading, onFinish, onCodeProblem, onCodingInvite, onCodingFinish } = options
   const reportScore = ref(0)
 
+  let codingReviewSeen = false
+
   function buildFinishData(json: Record<string, unknown>): ReportData {
     return {
       score: json.score != null ? Number(json.score) : undefined,
@@ -140,8 +142,6 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
       } as CodeProblem
     })
   }
-
-  let codingReviewSeen = false
 
   function tryParseCodingMarker(content: string): { data: CodingReview; cleanContent: string } | null {
     const result = tryParseMarker(content, '[笔试结束]', json => ({
@@ -230,7 +230,12 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
           const codeResult = tryParseCodeMarker(streamState.aiContent)
           if (codeResult && onCodeProblem) {
             streamState.aiContent = codeResult.cleanContent
-            updateMessage(aiMsgIdx, codeResult.cleanContent)
+            // 若标记前后无文字，移除占位气泡避免空白对话框
+            if (!codeResult.cleanContent || codeResult.cleanContent.trim().length === 0) {
+              messages.value = messages.value.filter((_, i) => i !== aiMsgIdx)
+            } else {
+              updateMessage(aiMsgIdx, codeResult.cleanContent)
+            }
             onCodeProblem(codeResult.data)
             return
           }
@@ -239,10 +244,13 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
           const codingResult = tryParseCodingMarker(streamState.aiContent)
           if (codingResult && onCodingFinish) {
             streamState.aiContent = codingResult.cleanContent
-            // Show feedback text before marker, then replace marker JSON with done placeholder
-            updateMessage(aiMsgIdx, codingResult.cleanContent || '__CODING_REVIEW_DONE__')
+            // 有前置反馈文字则显示，否则直接展示审查完成卡片
+            if (codingResult.cleanContent && codingResult.cleanContent.trim().length > 0) {
+              updateMessage(aiMsgIdx, codingResult.cleanContent)
+            } else {
+              updateMessage(aiMsgIdx, '__CODING_REVIEW_DONE__')
+            }
             onCodingFinish(codingResult.data)
-            // Interview evaluation is handled by codingReviewDone event
             return
           }
 
@@ -273,8 +281,13 @@ export function useInterviewStream(options: UseInterviewStreamOptions) {
             if (json.report?.score != null) {
               reportScore.value = Number(json.report.score)
             }
+            // Coding problem delivered — stop loading, let user write code
+            if (json.coding) {
+              loading.value = false
+              streamState.endDetected = true
+              return
+            }
             // Code review done — interview report was already saved before coding started.
-            // Just navigate to the report page.
             if (json.codingReviewDone) {
               loading.value = false
               onFinish({})

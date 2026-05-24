@@ -7,13 +7,11 @@ import com.mianmiantong.entity.resume.ResumeAnalysis;
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.mapper.resume.ResumeAnalysisMapper;
 import com.mianmiantong.mapper.resume.ResumeMapper;
-import com.mianmiantong.mapper.user.UserAiConfigMapper;
-import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.service.ai.AiService;
 import com.mianmiantong.service.document.DocumentAiService;
 import com.mianmiantong.service.document.DocumentParseResult;
+import com.mianmiantong.service.user.QuotaService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -29,12 +27,7 @@ public class ResumeAnalysisService {
     private final AiService aiService;
     private final DocumentAiService documentAiService;
     private final ObjectMapper objectMapper;
-
-    @Autowired
-    private UserMapper userMapper;
-
-    @Autowired
-    private UserAiConfigMapper aiConfigMapper;
+    private final QuotaService quotaService;
 
     /** Phase 1: 快速评分，轻量快速 */
     private static final String QUICK_PROMPT = """
@@ -65,7 +58,7 @@ public class ResumeAnalysisService {
         简历内容：
         %s
 
-        输出JSON（一行，不要markdown标记）：
+        输出JSON（一行，不要markdown代码围栏）：
         {
           "highlights": [
             {"section":"段落名","before":"原文","after":"优化文","reason":"理由"}
@@ -73,16 +66,20 @@ public class ResumeAnalysisService {
           "optimizedText": "完整优化后简历（Markdown）",
           "interviewQuestions": ["追问1","追问2","追问3"]
         }
+
+        【重要】highlights[].before 和 highlights[].after 必须是纯文本，禁止使用任何Markdown格式标记（如**加粗**、*斜体*、##标题、-列表等）。optimizedText 可以使用Markdown。
         """;
 
     public ResumeAnalysisService(ResumeMapper resumeMapper,
                                   ResumeAnalysisMapper analysisMapper,
                                   AiService aiService,
-                                  DocumentAiService documentAiService) {
+                                  DocumentAiService documentAiService,
+                                  QuotaService quotaService) {
         this.resumeMapper = resumeMapper;
         this.analysisMapper = analysisMapper;
         this.aiService = aiService;
         this.documentAiService = documentAiService;
+        this.quotaService = quotaService;
         this.objectMapper = new ObjectMapper();
         // AI 可能返回 literal newlines 等未转义控制字符，Jackson 默认拒绝
         this.objectMapper.configure(
@@ -409,22 +406,16 @@ public class ResumeAnalysisService {
             log.info("getReport自动触发快速评分: resumeId={}", resumeId);
             Long uid = resume.getUserId();
             if (uid != null && !JwtAuthFilter.isAdmin()) {
-                var cfg = aiConfigMapper.selectById(uid);
-                boolean hasOwnKey = cfg != null && cfg.getApiKey() != null && !cfg.getApiKey().isBlank();
-                if (!hasOwnKey) {
-                    var user = userMapper.selectById(uid);
-                    int daily = user != null && user.getDailyQuota() != null ? user.getDailyQuota() : 10;
-                    int used = user != null && user.getQuotaUsed() != null ? user.getQuotaUsed() : 0;
-                    if (used >= daily) {
-                        log.warn("配额不足，拒绝自动分析: userId={}", uid);
-                        Map<String, Object> quotaErr = new LinkedHashMap<>();
-                        quotaErr.put("resumeId", resumeId);
-                        quotaErr.put("overallScore", null);
-                        quotaErr.put("suggestion", "今日免费次数已用完，请配置 AI API Key 后继续使用");
-                        quotaErr.put("deepStatus", -1);
-                        return quotaErr;
-                    }
-                    userMapper.incrementQuota(uid, 1);
+                try {
+                    quotaService.checkQuota();  // 自动触发仅检查不消耗
+                } catch (QuotaService.QuotaExhaustedException e) {
+                    log.warn("配额不足，拒绝自动分析: userId={}", uid);
+                    Map<String, Object> quotaErr = new LinkedHashMap<>();
+                    quotaErr.put("resumeId", resumeId);
+                    quotaErr.put("overallScore", null);
+                    quotaErr.put("suggestion", e.getMessage());
+                    quotaErr.put("deepStatus", -1);
+                    return quotaErr;
                 }
             }
             analyzeQuickAsync(resumeId);

@@ -1,0 +1,183 @@
+# 论文工具 — 开发总结
+
+> 面面通 (IntervVault) 论文工具模块 · 2026-05-23 ~ 2026-05-24
+> 从纸研社 (AI_paper) 移植学术润色 / 降AI / 降查重功能
+
+---
+
+## 1. 架构概览
+
+```
+IntervVault/
+├── mianmiantong-server/                    # Spring Boot 3.2 后端
+│   └── src/main/java/com/mianmiantong/
+│       ├── controller/paper/
+│       │   ├── PolishController.java       # POST /api/polish/run (SSE), /scan
+│       │   ├── AiReduceController.java     # POST /api/ai-reduce/scan, /rewrite (SSE)
+│       │   ├── PlagiarismReduceController.java  # POST /api/plagiarism-reduce/scan, /run (SSE)
+│       │   ├── PaperUploadController.java  # POST /api/paper/upload, /report-analyze
+│       │   └── PaperExportController.java  # POST /api/paper-export/preserve-format, /standard
+│       ├── service/paper/
+│       │   ├── PolishService.java          # 润色 + 格式规范检查（本地规则）
+│       │   ├── AiReduceService.java        # AI 痕迹检测（四级严重度 + 字符熵 + Levenshtein）
+│       │   └── PlagiarismReduceService.java # 重复检测 + 相似度 + 引文检查
+│       ├── service/document/
+│       │   ├── ParagraphProfile.java       # 段落格式快照 record
+│       │   └── TemplatePreservingExportService.java  # 格式保留导出 + 文档解析
+│       └── dto/paper/
+│           ├── PolishRequest.java          # model 字段支持 Flash/Pro 切换
+│           ├── AiReduceRequest.java
+│           ├── PlagiarismReduceRequest.java
+│           └── PaperExportRequest.java
+├── AI-Interview/web-app/src/               # Vue 3 + TypeScript 前端
+│   ├── views/
+│   │   ├── PolishView.vue                  # 学术润色 — 左右对照 + LCS Diff 高亮
+│   │   ├── AiReduceView.vue                # 降AI — Bento 布局 + 交互式高亮洞察
+│   │   └── PlagiarismReduceView.vue        # 降查重 — 双输入 + 统计卡片
+│   ├── composables/
+│   │   └── useStreamPolish.ts              # SSE 流式 composable
+│   └── router/index.ts                     # /paper-tools/polish | ai-reduce | plagiarism-reduce
+```
+
+---
+
+## 2. 功能模块
+
+### 2.1 学术润色 (Polish)
+
+| 项目 | 说明 |
+|------|------|
+| **后端** | `runPolish()` — SSE 流式调用 AI；`scanFormat()` — 本地格式规范检查 |
+| **前端** | 上传 DOCX/粘贴 → 左=原文参考(只读) | 右=润色结果(流式打字机 → 逐段 Diff) → 复制/导出 |
+| **控件** | 润色方式 Tab（词汇优化/逻辑强化/全面润色）；高级选项可折叠（任务类型/主题/补充说明）；Flash/Pro 切换 |
+| **Diff** | 词级 LCS 算法，绿色=新增，红色删除线=删除 |
+| **导出** | 保留原格式 / 标准 Word |
+
+### 2.2 降AI (AI Reduce)
+
+| 项目 | 说明 |
+|------|------|
+| **后端扫描** | 四级严重度（CRITICAL×8 / HIGH×4 / MEDIUM×2 / STYLE×1.5），字符熵，Levenshtein 模糊匹配 |
+| **后端改写** | SSE 流式，三级强度（轻度去痕/深度重构/学术拟合），model 参数透传 |
+| **前端** | 三步流程：上传→扫描→一键净化；Bento 布局（左=文档高亮 | 右=环形评分+洞察面板） |
+| **交互** | 点击左侧高亮 → 右侧脉冲动画 → 原文+分析+suggestion textarea → [⚡]按钮流式精修 → [忽略]/[应用替换] |
+| **报告导入** | 上传 AIGC 报告（PDF/DOCX）→ 解析标注 → 映射回原文高亮 |
+| **结果视图** | 「改写结果」/「文档扫描」Tab 切换，改写结果保留原段落格式 |
+
+**改写强度说明**：
+
+| 模式 | 幅度 | 行为 |
+|------|------|------|
+| 轻度去痕 | 保留 85-90% | 替换 AI 标志词+填充短语，微调词汇语序 |
+| 深度重构 | 保留核心观点+数据 | 打破模板结构、变化句式、删除夸大宣传 |
+| 学术拟合 | deep 基础上增强 | 省略显性过渡词、允许段落长度差异、不做结论性收束 |
+
+**检测规则清单**：
+
+```
+CRITICAL (×8): 机械连接词 20+ · 空洞宏大词 25+ · 三段式结构 4 种
+HIGH     (×4): AI 高频词 30+ · 填充套话 15+ · 模板句式 16 种 · 过度两面论 · 模糊匹配 30 模板
+MEDIUM   (×2): 学术套话 25+ · 被动句式 4 种 · 谨慎用语密集
+STYLE   (×1.5): 段落均匀度 · 句长均匀度 · 重复句首 · 英文过渡词 · 字符熵 · 连接词密度
+```
+
+### 2.3 降查重 (Plagiarism Reduce)
+
+| 项目 | 说明 |
+|------|------|
+| **后端** | `detectRepetitive()` 重复短语+LCS；`compareSimilarity()` Jaccard；`checkCitations()` 引用对应检查 |
+| **后端改写** | SSE 流式降重（轻度/中度/深度），model 参数透传 |
+| **前端** | 上传正文+重复源 → 扫描 → 统计卡片 → 降重 → 结果 |
+| **报告导入** | 上传查重报告 → 标注合并到风险段落列表 |
+
+### 2.4 文档解析与导出
+
+| 项目 | 说明 |
+|------|------|
+| **引擎** | Apache POI + PDFBox，纯本地 |
+| **段落提取** | 正文 + 表格 + 页眉页脚，阈值：正文≥4字 / 表格≥2字 |
+| **编码修复** | `fixDocxEncodingIfNeeded()` — 三级回退链 |
+| **图片处理** | `isImageOnly()` — 跳过纯图片段落 |
+| **回退提取** | 段落解析空 → `extractFallbackText()` 全文本兜底 |
+| **格式导出** | [Pn] 段落 ID 标记法：标记→AI 逐段改写→按索引写回原格式 |
+
+**编码修复链路**：
+
+```
+① UTF-8 解码 → 乱码检测(garbled>10 && chinese<5)
+② → GBK 重解码 → 仍乱码 → GB18030
+③ 双重编码检测: 字节合法但无中文 → Latin-1 字节绕过 → GB18030 解 w:t 文本
+④ → 重新序列化 UTF-8 → POI 正常解析
+```
+
+**前端 fallback**：`paragraphs` 为空但 `fullText` 有内容 → `fallbackParagraphs()` 自动拆分渲染，避免空白。
+
+---
+
+## 3. Prompt 模板
+
+| 文件 | 用途 |
+|------|------|
+| `prompts/polish_run_task.txt` | 润色入口 — taskType/polishType 策略分发 + [Pn] 段落标记协议 |
+| `prompts/ai_reduce_transform.txt` | 降AI 改写 — 5 条核心原则 + 特征清单 + 三级强度 |
+
+---
+
+## 4. 设计系统
+
+Warm Tech 令牌，三页面统一 shell：
+
+```
+--bg-canvas: #F3EFE8    --accent: #D9750A
+--bg-paper: #FDFCFB     --text-main: #141413
+--bg-surface: #F5F4F1   --text-muted: #555
+```
+
+**共享模式**：Header(logo+tag+工具切换) → Toolbar(滑动Tab+Flash/Pro+操作按钮) → 高级选项(可折叠) → 工作区 → 导出下拉。
+
+**AiReduceView 特有**：Bento 布局(左 1fr 右 340px)，环形评分 SVG，脉冲动画，三级匹配高亮（精确→半段→前缀），⚡ 发送按钮 36×36 图标悬浮 textarea 右下角。
+
+**PolishView 特有**：LCS Diff 标注，复制结果按钮。
+
+---
+
+## 5. 参考项目
+
+| 项目 | 参考内容 |
+|------|---------|
+| 纸研社 (AI_paper) | 功能设计、Prompt、检测规则来源 |
+| humanizer-zh skill | 24 类 AI 写作特征、5 条核心原则、替换词典 |
+| paper-checker (yuyuu521) | 四级严重度、字符熵、Bento+洞察面板布局、替换词典 |
+| 04.html (设计稿) | Diff 高亮、滑动 Tab、环形评分、交互式高亮联动 |
+
+---
+
+## 6. 关键决策
+
+- **纯本地解析** — 学术论文隐私，不调用阿里云 DocMind
+- **[Pn] 标记法** — 替代模糊文本匹配，解决改写→原文段落映射
+- **四级严重度+加权评分** — 替代单一分值
+- **Levenshtein 模糊匹配** — 补充精确 regex
+- **砍掉 executionMode** — 与 polishType 职责重叠
+- **高级选项可折叠** — toolbar 只保留高频控件
+- **严重度条与风险痕迹计数同源** — 统一从 `shownSegments` 计算，消除数字不一致
+- **上传状态全量重置** — `input.value=''`清除浏览器缓存 + 重置 showResult/scanDone/segmentedText
+- **model 透传** — DTO → Service → AiService.streamChat，Flash/Pro 切换实际生效
+
+---
+
+## 7. 已修复的 Bug
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| 表格多的文档解析空白 | 表格文本<4字被过滤 | 表格阈值降为2字 |
+| 旧版 WPS 文档乱码 | XML 声明 UTF-8 实际 GBK | 编码检测+GBK/GB18030 转码 |
+| 部分文档 UTF-8 合法但中文全错 | GBK→Latin-1→UTF-8 双重编码 | w:t 文本 Latin-1→GB18030 绕过 |
+| 段落数组空但 API 返回成功 | 解析成功但段落拆分失败 | 前端 fallbackParagraphs() |
+| 有风险评分无高亮 | `indexOf` 精确匹配失败 | 三级降级匹配(精确→半段→前缀) |
+| 严重度条数字≠风险痕迹数 | 计数源不一致 | 统一从 shownSegments 计算 |
+| 高危20但只有3句 | 模式命中次数≠唯一句子数 | 改为唯一句子计数 |
+| 再次上传不刷新 | input 缓存+状态残留 | input.value='' + 全量状态重置 |
+| 风险条某类过多挤占空间 | flex 值直接使用原始计数 | `min(n,6)+1` 上限缩放+min-width |
+| Tab indicator 首次不显示 | watch immediate 早于 DOM | onMounted+ResizeObserver |
+| plagiarism-reduce 路由重定向 | router 配置错误 | 指向正确组件 |

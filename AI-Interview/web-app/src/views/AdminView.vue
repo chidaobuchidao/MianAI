@@ -90,6 +90,48 @@
         </div>
       </div>
 
+      <!-- Announcements -->
+      <div class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <h3 class="section__title" style="margin-bottom:0">公告管理</h3>
+          <button class="btn btn--dark" style="padding:6px 16px;font-size:12px" @click="showAnnEditor = true; editingAnn = null">新建公告</button>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>ID</th><th>标题</th><th>状态</th><th>时间</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in announcements" :key="a.id">
+                <td>{{ a.id }}</td>
+                <td>{{ a.title }}</td>
+                <td><span class="tag" :class="a.isPublished ? 'tag--ok' : 'tag--warn'">{{ a.isPublished ? '已发布' : '已下架' }}</span></td>
+                <td class="tbl__time">{{ formatTime(a.createTime) }}</td>
+                <td class="tbl__actions">
+                  <button class="mini-btn" @click="editAnnouncement(a)">编辑</button>
+                  <button class="mini-btn" @click="toggleAnnPublish(a)">{{ a.isPublished ? '下架' : '发布' }}</button>
+                  <button class="mini-btn mini-btn--danger" @click="deleteAnnouncement(a)">删除</button>
+                </td>
+              </tr>
+              <tr v-if="announcements.length === 0"><td colspan="5" class="tbl__empty">暂无公告</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Announcement editor modal -->
+      <div class="modal-overlay" v-if="showAnnEditor" @click.self="showAnnEditor = false">
+        <div class="modal-card animate-scale-in" style="width:560px;max-height:80vh;overflow-y:auto">
+          <span class="modal-title">{{ editingAnn ? '编辑公告' : '新建公告' }}</span>
+          <input class="modal-input" v-model="annForm.title" placeholder="公告标题" style="margin-bottom:8px" />
+          <textarea class="modal-input" v-model="annForm.content" placeholder="公告内容（支持Markdown/HTML/图片链接）" rows="10" style="resize:vertical;font-family:monospace;font-size:13px"></textarea>
+          <div class="modal-actions">
+            <button class="btn btn--ghost" @click="showAnnEditor = false">取消</button>
+            <button class="btn btn--dark" @click="saveAnnouncement">保存</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Quota edit modal -->
       <div class="modal-overlay" v-if="editingQuota" @click.self="editingQuota = null">
         <div class="modal-card animate-scale-in">
@@ -118,7 +160,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { get, post } from '@/utils/request'
+import { get, post, put, del } from '@/utils/request'
 
 interface Status { totalUsers: number; totalSessions: number; hasSystemKey: boolean; usersWithKey: number }
 interface UserRow { id: number; nickname: string; role: string; hasApiKey: boolean; dailyQuota: number; quotaUsed: number; createTime: string; interviewCount: number }
@@ -145,10 +187,41 @@ onMounted(async () => {
     if (s.data) status.value = s.data
     if (u.data) users.value = u.data
     if (ss.data) sessions.value = ss.data
+    loadAnnouncements()
   } catch {
     router.replace('/profile')
   }
 })
+
+interface AnnRow { id: number; title: string; content: string; isPublished: number; createTime: string }
+const announcements = ref<AnnRow[]>([])
+const showAnnEditor = ref(false)
+const editingAnn = ref<AnnRow | null>(null)
+const annForm = ref({ title: '', content: '' })
+
+async function loadAnnouncements() {
+  try { const r = await get<AnnRow[]>('/api/admin/announcements'); if (r.data) announcements.value = r.data } catch {}
+}
+function editAnnouncement(a: AnnRow) { editingAnn.value = a; annForm.value = { title: a.title, content: a.content }; showAnnEditor.value = true }
+async function saveAnnouncement() {
+  if (!annForm.value.title.trim()) return
+  if (editingAnn.value) {
+    await put(`/api/admin/announcement/${editingAnn.value.id}`, annForm.value)
+  } else {
+    await post('/api/admin/announcement', annForm.value)
+  }
+  showAnnEditor.value = false
+  await loadAnnouncements()
+}
+async function toggleAnnPublish(a: AnnRow) {
+  await post(`/api/admin/announcement/${a.id}/publish`)
+  a.isPublished = a.isPublished ? 0 : 1
+}
+async function deleteAnnouncement(a: AnnRow) {
+  if (!confirm(`确定删除公告「${a.title}」？`)) return
+  await del(`/api/admin/announcement/${a.id}`)
+  announcements.value = announcements.value.filter(x => x.id !== a.id)
+}
 
 function formatTime(t: string): string {
   if (!t) return '-'
