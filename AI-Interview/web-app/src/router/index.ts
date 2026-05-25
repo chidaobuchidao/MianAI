@@ -94,6 +94,7 @@ const router = createRouter({
     },
     {
       path: '/paper-tools',
+      meta: { requiresAuth: true },
       children: [
         { path: 'polish', name: 'Polish', component: () => import('@/views/PolishView.vue') },
         { path: 'ai-reduce', name: 'AiReduce', component: () => import('@/views/AiReduceView.vue') },
@@ -107,19 +108,36 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
+  const userStore = useUserStore()
+  // Restore persisted token so guard works on direct page loads
+  if (!userStore.token) {
+    userStore.restoreToken()
+  }
+
+  // Already logged in → redirect /login away to home
+  if (to.path === '/login' && userStore.token) {
+    next('/')
+    return
+  }
+
+  // Public routes
   if (to.path === '/login' || to.path === '/') {
     next()
     return
   }
-  const userStore = useUserStore()
+
+  // Auth required
   if (!userStore.token) {
     next('/login')
     return
   }
+
+  // Admin required
   if (to.meta.requiresAdmin && !userStore.isAdmin) {
     next('/profile')
     return
   }
+
   next()
 })
 
