@@ -44,6 +44,15 @@ public class AuthService {
         if (existing != null) {
             throw new IllegalArgumentException("用户名已存在");
         }
+        // Check nickname uniqueness
+        if (nickname != null && !nickname.isBlank()) {
+            User sameName = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getNickname, nickname)
+            );
+            if (sameName != null) {
+                throw new IllegalArgumentException("昵称已被使用，请换一个");
+            }
+        }
 
         User user = new User();
         user.setUsername(username);

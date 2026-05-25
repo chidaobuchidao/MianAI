@@ -33,7 +33,10 @@
 
       <!-- User Table -->
       <div class="section">
-        <h3 class="section__title">用户列表</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+          <h3 class="section__title" style="margin-bottom:0">用户列表 ({{ userTotal }})</h3>
+          <input class="search-input" v-model="userKeyword" placeholder="搜索昵称/用户名..." @input="debounceLoadUsers" style="max-width:200px" />
+        </div>
         <div class="table-wrap">
           <table class="tbl">
             <thead>
@@ -63,11 +66,19 @@
             </tbody>
           </table>
         </div>
+        <div class="pager" v-if="userTotal > userPageSize">
+          <button :disabled="userPage <= 1" @click="userPage--; loadUsers()">上一页</button>
+          <span>{{ userPage }} / {{ Math.ceil(userTotal / userPageSize) }}</span>
+          <button :disabled="userPage >= Math.ceil(userTotal / userPageSize)" @click="userPage++; loadUsers()">下一页</button>
+        </div>
       </div>
 
       <!-- Sessions Table -->
       <div class="section">
-        <h3 class="section__title">最近面试记录</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+          <h3 class="section__title" style="margin-bottom:0">面试记录 ({{ sessionTotal }})</h3>
+          <input class="search-input" v-model="sessionKeyword" placeholder="搜索岗位..." @input="debounceLoadSessions" style="max-width:200px" />
+        </div>
         <div class="table-wrap">
           <table class="tbl">
             <thead>
@@ -87,6 +98,11 @@
               <tr v-if="sessions.length === 0"><td colspan="6" class="tbl__empty">暂无记录</td></tr>
             </tbody>
           </table>
+        </div>
+        <div class="pager" v-if="sessionTotal > sessionPageSize">
+          <button :disabled="sessionPage <= 1" @click="sessionPage--; loadSessions()">上一页</button>
+          <span>{{ sessionPage }} / {{ Math.ceil(sessionTotal / sessionPageSize) }}</span>
+          <button :disabled="sessionPage >= Math.ceil(sessionTotal / sessionPageSize)" @click="sessionPage++; loadSessions()">下一页</button>
         </div>
       </div>
 
@@ -172,6 +188,25 @@ const userStore = useUserStore()
 const status = ref<Status>({ totalUsers: 0, totalSessions: 0, hasSystemKey: false, usersWithKey: 0 })
 const users = ref<UserRow[]>([])
 const sessions = ref<SessionRow[]>([])
+const userTotal = ref(0); const userPage = ref(1); const userPageSize = 20; const userKeyword = ref('')
+const sessionTotal = ref(0); const sessionPage = ref(1); const sessionPageSize = 20; const sessionKeyword = ref('')
+let userTimer: any = null, sessionTimer: any = null
+
+function debounceLoadUsers() {
+  clearTimeout(userTimer); userTimer = setTimeout(() => { userPage.value = 1; loadUsers() }, 300)
+}
+function debounceLoadSessions() {
+  clearTimeout(sessionTimer); sessionTimer = setTimeout(() => { sessionPage.value = 1; loadSessions() }, 300)
+}
+
+async function loadUsers() {
+  const res = await get<any>(`/api/admin/users?page=${userPage.value}&pageSize=${userPageSize}&keyword=${encodeURIComponent(userKeyword.value)}`)
+  if (res.data) { users.value = res.data.list || []; userTotal.value = res.data.total || 0 }
+}
+async function loadSessions() {
+  const res = await get<any>(`/api/admin/sessions?page=${sessionPage.value}&pageSize=${sessionPageSize}&keyword=${encodeURIComponent(sessionKeyword.value)}`)
+  if (res.data) { sessions.value = res.data.list || []; sessionTotal.value = res.data.total || 0 }
+}
 
 onMounted(async () => {
   if (!userStore.isAdmin) {
@@ -181,12 +216,12 @@ onMounted(async () => {
   try {
     const [s, u, ss] = await Promise.all([
       get<Status>('/api/admin/status'),
-      get<UserRow[]>('/api/admin/users'),
-      get<SessionRow[]>('/api/admin/sessions?limit=30')
+      get<any>(`/api/admin/users?page=1&pageSize=${userPageSize}`),
+      get<any>(`/api/admin/sessions?page=1&pageSize=${sessionPageSize}`)
     ])
     if (s.data) status.value = s.data
-    if (u.data) users.value = u.data
-    if (ss.data) sessions.value = ss.data
+    if (u.data) { users.value = u.data.list || []; userTotal.value = u.data.total || 0 }
+    if (ss.data) { sessions.value = ss.data.list || []; sessionTotal.value = ss.data.total || 0 }
     loadAnnouncements()
   } catch {
     router.replace('/profile')
@@ -266,14 +301,16 @@ async function toggleAdmin(u: UserRow) {
 async function deleteUser(u: UserRow) {
   if (!confirm(`确定删除用户：${u.nickname}？此操作不可撤销！`)) return
   await post('/api/admin/delete-user', { userId: u.id })
-  users.value = users.value.filter(x => x.id !== u.id)
+  await loadUsers()
+  const s = await get<Status>('/api/admin/status'); if (s.data) status.value = s.data
 }
 
 async function clearSessions() {
   if (!confirm('确定清空所有面试记录？')) return
   await post('/api/admin/clear-sessions')
   status.value.totalSessions = 0
-  sessions.value = []
+  sessionTotal.value = 0; sessions.value = []
+  await loadSessions()
 }
 </script>
 
@@ -378,6 +415,26 @@ async function clearSessions() {
 .modal-actions .btn { padding: 10px 24px; border-radius: 100px; font-size: 14px; cursor: pointer; border: none; }
 .modal-actions .btn--ghost { background: var(--bg-surface); color: var(--text-muted); }
 .modal-actions .btn--dark { background: var(--bg-dark); color: #fff; }
+
+.search-input {
+  padding: 6px 12px; border: 1px solid var(--border-medium); border-radius: 8px;
+  font-size: 13px; font-family: inherit; outline: none; background: var(--bg-paper);
+  color: var(--text-main); width: 100%;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--text-light); }
+
+.pager {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-top: 12px; font-size: 13px; color: var(--text-muted);
+}
+.pager button {
+  padding: 4px 14px; border: 1px solid var(--border-medium); border-radius: 6px;
+  background: var(--bg-paper); color: var(--text-main); font-size: 13px;
+  font-family: inherit; cursor: pointer;
+}
+.pager button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pager button:disabled { opacity: 0.3; cursor: not-allowed; }
 
 @media (max-width: 600px) {
   .stats-row { grid-template-columns: 1fr 1fr; }

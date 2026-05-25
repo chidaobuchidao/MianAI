@@ -55,12 +55,23 @@ public class AdminController {
         return Result.ok(data);
     }
 
-    /** User list with stats */
+    /** User list with pagination + search */
     @GetMapping("/users")
-    public Result<List<Map<String, Object>>> users() {
+    public Result<Map<String, Object>> users(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(defaultValue = "") String keyword) {
         requireAdmin();
-        List<User> users = userMapper.selectList(null);
-        List<Map<String, Object>> result = new ArrayList<>();
+        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>();
+        if (keyword != null && !keyword.isBlank()) {
+            qw.and(w -> w.like(User::getNickname, keyword).or().like(User::getUsername, keyword));
+        }
+        qw.orderByDesc(User::getId);
+        long total = userMapper.selectCount(qw);
+        qw.last("LIMIT " + ((page - 1) * pageSize) + "," + pageSize);
+        List<User> users = userMapper.selectList(qw);
+
+        List<Map<String, Object>> list = new ArrayList<>();
         for (User u : users) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", u.getId());
@@ -70,30 +81,40 @@ public class AdminController {
             row.put("dailyQuota", u.getDailyQuota());
             row.put("quotaUsed", u.getQuotaUsed());
             row.put("createTime", u.getCreateTime());
-            // Interview count
             Long count = sessionMapper.selectCount(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
                     com.mianmiantong.entity.interview.InterviewSession>()
                     .eq(com.mianmiantong.entity.interview.InterviewSession::getUserId, u.getId())
             );
             row.put("interviewCount", count);
-            result.add(row);
+            list.add(row);
         }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("pageSize", pageSize);
         return Result.ok(result);
     }
 
-    /** Recent interview sessions */
+    /** Interview sessions with pagination + search */
     @GetMapping("/sessions")
-    public Result<List<Map<String, Object>>> sessions(
-            @RequestParam(defaultValue = "20") int limit) {
+    public Result<Map<String, Object>> sessions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(defaultValue = "") String keyword) {
         requireAdmin();
-        var sessions = sessionMapper.selectList(
-            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
-                com.mianmiantong.entity.interview.InterviewSession>()
-                .orderByDesc(com.mianmiantong.entity.interview.InterviewSession::getCreateTime)
-                .last("LIMIT " + Math.min(limit, 100))
-        );
-        List<Map<String, Object>> result = new ArrayList<>();
+        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
+            com.mianmiantong.entity.interview.InterviewSession>();
+        if (keyword != null && !keyword.isBlank()) {
+            qw.like(com.mianmiantong.entity.interview.InterviewSession::getPosition, keyword);
+        }
+        qw.orderByDesc(com.mianmiantong.entity.interview.InterviewSession::getId);
+        long total = sessionMapper.selectCount(qw);
+        qw.last("LIMIT " + ((page - 1) * pageSize) + "," + pageSize);
+        var sessions = sessionMapper.selectList(qw);
+
+        List<Map<String, Object>> list = new ArrayList<>();
         for (var s : sessions) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", s.getId());
@@ -102,11 +123,15 @@ public class AdminController {
             row.put("score", s.getOverallScore());
             row.put("status", s.getStatus() == 1 ? "已结束" : "进行中");
             row.put("createTime", s.getCreateTime());
-            // Resolve username
             User u = userMapper.selectById(s.getUserId());
             row.put("userName", u != null ? u.getNickname() : "未知");
-            result.add(row);
+            list.add(row);
         }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("pageSize", pageSize);
         return Result.ok(result);
     }
 
