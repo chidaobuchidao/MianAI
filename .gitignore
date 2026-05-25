@@ -37,6 +37,9 @@ logs/
 *.temp
 application-local.yml
 
+# Deploy scripts (may contain credentials)
+_deploy*
+
 # Tool configs (local only)
 .claude/
 .playwright-mcp/
