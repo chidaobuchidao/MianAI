@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mianmian. — 全18页响应式设计稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--canvas:#F3EFE8;--paper:#FDFCFB;--surface:#F7F7F5;--dark:#141413;--text:#141413;--text2:#4A4A4A;--text3:#888;--accent:#D9750A;--ok:#22C55E;--err:#EF4444;--bl:rgba(0,0,0,0.06);--bm:rgba(0,0,0,0.10);--ss:0 1px 2px rgba(0,0,0,0.02);--sm:0 4px 12px rgba(0,0,0,0.06);--slg:0 16px 32px rgba(0,0,0,0.10);--sxl:0 24px 48px rgba(0,0,0,0.12);--sans:'Inter',-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;--serif:'Georgia','Noto Serif SC',serif;--mono:'JetBrains Mono','Fira Code',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--canvas);color:var(--text);-webkit-font-smoothing:antialiased;padding:60px 40px}
+.ns::-webkit-scrollbar{display:none}.ns{-ms-overflow-style:none;scrollbar-width:none}
+.gt{text-align:center;font-family:var(--serif);font-size:36px;margin-bottom:8px;letter-spacing:-0.5px}
+.gs{text-align:center;color:var(--text3);margin-bottom:12px;font-size:14px}
+.gse{text-align:center;font-family:var(--serif);font-size:22px;margin:80px 0 12px;letter-spacing:-0.5px;color:var(--text2)}
+.gsd{text-align:center;color:var(--text3);margin-bottom:40px;font-size:13px}
+.pair{display:flex;flex-wrap:wrap;gap:48px;justify-content:center;align-items:flex-start;margin-bottom:80px}
+.pl{text-align:center;font-size:12px;color:var(--text3);font-weight:500;letter-spacing:0.5px;margin-bottom:16px}
+.mm{width:375px;height:812px;background:var(--paper);border-radius:40px;box-shadow:var(--sxl),0 0 0 1px var(--bl);overflow:hidden;display:flex;flex-direction:column;position:relative;flex-shrink:0}
+.md{width:100%;max-width:1200px;margin:0 auto 40px;background:var(--paper);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.1);border:1px solid var(--bl);display:flex;overflow:hidden;min-height:600px}
+.ml{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--text3);white-space:nowrap;font-weight:500}
+.brand{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:-0.5px}
+.hdr{padding:20px 20px 12px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.av{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bm);background:var(--paper);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.avl{font-family:var(--serif);font-size:14px;font-weight:600}
+.hero{padding:8px 20px 24px;flex-shrink:0}
+.ha{width:28px;height:4px;background:var(--accent);border-radius:2px;margin-bottom:12px}
+.hl{font-size:11px;font-weight:600;color:var(--accent);letter-spacing:3px;text-transform:uppercase;display:block;margin-bottom:8px}
+.ht{font-family:var(--serif);font-size:32px;line-height:1.15;letter-spacing:-1px;margin-bottom:10px;font-weight:600}
+.hs{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px;display:block}
+.hc{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(20,20,19,0.12);height:280px}
+.hcbg{position:absolute;inset:0;width:100%;height:100%;opacity:0.38;object-fit:cover}
+.hcg{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,20,19,0.15) 0%,rgba(20,20,19,0.93) 100%)}
+.hcin{position:relative;z-index:1;height:100%;padding:24px;display:flex;flex-direction:column}
+.hcic{width:40px;height:40px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center}
+.hcsp{flex:1}
+.hcr{display:flex;justify-content:space-between;align-items:flex-end}
+.hct{font-size:20px;font-weight:500;color:#fff;display:block;margin-bottom:4px;letter-spacing:-0.5px}
+.hcd{font-size:12px;color:rgba(255,255,255,0.45);display:block}
+.hcc{width:32px;height:32px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px;margin-bottom:32px;flex-shrink:0}
+.fc{background:var(--paper);border:1px solid var(--bl);border-radius:16px;padding:20px 16px 18px;box-shadow:var(--ss);position:relative;overflow:hidden}
+.fc.ac::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);border-radius:0 0 2px 2px}
+.fct{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.fic{width:40px;height:40px;background:var(--surface);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.fia{background:rgba(217,117,10,0.08)}
+.ftag{font-size:11px;font-weight:600;color:var(--accent);background:rgba(217,117,10,0.08);padding:3px 10px;border-radius:100px}
+.ft{font-size:15px;font-weight:500;display:block;margin-bottom:2px}
+.fd{font-size:12px;color:var(--text3);line-height:1.4}
+.sec{padding:0 20px;margin-bottom:28px;flex-shrink:0}
+.sh{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sl2{width:4px;height:16px;background:var(--text);border-radius:2px}
+.slb{font-size:13px;font-weight:600}
+.cr{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--bl);padding:6px 14px;border-radius:100px;font-size:12px;background:var(--paper)}
+.chip.act{background:var(--dark);color:#fff;border-color:var(--dark)}
+.bh{padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bl);flex-shrink:0}
+.bb{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text);flex-shrink:0}
+.pt{font-family:var(--serif);font-size:17px;font-weight:600}
+.ct2{padding:12px 16px;border-bottom:1px solid var(--bl);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ctc{text-align:center}
+.ctt{font-size:14px;font-weight:600}
+.cs2{font-size:11px;color:var(--ok);display:flex;align-items:center;gap:4px;justify-content:center}
+.csd{width:6px;height:6px;background:var(--ok);border-radius:50%}
+.ec{display:inline-flex;align-items:center;justify-content:center;width:72px;height:34px;border-radius:100px;border:1px solid var(--bm);background:var(--paper);cursor:pointer;position:relative;overflow:hidden;flex-shrink:0;transition:border-color 0.35s}
+.ec::before{content:'';position:absolute;inset:0;background:var(--err);transform:translateX(-100%);border-radius:100px;transition:transform 0.35s}
+.ec:hover{border-color:var(--err)}.ec:hover::before{transform:translateX(0)}
+.ect{position:relative;z-index:1;font-size:13px;font-weight:500;color:var(--text2);transition:all 0.25s}
+.ec:hover .ect{opacity:0;transform:scale(0.6)}
+.ecx{position:absolute;z-index:1;color:#fff;opacity:0;transform:rotate(-90deg) scale(0.5);transition:all 0.35s;display:flex}
+.ec:hover .ecx{opacity:1;transform:rotate(0deg) scale(1)}
+.ma2{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:24px}
+.ma2i{display:flex;gap:10px}
+.mav{width:28px;height:28px;border-radius:8px;object-fit:cover;border:1px solid var(--bl);flex-shrink:0}
+.mb2{flex:1;min-width:0}
+.mr2{font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text2)}
+.mt2{font-size:14px;color:var(--text2);line-height:1.6}
+.mu2{display:flex;justify-content:flex-end}
+.mub{background:var(--surface);border:1px solid var(--bl);border-radius:14px 14px 4px 14px;padding:12px 14px;max-width:85%;font-size:14px;line-height:1.6}
+.cb2{background:var(--dark);border-radius:10px;overflow:hidden;margin-top:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+.chh{display:flex;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.05)}
+.cdots{display:flex;gap:5px}
+.cdot{width:8px;height:8px;border-radius:50%}
+.cr2{background:#ED6A5E}.cy{background:#F4BF4F}.cg2{background:#61C554}
+.cfn{margin-left:10px;font-size:10px;color:#888;font-family:var(--mono)}
+.cbb{padding:12px 14px;overflow-x:auto}
+.cbb pre{margin:0;font-family:var(--mono);font-size:11px;line-height:1.6;color:#E4E4E4}
+.ck{color:#79C0FF}.cf2{color:#D2A8FF}.cc3{color:#8B949E;font-style:italic}
+.iz{padding:12px 16px 28px;flex-shrink:0}
+.ip2{display:flex;align-items:center;background:var(--paper);border:1px solid var(--bl);border-radius:100px;padding:5px}
+.ip2:focus-within{border-color:var(--text);box-shadow:0 0 0 3px rgba(20,20,19,0.06)}
+.ptg{width:38px;height:38px;border-radius:50%;border:none;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;transition:background 0.2s,color 0.2s}
+.ptg:hover{background:var(--surface);color:var(--text)}
+.pti2{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity 0.2s,transform 0.2s}
+.pti2.ho{opacity:0;transform:translateY(4px)}
+.ptg:hover .pti2.df{opacity:0;transform:translateY(-4px)}
+.ptg:hover .pti2.ho{opacity:1;transform:translateY(0)}
+.pi3{flex:1;min-width:0;border:none;background:transparent;padding:8px 6px;font-size:14px;line-height:1.5;outline:none;resize:none;font-family:inherit;color:var(--text)}
+.pi3::placeholder{color:var(--text3)}
+.ps2{width:38px;height:38px;border-radius:50%;border:none;background:var(--dark);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;cursor:pointer;transition:background 0.2s,box-shadow 0.2s}
+.ps2:hover{background:var(--accent);box-shadow:0 4px 16px rgba(217,117,10,0.35)}
+.pv2{flex:1;display:flex;align-items:center;justify-content:center;padding:6px 12px;cursor:pointer;border-radius:100px;transition:background 0.15s}
+.pv2:hover{background:var(--surface)}
+.pva{justify-content:space-between;cursor:default;background:var(--dark);border-radius:100px}
+.pva:hover{background:var(--dark)}
+.pvc{color:#888;font-size:13px;font-weight:500;padding:0 8px}
+.pvs{width:36px;height:36px;border-radius:50%;background:#fff;border:none;display:flex;align-items:center;justify-content:center;color:#141413;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+@keyframes wv{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1)}}
+.wb{display:flex;align-items:center;gap:3px;height:20px}
+.wbr{width:2px;background:var(--ok);border-radius:1px;transform-origin:center;animation:wv 1s infinite ease-in-out}
+.wbr:nth-child(1){height:12px;animation-delay:0.0s}.wbr:nth-child(2){height:18px;animation-delay:0.2s}.wbr:nth-child(3){height:10px;animation-delay:0.4s}.wbr:nth-child(4){height:16px;animation-delay:0.1s}.wbr:nth-child(5){height:11px;animation-delay:0.3s}
+.pscr{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center}
+.pst{font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:6px}
+.psd{font-size:13px;color:var(--text3);margin-bottom:20px}
+.mbar{display:flex;align-items:center;gap:6px;margin-bottom:20px}
+.mopt{padding:5px 12px;border-radius:100px;font-size:12px;font-weight:500;border:1px solid var(--bm);background:var(--paper);color:var(--text2)}
+.mopt.act{background:var(--dark);color:#fff;border-color:var(--dark)}
+.psl{display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px}
+.psb{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--paper);border:1px solid var(--bl);border-radius:14px;font-size:14px;font-weight:500;text-align:left}
+.psic{width:36px;height:36px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.psbn{flex:1}
+.skel{background:linear-gradient(90deg,#F0F0F0 25%,#E4E4E4 50%,#F0F0F0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite linear;border-radius:4px;height:10px;margin-bottom:6px}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.shero{display:flex;flex-direction:column;align-items:center;padding:40px 20px 36px;background:var(--dark)}
+.shrr{width:140px;height:140px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.shrr svg{position:absolute;inset:0;width:100%;height:100%}
+.shrn{font-size:52px;font-weight:900;color:#fff;font-family:var(--serif);line-height:1}
+.shru{font-size:16px;color:rgba(255,255,255,0.4);margin-top:2px}
+.shrl{font-size:16px;color:rgba(255,255,255,0.7);margin-top:12px}
+.shrf{font-size:13px;color:rgba(255,255,255,0.4);margin-top:4px}
+.sr2{width:72px;height:72px;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center}
+.sr2 svg{width:72px;height:72px;transform:rotate(-90deg)}
+.src{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sn{font-size:22px;font-weight:700;letter-spacing:-1px;line-height:1}
+.db2{height:4px;background:var(--surface);border-radius:2px;overflow:hidden}
+.dbf{height:100%;background:var(--accent);border-radius:2px}
+.dbox{background:#fff;border:1px solid var(--bl);border-radius:8px;overflow:hidden;font-size:12px;font-family:var(--mono)}
+.dh{display:flex;justify-content:space-between;padding:6px 12px;background:#f0f6fc;border-bottom:1px solid #d0ddf0}
+.df3{color:#0366d6;font-size:11px;font-weight:600}
+.dr{display:flex;padding:1px 10px;min-height:22px;align-items:flex-start}
+.dra{background:#e6ffec}.drd{background:#ffeef0}
+.dln{width:36px;text-align:right;padding-right:6px;color:#959da5;flex-shrink:0;font-size:10px}
+.dmk{width:14px;flex-shrink:0;text-align:center;font-weight:700;font-size:10px}
+.dmka{color:#28a745}.dmkd{color:#cb2431}
+.dct{flex:1;white-space:pre-wrap;font-size:11px;font-family:sans-serif}
+.str{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 20px;margin-bottom:28px}
+.stc{background:var(--paper);border:1px solid var(--bl);border-radius:14px;padding:16px 10px;text-align:center;box-shadow:var(--ss)}
+.stn{font-size:22px;font-weight:700;font-family:var(--serif);display:block;margin-bottom:2px}
+.stl{font-size:11px;color:var(--text3)}
+.mg{background:var(--paper);border:1px solid var(--bl);border-radius:14px;overflow:hidden;margin:0 20px 14px}
+.mi2{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text)}
+.mi2:not(:last-child){border-bottom:1px solid var(--bl)}
+.mi2{padding:14px 16px}
+.mil{flex:1}
+.mid{color:var(--err)}
+.ph{margin-bottom:0!important;padding:40px 20px 24px;display:flex;flex-direction:column;align-items:center}
+.pav3{width:72px;height:72px;border-radius:20px;background:var(--surface);border:1px solid var(--bm);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.pn{font-size:18px;font-weight:600}
+.pid2{font-size:11px;color:var(--text3);margin-top:2px}
+.uz{margin:0 20px;padding:40px 20px;text-align:center;background:var(--paper);border:2px dashed var(--bl);border-radius:20px}
+.uic2{width:56px;height:56px;border-radius:14px;background:rgba(217,117,10,0.06);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.ut2{font-size:16px;font-weight:500;display:block;margin-bottom:4px}
+.ud2{font-size:12px;color:var(--text3)}
+.hl3{display:flex;flex-direction:column;gap:8px;padding:0 20px}
+.hi3{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--bl);border-radius:14px}
+.hi4{flex:1;min-width:0}
+.hn2{font-size:13px;font-weight:500;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht3{font-size:11px;color:var(--text3)}
+.hb2{font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px}
+.bhi{background:#F0FDF4;color:#16A34A}.bmi{background:#FFFBEB;color:#D97706}.bpe{background:var(--surface);color:var(--text3)}
+.ec3{background:var(--paper);border:1px solid var(--bl);border-radius:16px;padding:24px 20px;box-shadow:var(--ss)}
+.eci2{width:44px;height:44px;border-radius:12px;background:rgba(217,117,10,0.06);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.ect3{font-size:17px;font-weight:500;display:block;margin-bottom:4px}
+.ecd2{font-size:12px;color:var(--text3);display:block;margin-bottom:16px}
+.cnr{display:flex;gap:8px;align-items:center}
+.cnc{width:40px;height:40px;border-radius:10px;border:1px solid var(--bl);background:var(--paper);font-size:14px;font-weight:500;color:var(--text);display:flex;align-items:center;justify-content:center}
+.cnc.act{border-color:var(--accent);background:rgba(217,117,10,0.06);color:var(--accent);font-weight:600}
+.cng{margin-left:auto;height:40px;padding:0 24px;background:var(--dark);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500}
+.qc{padding:24px 20px}
+.qt{font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:10px}
+.qt3{font-size:16px;font-weight:500;line-height:1.6;margin-bottom:20px}
+.ops{display:flex;flex-direction:column;gap:8px}
+.ob{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--bl);border-radius:10px;background:var(--paper);font-size:14px;text-align:left}
+.ol{width:28px;height:28px;border-radius:7px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--text2);flex-shrink:0}
+.ob.sel{border-color:var(--accent);background:rgba(217,117,10,0.04)}.ob.sel .ol{background:var(--accent);color:#fff}
+.ob.cor{border-color:var(--ok);background:rgba(34,197,94,0.04)}.ob.cor .ol{background:var(--ok);color:#fff}
+.act3{display:flex;gap:10px;padding:0 20px}
+.abtn{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:500;text-align:center}
+.as2{background:var(--paper);border:1px solid var(--bm);color:var(--text)}
+.ap2{background:var(--dark);color:#fff;border:none;box-shadow:var(--sm)}
+.qc3{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--paper);border:1px solid var(--bl);border-radius:14px}
+.qn2{font-size:12px;font-weight:600;color:var(--accent);flex-shrink:0}
+.qtt{font-size:13px;font-weight:500;display:block;margin-bottom:2px}
+.qm2{font-size:11px;color:var(--text3)}
+.ac3{background:var(--paper);border:1px solid var(--bl);border-radius:14px;padding:18px 16px}
+.at3{font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:8px}
+.at4{font-size:13px;color:var(--text2);line-height:1.7}
+.pb2{height:3px;background:var(--bl);border-radius:2px;margin:0 20px 24px;overflow:hidden}
+.pf{height:100%;background:var(--accent);border-radius:2px}
+.pcs{width:260px;background:var(--surface);border-right:1px solid var(--bl);display:flex;flex-direction:column;flex-shrink:0}
+.pcsh{padding:18px;border-bottom:1px solid var(--bl)}
+.pcss{font-size:11px;color:var(--text3);display:block;margin-top:2px}
+.pcsb{flex:1;padding:20px 18px;overflow-y:auto}
+.pcsl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;display:block}
+.ptr{position:relative;display:flex;flex-direction:column;gap:18px}
+.ptl2{position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--bl)}
+.pti3{display:flex;gap:10px;align-items:flex-start;position:relative;z-index:1}
+.ptd{width:16px;height:16px;border-radius:50%;flex-shrink:0;background:#E4E4E4;border:2px solid var(--surface);margin-top:2px}
+.ptd.done{background:var(--ok)}.ptd.act2{background:var(--dark)}
+.ptn{font-size:12px;font-weight:500;display:block}
+.pti3.act2 .ptn{font-weight:600}
+.pts{font-size:10px;color:var(--text3);display:block;margin-top:1px}
+.pti3.act2 .pts{color:var(--ok)}
+.pcc{flex:1;display:flex;flex-direction:column;min-width:0}
+.pcod{width:420px;background:var(--dark);display:flex;flex-direction:column;flex-shrink:0;border-left:1px solid var(--bm)}
+.pcodh{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.05)}
+.pcodf{font-size:11px;color:#888;font-family:var(--mono)}
+.pcodb{flex:1;padding:16px;overflow-y:auto}
+.pcodb pre{margin:0;font-family:var(--mono);font-size:12px;line-height:1.7;color:#E4E4E4}
+.ls2{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px}
+.lb3{font-family:var(--serif);font-size:32px;font-weight:600;letter-spacing:-1px;margin-bottom:6px}
+.ld2{font-size:13px;color:var(--text3)}
+.ldv{width:36px;height:2px;background:var(--bm);margin:32px auto}
+.lbtn{width:100%;max-width:300px;background:var(--dark);color:#fff;padding:14px;border-radius:14px;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;border:none;box-shadow:var(--sm)}
+.ln2{font-size:10px;color:var(--text3);margin-top:16px}
+.dov{position:absolute;inset:0;z-index:50;background:rgba(20,20,19,0.5);display:flex;align-items:center;justify-content:center}
+.dc3{background:var(--paper);border-radius:20px;padding:40px 36px;text-align:center;box-shadow:var(--sxl)}
+.dt2{font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:20px}
+.dbtn{background:var(--dark);color:#fff;padding:12px 32px;border-radius:14px;font-size:14px;font-weight:500;border:none;box-shadow:var(--sm)}
+.ebtn{margin:24px 20px 40px;background:var(--dark);color:#fff;border:none;padding:14px;border-radius:14px;width:calc(100% - 40px);font-size:14px;font-weight:500;display:flex;justify-content:center;align-items:center;gap:8px;box-shadow:var(--sm)}
+.thk{display:flex;align-items:center;gap:5px;font-size:11px;color:#AAA;margin-top:6px}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:0}}
+.blk2{animation:blk 1s infinite}
+.btd{background:var(--dark);color:#fff;border:none;padding:10px 24px;border-radius:100px;font-size:14px;font-weight:500;box-shadow:var(--sm)}
+.tb{display:flex;background:var(--surface);border-radius:100px;padding:4px;gap:2px}
+.tbi{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:500;color:var(--text2);text-align:center}
+.tbi.act{background:var(--paper);color:var(--text);box-shadow:var(--ss)}
+.tbi.dim{opacity:0.4}
+.em{text-align:center;padding:80px 20px}
+.emt{font-size:15px;font-weight:500;display:block;margin-bottom:6px}
+.emd{font-size:12px;color:var(--text3)}
+.embtn{margin-top:20px;background:var(--dark);color:#fff;padding:10px 28px;border-radius:12px;font-size:14px;font-weight:500;border:none;box-shadow:var(--sm)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:10px 12px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--bl);font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+td{padding:10px 12px;border-bottom:1px solid var(--bl);color:var(--text)}
+.tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px}
+.tg{background:#F0FDF4;color:#16A34A}.ta{background:#FFFBEB;color:#D97706}.tr3{background:#FEF2F2;color:#DC2626}.tgr{background:var(--surface);color:var(--text3)}
+.mov{position:absolute;inset:0;z-index:100;background:rgba(20,20,19,0.4);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center}
+.mc2{background:var(--paper);border-radius:20px;padding:32px;box-shadow:var(--sxl);max-width:360px;width:90%}
+.mct{font-family:var(--serif);font-size:18px;font-weight:600;margin-bottom:20px}
+.mi3{width:100%;padding:12px 14px;border:1px solid var(--bl);border-radius:12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px}
+.mi3:focus{border-color:var(--text)}
+.mac2{display:flex;gap:8px;margin-top:20px}
+.mbc2{flex:1;padding:10px;border-radius:10px;border:1px solid var(--bm);background:var(--paper);font-size:14px}
+.mbs2{flex:1;padding:10px;border-radius:10px;border:none;background:var(--dark);color:#fff;font-size:14px}
+.blo{display:grid;grid-template-columns:1fr 340px;flex:1;min-height:0}
+.bl2{overflow-y:auto;padding:20px;border-right:1px solid var(--bl)}
+.br2{overflow-y:auto;padding:20px;background:var(--surface);display:flex;flex-direction:column;gap:16px}
+.p50{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0}
+.pl3{border-right:1px solid var(--bl);display:flex;flex-direction:column;overflow:hidden}
+.pr3{display:flex;flex-direction:column;overflow:hidden}
+.ph3{padding:12px 20px;border-bottom:1px solid var(--bl);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pb3{flex:1;overflow-y:auto;padding:20px}
+.tbar{padding:10px 20px;border-bottom:1px solid var(--bl);display:flex;align-items:center;gap:16px;flex-shrink:0}
+.ttabs{display:flex;gap:2px;background:var(--surface);border-radius:100px;padding:3px}
+.ttab{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;color:var(--text2)}
+.ttab.act{background:var(--paper);color:var(--text);box-shadow:var(--ss)}
+.tsp{flex:1}
+.bac{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:100px;font-size:13px;font-weight:500}
+.bo3{background:var(--paper);border:1px solid var(--bm);color:var(--text);padding:8px 18px;border-radius:100px;font-size:13px}
+.bgh{background:transparent;border:none;color:var(--text2);padding:6px 12px;border-radius:8px;font-size:12px}
+.dsec{margin-bottom:12px}
+.dmc2{background:var(--paper);border:1px solid var(--bl);border-radius:14px;padding:16px;margin-bottom:8px}
+.dmc2--sug{border-left:3px solid var(--accent)}
+.dmn{font-size:13px;font-weight:600;display:block;margin-bottom:4px}
+.dms{font-size:13px;font-weight:700;color:var(--accent)}
+.dmcm{font-size:12px;color:var(--text2);line-height:1.5;margin-top:4px}
+.ktag{font-size:11px;background:rgba(239,68,68,0.08);color:var(--err);padding:4px 10px;border-radius:6px}
+.ann{background:var(--paper);border:1px solid var(--bl);border-radius:14px;padding:18px;margin-bottom:12px}
+.sfbar{display:flex;align-items:center;gap:16px;padding:16px 20px;margin-bottom:16px}
+.sfstep{display:flex;align-items:center;gap:8px}
+.sfc{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:2px solid var(--bl);color:var(--text3)}
+.sfc.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.sfc.act2{background:var(--accent);border-color:var(--accent);color:#fff}
+.sfl{flex:1;height:2px;background:var(--bl);margin:0 4px}
+.sfname{font-size:12px;color:var(--text2);white-space:nowrap}
+.hl-d{background:linear-gradient(0deg,rgba(239,68,68,0.25) 0%,rgba(239,68,68,0.05) 100%)}
+.hl-w{background:linear-gradient(0deg,rgba(217,117,10,0.25) 0%,rgba(217,117,10,0.05) 100%)}
+.hl-r{text-decoration:line-through;opacity:0.4}
+.risk-ring{width:80px;height:80px;position:relative;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.risk-ring svg{width:80px;height:80px;transform:rotate(-90deg)}
+.risk-num{position:absolute;font-size:28px;font-weight:900;font-family:var(--serif)}
+.risk-card{background:var(--paper);border:1px solid var(--bl);border-radius:14px;padding:18px;text-align:center}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;align-items:center}
+.ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.ldr{background:var(--err)}.lda{background:var(--accent)}.ldp{background:#7C3AED}
+</style>
+</head>
+<body>
+<h1 class="gt">Mianmian. 全18页响应式设计稿</h1>
+<p class="gs">Warm Tech / 18 Pages / 移动端 375px + PC宽屏 / 功能一致布局适配</p><!-- ============================================================ -->
+<!-- 01 — 首页 HomeView -->
+<!-- ============================================================ -->
+<h2 class="gse">01 — 首页</h2>
+<p class="gsd">公告拉环 + 品牌Hero + 5功能卡片 + Hot Topics/Categories · 移动端 + PC宽屏</p>
+<div class="pair">
+
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">窄屏移动端 (375px)</div>
+    <div class="mm">
+      <div class="hdr"><span class="brand">Mianmian.</span><div class="av"><span class="avl">D</span></div></div>
+      <div class="hero">
+        <div class="ha"></div><span class="hl">AI 面试平台</span>
+        <h1 class="ht">为真实环境<br>做好准备。</h1>
+        <p class="hs">与硅谷标准对齐的 AI 技术面试，全流程语音对话与代码考察。</p>
+        <div class="hc">
+          <img class="hcbg" src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80" alt="">
+          <div class="hcg"></div>
+          <div class="hcin">
+            <div class="hcic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg></div>
+            <div class="hcsp"></div>
+            <div class="hcr"><div><span class="hct">开始 AI 面试</span><span class="hcd">语音流 / 代码编辑器 / 深度追问</span></div><div class="hcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fc ac"><div class="fct"><div class="fic fia"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="ftag">推荐</span></div><span class="ft">简历深度诊断</span><span class="fd">上传 PDF，AI 定位项目薄弱点</span></div>
+        <div class="fc"><div class="fct"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div></div><span class="ft">自由刷题</span><span class="fd">随机组卷 · 按专题练习</span></div>
+        <div class="fc"><div class="fct"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div><span class="ft">查看题库</span><span class="fd">分类浏览 · 逐题精学</span></div>
+        <div class="fc"><div class="fct"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div></div><span class="ft">错题本</span><span class="fd">记录薄弱环节</span></div>
+      </div>
+      <div class="sec"><div class="sh"><div class="sl2"></div><span class="slb">Hot Topics</span></div><div class="cr"><span class="chip act">Redis 穿透</span><span class="chip">MySQL 索引优化</span><span class="chip">ConcurrentHashMap</span><span class="chip">AQS 源码分析</span><span class="chip">TCP 拥塞控制</span></div></div>
+      <div class="sec"><div class="sh"><div class="sl2"></div><span class="slb">题目分类</span></div><div class="cr"><span class="chip">Java 基础</span><span class="chip">并发编程</span><span class="chip">Redis</span><span class="chip">MySQL</span><span class="chip">网络协议</span></div></div>
+      <div class="ml">首页 · 移动端</div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:500px;max-width:900px;">
+    <div class="pl">宽屏 PC 端</div>
+    <div class="md" style="height:760px;">
+      <div class="ns" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:100%;max-width:820px;">
+          <div class="hdr"><span class="brand">Mianmian.</span><div class="av"><span class="avl">D</span></div></div>
+          <div class="hero">
+            <div class="ha"></div><span class="hl">AI 面试平台</span>
+            <h1 class="ht">为真实环境<br>做好准备。</h1>
+            <p class="hs">与硅谷标准对齐的 AI 技术面试，全流程语音对话与代码考察。</p>
+            <div class="hc" style="height:310px;">
+              <img class="hcbg" src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80" alt="">
+              <div class="hcg"></div>
+              <div class="hcin">
+                <div class="hcic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg></div>
+                <div class="hcsp"></div>
+                <div class="hcr"><div><span class="hct">开始 AI 面试</span><span class="hcd">语音流 / 代码编辑器 / 深度追问</span></div><div class="hcc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="fg">
+            <div class="fc ac"><div class="fct"><div class="fic fia"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="ftag">推荐</span></div><span class="ft">简历深度诊断</span><span class="fd">上传 PDF，AI 定位项目薄弱点</span></div>
+            <div class="fc"><div class="fct"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></div></div><span class="ft">自由刷题</span><span class="fd">随机组卷 · 按专题练习</span></div>
+            <div class="fc"><div class="fct"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div><span class="ft">查看题库</span><span class="fd">分类浏览 · 逐题精学</span></div>
+            <div class="fc"><div class="fct"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div></div><span class="ft">错题本</span><span class="fd">记录薄弱环节</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ml">首页 · PC 宽屏</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 02 — 登录页 LoginView -->
+<!-- ============================================================ -->
+<h2 class="gse">02 — 登录页</h2>
+<p class="gsd">品牌展示 + 微信一键登录 + 登录/注册双tab · 移动端 + PC宽屏</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">移动端 (375px)</div>
+    <div class="mm">
+      <div class="ls2">
+        <span class="lb3">Mianmian.</span><p class="ld2">AI 模拟面试平台</p>
+        <div class="ldv"></div>
+        <button class="lbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.69 11.66c-.15-.93.06-1.86.5-2.63.61-1.06 1.7-1.72 2.86-1.61 1.16.1 2.07.77 2.56 1.71.08.16.27.21.41.1.64-.47 1.22-.72 1.94-.72 1.09 0 1.99.45 2.65 1.26.5.61.76 1.33.76 2.14 0 2.76-4.5 5.11-8.55 5.11-4.11 0-8.62-2.38-8.62-5.14 0-1.92 2.14-3.58 5.1-4.43.15-.04.26-.16.23-.31-.07-.45-.06-.86 0-1.2.03-.17-.06-.33-.22-.38-.94-.32-1.56-1.14-1.56-2.1 0-2.02 3.43-2.59 5.29-1.33.14.1.33.07.43-.06.58-.78 1.41-1.34 2.5-1.34 1.66 0 3 1.32 3 2.94 0 1.29-.85 2.41-2.05 2.81-.17.06-.28.22-.26.4.07.69.07 1.43 0 2.14-.02.15.1.3.25.28 1.76-.13 6.06.95 6.06 4.73C23.5 15.28 16.5 18 12 18c-4.66 0-11.5-2.84-11.5-6.5 0-2.05 1.97-3.63 4.57-4.55.14-.05.24-.19.21-.34-.07-.3-.07-.59 0-.85.03-.14-.06-.29-.2-.33C2.28 4.66 0 3.5 0 1.5 0 .67.7 0 1.56 0h.01c.84 0 1.53.66 1.54 1.47 0 .42-.19.78-.48 1.02-.11.09-.11.25 0 .34.63.47 1.33.47 1.93 0 .11-.09.11-.25.01-.34-.3-.24-.48-.6-.48-1.02 0-.81.69-1.47 1.54-1.47h.01c.87 0 1.56.67 1.56 1.5 0 1.1-.55 2.04-1.37 2.54-.12.08-.17.23-.12.36.1.22.2.41.31.57.09.12.25.15.37.06C7.52 3.75 8.77 3.33 10 3.33c.73 0 1.39.15 1.97.42.13.06.28.02.37-.1.43-.56.96-.98 1.62-1.14 1.09-.27 2.23.03 3.01.77.38.36.65.81.78 1.3.03.11.13.2.25.18.48-.08.92.13 1.22.48.28.33.43.74.43 1.2 0 .64-.38 1.2-.93 1.46-.13.06-.19.21-.14.35.22.68.29 1.35.2 1.98-.02.16-.19.26-.35.22-1.3-.23-2.52-.18-3.7.15-.15.04-.3-.05-.33-.2-.14-.62-.13-1.27.04-1.9.04-.15.19-.24.34-.2.61.15 1.27.2 1.93.15.17-.01.3-.15.28-.32-.05-.57-.23-1.12-.54-1.6-.06-.1-.19-.12-.28-.03-.66.66-1.53 1.07-2.51 1.07-.6 0-1.16-.14-1.68-.4-.1-.05-.23-.02-.29.07-.33.53-.82.94-1.42 1.12-.5.15-1.04.12-1.54-.07-.07-.03-.15-.01-.2.04-.41.42-.95.71-1.58.79-.16.02-.28.16-.27.32.06.53.02.96-.1 1.33-.03.08-.04.16-.04.24z"/></svg>微信一键登录</button>
+        <p class="ln2">登录即表示同意服务条款与隐私政策</p>
+      </div>
+      <div class="ml">登录 · 移动端</div>
+    </div>
+  </div>
+  <div style="flex:1;min-width:500px;max-width:900px;">
+    <div class="pl">宽屏 PC 端</div>
+    <div class="md" style="height:600px;">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+        <div style="max-width:400px;width:100%;text-align:center;padding:60px 40px;">
+          <span class="lb3" style="font-size:40px;">Mianmian.</span>
+          <p class="ld2" style="font-size:15px;">AI 模拟面试平台</p>
+          <div class="ldv" style="margin:40px auto;"></div>
+          <div class="tb" style="justify-content:center;margin-bottom:24px;"><span class="tbi act">登录</span><span class="tbi">注册</span></div>
+          <button class="lbtn" style="max-width:340px;">微信一键登录</button>
+          <p class="ln2">登录即表示同意服务条款与隐私政策</p>
+        </div>
+      </div>
+      <div class="ml">登录 · PC 宽屏</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 03 — AI 面试 InterviewView (3 mobile states) -->
+<!-- ============================================================ -->
+<h2 class="gse">03 — AI 面试 InterviewView</h2>
+<p class="gsd">岗位选择 → 键盘对话 → 语音录音+完成覆盖 · 移动端3状态</p>
+<div class="pair">
+  <!-- 岗位选择 -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">岗位选择 (375px)</div>
+    <div class="mm">
+      <div class="pscr">
+        <span style="font-size:44px;margin-bottom:12px;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="1.2"><rect x="3" y="3" width="18" height="14" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><path d="M8 13c0 0 1.5 2 4 2s4-2 4-2"/><line x1="12" y1="17" x2="12" y2="20"/><line x1="9" y1="20" x2="15" y2="20"/></svg></span>
+        <h2 class="pst">AI 模拟面试</h2>
+        <p class="psd">选择目标岗位，AI 面试官将进行一场真实技术面试</p>
+        <div class="mbar"><span style="font-size:12px;color:var(--text3);">模型</span><span class="mopt act">Flash</span><span class="mopt">Pro</span></div>
+        <div class="psl">
+          <div class="psb"><div class="psic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg></div><span class="psbn">Java 后端开发</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="psb"><div class="psic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49"/></svg></div><span class="psbn">前端开发工程师</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="psb"><div class="psic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div><span class="psbn">算法工程师</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="psb"><div class="psic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A4A4A" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><span class="psbn">DevOps 工程师</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        </div>
+      </div>
+      <div class="ml">面试 · 岗位选择</div>
+    </div>
+  </div>
+
+  <!-- 对话键盘模式 -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">对话中 · 键盘模式 (375px)</div>
+    <div class="mm">
+      <div class="ct2">
+        <span style="color:#666;font-size:16px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></span>
+        <div class="ctc"><span class="ctt">AI 面试官</span><div class="cs2"><span class="csd"></span>在线</div></div>
+        <button class="ec"><span class="ect">结束</span><span class="ecx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="ma2 ns">
+        <div class="ma2i">
+          <img class="mav" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="">
+          <div class="mb2">
+            <div class="mr2">Interviewer</div>
+            <p class="mt2">接下来看这段 AQS 获取独占锁的代码，其中的 <code style="background:rgba(0,0,0,0.05);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:0.9em;">tryAcquire(arg)</code> 是如何体现模板方法模式的？</p>
+            <div class="cb2">
+              <div class="chh"><div class="cdots"><div class="cdot cr2"></div><div class="cdot cy"></div><div class="cdot cg2"></div></div><span class="cfn">AQS.java</span></div>
+              <div class="cbb"><pre><span class="ck">public final void</span> <span class="cf2">acquire</span>(<span class="ck">int</span> arg) {
+    <span style="color:#D2A8FF;">if</span> (!<span class="cf2">tryAcquire</span>(arg) &&
+        <span class="cf2">acquireQueued</span>(<span class="cf2">addWaiter</span>(Node.EXCLUSIVE), arg))
+        <span class="cf2">selfInterrupt</span>();
+}</pre></div>
+            </div>
+          </div>
+        </div>
+        <div class="mu2"><div class="mub">AQS 本质上提供了一个同步框架，tryAcquire 让子类实现具体逻辑，这就是模板方法模式。</div></div>
+        <div class="ma2i">
+          <img class="mav" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="" style="opacity:0.7;">
+          <div class="mb2">
+            <div class="mr2">Interviewer</div>
+            <div><div class="skel" style="width:80%;"></div><div class="skel" style="width:55%;"></div><div class="skel" style="width:65%;"></div>
+              <div class="thk"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#AAA" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>正在分析你的回答...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="iz">
+        <div class="ip2">
+          <button class="ptg"><span class="pti2 df"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span><span class="pti2 ho"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/></svg></span></button>
+          <textarea class="pi3" placeholder="输入你的回答..." rows="1"></textarea>
+          <button class="ps2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>
+      </div>
+      <div class="ml">面试 · 对话中(键盘)</div>
+    </div>
+  </div>
+
+  <!-- 语音录音+结束 -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">语音模式 + 完成覆盖 (375px)</div>
+    <div class="mm">
+      <div class="ct2">
+        <span style="color:#666;font-size:16px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></span>
+        <div class="ctc"><span class="ctt">AI 面试官</span><div class="cs2"><span class="csd"></span>在线</div></div>
+        <button class="ec"><span class="ect">结束</span><span class="ecx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="ma2 ns">
+        <div class="ma2i"><img class="mav" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt=""><div class="mb2"><div class="mr2">Interviewer</div><p class="mt2">很好，接下来聊聊 Redis 缓存架构设计。</p></div></div>
+        <div class="mu2"><div class="mub">我觉得主要通过 CAS 操作去修改 Node 的状态...<span class="blk2" style="color:var(--ok);">|</span></div></div>
+      </div>
+      <div class="iz">
+        <div class="ip2">
+          <button class="ptg"><span class="pti2 df"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/></svg></span><span class="pti2 ho"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/></svg></span></button>
+          <div class="pv2 pva">
+            <span class="pvc">取消</span>
+            <div class="wb"><span class="wbr"></span><span class="wbr"></span><span class="wbr"></span><span class="wbr"></span><span class="wbr"></span></div>
+            <button class="pvs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <div class="dov"><div class="dc3"><span style="font-size:44px;display:block;margin-bottom:12px;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="8 13 11 16 16 8"/></svg></span><h2 class="dt2">面试完成</h2><button class="dbtn">查看面试报告</button></div></div>
+      <div class="ml">面试 · 语音+结束</div>
+    </div>
+  </div>
+</div>
+<!-- ============================================================ -->
+<!-- 04 — PC 桌面端面试 (三栏) -->
+<!-- ============================================================ -->
+<h2 class="gse">04 — PC 桌面端面试 (三栏布局)</h2>
+<p class="gsd">进度侧栏(280px) + 对话区(flex) + 代码编辑器(420px) · 仅宽屏PC</p>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:80px;">
+  <div class="md" style="height:660px;">
+    <div class="pcs" style="width:280px;">
+      <div class="pcsh"><span class="brand">Mianmian.</span><span class="pcss">Java 后端资深岗面试</span></div>
+      <div class="pcsb ns">
+        <span class="pcsl">Interview Progress</span>
+        <div class="ptr">
+          <div class="ptl2"></div>
+          <div class="pti3"><div class="ptd done"></div><div><span class="ptn">自我介绍与破冰</span><span class="pts">Completed (4m)</span></div></div>
+          <div class="pti3 act2"><div class="ptd act2"></div><div><span class="ptn">并发编程 (AQS)</span><span class="pts">In Progress...</span></div></div>
+          <div class="pti3"><div class="ptd"></div><div><span class="ptn">Redis 缓存架构</span><span class="pts">Pending</span></div></div>
+          <div class="pti3"><div class="ptd"></div><div><span class="ptn">系统设计</span><span class="pts">Pending</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pcc">
+      <div class="ct2" style="padding:14px 24px;">
+        <div class="ctc"><span class="ctt">AI 面试官 · Kevin</span><div class="cs2"><span class="csd"></span>在线</div></div>
+        <button class="ec" style="width:86px;"><span class="ect">结束面试</span><span class="ecx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></button>
+      </div>
+      <div class="ma2 ns" style="padding:24px 32px;">
+        <div class="ma2i"><img class="mav" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=64&h=64&q=80" alt="" style="width:32px;height:32px;"><div class="mb2"><div class="mr2">Interviewer</div><p class="mt2">概括得很准。接下来看右侧这段AQS获取独占锁的代码，你可以在编辑器里写注释。</p></div></div>
+        <div class="mu2"><div class="mub">AQS 提供了同步框架，tryAcquire 让子类实现具体逻辑，这是典型的模板方法模式。</div></div>
+      </div>
+      <div class="iz" style="padding:16px 32px 24px;">
+        <div class="ip2">
+          <button class="ptg"><span class="pti2 df"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/></svg></span><span class="pti2 ho"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/></svg></span></button>
+          <textarea class="pi3" placeholder="输入你的回答..." rows="1"></textarea>
+          <button class="ps2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="12 5 19 12 12 19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="pcod">
+      <div class="pcodh"><div class="cdots"><div class="cdot cr2"></div><div class="cdot cy"></div><div class="cdot cg2"></div></div><span class="pcodf">AQS_Source.java</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></div>
+      <div class="pcodb ns"><pre><span class="cc3">/** Acquires in exclusive mode. */</span>
+<span class="ck">public final void</span> <span class="cf2">acquire</span>(<span class="ck">int</span> arg) {
+    <span style="color:#D2A8FF;">if</span> (!<span class="cf2">tryAcquire</span>(arg) &&
+        <span class="cf2">acquireQueued</span>(<span class="cf2">addWaiter</span>(Node.EXCLUSIVE), arg))
+        <span class="cf2">selfInterrupt</span>();
+}
+<span class="cc3">// Write notes here...</span></pre></div>
+    </div>
+    <div class="ml">面试 · PC 三栏布局</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 05 — 面试报告 InterviewReportView -->
+<!-- ============================================================ -->
+<h2 class="gse">05 — 面试报告</h2>
+<p class="gsd">双Tab(面试+笔试) + 评分环 + 维度卡片 + 提升建议 · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">面试报告 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">面试报告</span></div>
+      <div style="display:flex;justify-content:center;padding:16px 0 0;">
+        <div class="tb"><span class="tbi act">面试报告</span><span class="tbi dim">笔试报告</span></div>
+      </div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:20px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:20px;">
+          <div class="sr2"><svg viewBox="0 0 96 96"><circle cx="48" cy="48" r="36" fill="none" stroke="var(--bl)" stroke-width="5"/><circle cx="48" cy="48" r="36" fill="none" stroke="#16A34A" stroke-width="5" stroke-dasharray="226" stroke-dashoffset="56" stroke-linecap="round"/></svg><div class="src"><span class="sn">8</span></div></div>
+          <div><span class="score-verdict" style="font-size:16px;font-weight:600;display:block;margin-bottom:4px;">表现优秀</span><p class="score-text" style="font-size:13px;color:var(--text2);line-height:1.6;">整体表现扎实，并发编程理解到位，系统设计可进一步提升。</p></div>
+        </div>
+        <div class="dsec"><div class="dmc2"><span class="dmn">Communication</span><div style="display:flex;justify-content:space-between;margin-top:4px;"><span class="dmcm">表达清晰流畅</span><span class="dms">8/10</span></div><div class="db2" style="margin-top:8px;"><div class="dbf" style="width:80%;"></div></div></div>
+          <div class="dmc2"><span class="dmn">Technical Depth</span><div style="display:flex;justify-content:space-between;margin-top:4px;"><span class="dmcm">AQS / JUC 理解深入</span><span class="dms">7/10</span></div><div class="db2" style="margin-top:8px;"><div class="dbf" style="width:70%;"></div></div></div>
+          <div class="dmc2"><span class="dmn">System Design</span><div style="display:flex;justify-content:space-between;margin-top:4px;"><span class="dmcm">缓存架构答得不错</span><span class="dms">6/10</span></div><div class="db2" style="margin-top:8px;"><div class="dbf" style="width:60%;"></div></div></div>
+        </div>
+        <div class="dmc2 dmc2--sug"><span class="dmn">提升建议</span><p class="dmcm">建议补充分布式一致性（Raft/Paxos）的系统设计训练，以及大规模数据迁移的实战经验。</p></div>
+      </div>
+      <div class="ml">面试 · 报告</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">无笔试环节状态 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">面试报告</span></div>
+      <div style="display:flex;justify-content:center;padding:16px 0 0;">
+        <div class="tb"><span class="tbi">面试报告</span><span class="tbi act">笔试报告</span></div>
+      </div>
+      <div class="em"><div style="font-size:44px;margin-bottom:12px;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><span class="emt">未进行笔试环节</span><p class="emd">本次面试没有编程实战记录</p></div>
+      <div class="ml">面试报告 · 无笔试</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 06 — 面试历史 InterviewHistoryView -->
+<!-- ============================================================ -->
+<h2 class="gse">06 — 面试历史</h2>
+<p class="gsd">列表卡片 + 状态标签(进行中/已评分/未评分) + 空状态 · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">面试历史列表 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">面试历史</span><div style="width:32px;"></div></div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+        <div class="hl3">
+          <div class="hi3"><div class="hi4"><span class="hn2">Java 后端开发</span><span class="ht3">2026-05-15</span></div><span class="hb2 bhi">8分</span><span style="color:#CCC;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="hi3"><div class="hi4"><span class="hn2">算法工程师</span><span class="ht3">2026-05-12</span></div><span class="hb2 bmi">6分</span><span style="color:#CCC;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="hi3"><div class="hi4"><span class="hn2">前端开发工程师</span><span class="ht3">2026-05-08</span></div><span class="hb2 bhi">9分</span><span style="color:#CCC;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="hi3"><div class="hi4"><span class="hn2">Java 后端开发</span><span class="ht3">2026-05-01</span></div><span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;background:var(--surface);">进行中</span><span style="color:#CCC;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        </div>
+      </div>
+      <div class="ml">面试历史</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">空状态 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">面试历史</span><div style="width:32px;"></div></div>
+      <div class="em"><div style="font-size:44px;margin-bottom:12px;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><span class="emt">暂无面试记录</span><p class="emd">开始第一场 AI 模拟面试</p><button class="embtn">开始面试</button></div>
+      <div class="ml">面试历史 · 空</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 07 — 简历上传 ResumeUploadView -->
+<!-- ============================================================ -->
+<h2 class="gse">07 — 简历上传</h2>
+<p class="gsd">拖拽上传区 + 模型切换 + JD输入 + 历史文件夹 · 移动端+PC</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">上传页 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">简历优化</span><div style="width:32px;"></div></div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+        <p style="padding:0 20px;font-size:13px;color:var(--text2);margin-bottom:16px;">上传简历，AI 深度诊断项目薄弱点，给出具体优化建议</p>
+        <div style="display:flex;justify-content:center;margin-bottom:16px;" class="mbar"><span style="font-size:12px;color:var(--text3);">模型</span><span class="mopt act">Flash</span><span class="mopt">Pro</span></div>
+        <div class="uz">
+          <div class="uic2"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <span class="ut2">上传简历 PDF</span><span class="ud2">支持 PDF / DOCX，10MB以内</span>
+        </div>
+        <div style="padding:16px 20px 0;">
+          <button class="ebtn" style="width:100%;">开始分析</button>
+        </div>
+        <div style="padding:28px 20px 0;">
+          <div class="sh"><div class="sl2"></div><span class="slb">最近诊断</span></div>
+          <div class="hl3" style="padding:0;">
+            <div class="hi3"><div class="hi4"><span class="hn2">Java工程师简历.pdf</span><span class="ht3">2026-05-14</span></div><span class="hb2 bhi">78分</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ml">简历 · 上传</div>
+    </div>
+  </div>
+  <div style="flex:1;min-width:500px;max-width:900px;">
+    <div class="pl">宽屏 PC 端</div>
+    <div class="md" style="height:700px;">
+      <div class="ns" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:100%;max-width:640px;padding:20px;">
+          <div class="bh" style="padding-left:0;padding-right:0;"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">简历优化</span></div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">上传简历，AI 深度诊断项目薄弱点，给出具体优化建议</p>
+          <div style="display:flex;justify-content:center;margin-bottom:16px;" class="mbar"><span style="font-size:12px;color:var(--text3);">模型</span><span class="mopt act">Flash</span><span class="mopt">Pro</span></div>
+          <div class="uz">
+            <div class="uic2"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+            <span class="ut2">上传简历 PDF</span><span class="ud2">支持 PDF / DOCX，10MB以内</span>
+          </div>
+        </div>
+      </div>
+      <div class="ml">简历 · PC 宽屏</div>
+    </div>
+  </div>
+</div>
+<!-- ============================================================ -->
+<!-- 08 — 简历诊断报告 ResumeReportView -->
+<!-- ============================================================ -->
+<h2 class="gse">08 — 简历诊断报告</h2>
+<p class="gsd">暗色评分环 + 维度分析 + 缺失关键词 + 深度优化(Diff+追问) · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">诊断报告深度优化 (375px)</div>
+    <div class="mm">
+      <div class="shero" style="padding-top:32px;">
+        <div class="shrr">
+          <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="72" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"/><circle cx="80" cy="80" r="72" fill="none" stroke="#D9770A" stroke-width="6" stroke-linecap="round" stroke-dasharray="452" stroke-dashoffset="99" transform="rotate(-90 80 80)"/></svg>
+          <span class="shrn">78</span><span class="shru">/100</span>
+        </div>
+        <span class="shrl">简历综合评分</span><span class="shrf">Java工程师简历.pdf</span>
+      </div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:14px 20px 40px;">
+        <div class="ann">
+          <span style="font-size:14px;font-weight:700;display:block;margin-bottom:12px;">能力维度</span>
+          <div style="padding:10px 0;border-bottom:1px solid var(--bl);"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:600;">结构完整性</span><span style="font-size:13px;font-weight:700;color:var(--accent);">6/10</span></div><div class="db2"><div class="dbf" style="width:60%;"></div></div></div>
+          <div style="padding:10px 0;border-bottom:1px solid var(--bl);"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:600;">关键词匹配</span><span style="font-size:13px;font-weight:700;color:var(--accent);">4/10</span></div><div class="db2"><div class="dbf" style="width:40%;"></div></div></div>
+          <div style="padding:10px 0;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:600;">项目描述</span><span style="font-size:13px;font-weight:700;color:var(--accent);">3/10</span></div><div class="db2"><div class="dbf" style="width:30%;"></div></div></div>
+        </div>
+        <div class="ann"><span style="font-size:14px;font-weight:700;display:block;margin-bottom:10px;">缺失关键词（对标 JD）</span><div class="cr"><span class="ktag">实习经历</span><span class="ktag">具体技术栈</span><span class="ktag">项目经验</span></div></div>
+        <div class="ann">
+          <span style="font-size:14px;font-weight:700;display:block;margin-bottom:12px;">深度优化</span>
+          <p style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:14px;">AI 将逐段优化简历并生成面试追问</p>
+          <div class="mbar" style="justify-content:center;"><span style="font-size:12px;color:var(--text3);">模型</span><span class="mopt act">Flash</span><span class="mopt">Pro</span></div>
+          <button class="ebtn" style="width:100%;">开始深度优化</button>
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--bl);">
+            <span style="font-size:13px;font-weight:700;display:block;margin-bottom:10px;">逐段优化对比</span>
+            <div class="dbox"><div class="dh"><span class="df3">@@ 项目经验</span><span style="font-size:10px;"><span style="color:#28a745;">+3</span> <span style="color:#cb2431;">-2</span></span></div>
+              <div class="dr drd"><span class="dln">1</span><span class="dln"></span><span class="dmk dmkd">-</span><span class="dct">负责订单系统开发，使用 Spring Boot + MySQL</span></div>
+              <div class="dr dra"><span class="dln"></span><span class="dln">1</span><span class="dmk dmka">+</span><span class="dct">主导订单系统架构设计，基于 Spring Boot 微服务</span></div>
+              <div class="dr dra"><span class="dln"></span><span class="dln">2</span><span class="dmk dmka">+</span><span class="dct">MySQL 分库分表，日均 50 万订单，P99 < 100ms</span></div>
+            </div>
+          </div>
+        </div>
+        <button class="ebtn">应用到面试</button>
+      </div>
+      <div class="ml">简历 · 诊断报告</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 09 — 简历记录 ResumeHistoryView -->
+<!-- ============================================================ -->
+<h2 class="gse">09 — 简历记录</h2>
+<p class="gsd">文件夹图标(5色) + 状态标签(解析中/完成/失败) + 空状态 · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">简历记录列表 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">简历记录</span><div style="width:32px;"></div></div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+        <div class="hl3">
+          <div class="hi3"><div style="width:40px;height:40px;background:rgba(217,117,10,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="hi4"><span class="hn2">Java工程师简历.pdf</span><span class="ht3">2026-05-14</span></div><span class="hb2 bhi">78分</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="hi3"><div style="width:40px;height:40px;background:rgba(59,130,246,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="hi4"><span class="hn2">实习简历_v2.pdf</span><span class="ht3">2026-05-10</span></div><span class="hb2 bpe">解析中</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="hi3"><div style="width:40px;height:40px;background:rgba(239,68,68,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="hi4"><span class="hn2">简历_v1.pdf</span><span class="ht3">2026-05-05</span></div><span class="hb2 tr3" style="background:#FEF2F2;color:#DC2626;">失败</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        </div>
+      </div>
+      <div class="ml">简历记录</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">空状态 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">简历记录</span><div style="width:32px;"></div></div>
+      <div class="em"><div style="font-size:44px;margin-bottom:12px;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div><span class="emt">暂无简历记录</span><p class="emd">上传第一份简历开始 AI 诊断</p><button class="embtn">上传简历</button></div>
+      <div class="ml">简历记录 · 空</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 10 — 自由刷题入口 PracticeView -->
+<!-- ============================================================ -->
+<h2 class="gse">10 — 自由刷题入口</h2>
+<p class="gsd">随机组卷(数量选择) + 按专题刷题(分类chips) + 最近记录 · 移动端</p>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:80px;">
+  <div class="mm" style="height:auto;min-height:812px;">
+    <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">自由刷题</span><div style="width:32px;"></div></div>
+    <div class="ns" style="flex:1;padding:16px 20px 40px;">
+      <span class="hl">自由练</span><h2 style="font-family:var(--serif);font-size:28px;font-weight:600;margin-bottom:4px;">自由刷题</h2>
+      <p style="font-size:13px;color:var(--text3);margin-bottom:24px;">随机组卷或按专题专项突破</p>
+      <div class="ec3" style="margin-bottom:16px;"><div class="eci2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8.5" cy="8.5" r="1.5" fill="#D9750A"/><circle cx="15.5" cy="8.5" r="1.5" fill="#D9750A"/></svg></div><span class="ect3">随机组卷</span><span class="ecd2">从题库随机抽取，模拟真实考试</span><div class="cnr"><div class="cnc">5</div><div class="cnc act">10</div><div class="cnc">15</div><div class="cnc">20</div><button class="cng">开始</button></div></div>
+      <div class="ec3" style="margin-bottom:28px;"><div class="eci2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9750A" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><span class="ect3">按专题刷题</span><span class="ecd2">选择分类，集中突破薄弱环节</span><div class="cr"><span class="chip act">Java基础</span><span class="chip">并发编程</span><span class="chip">Redis</span><span class="chip">MySQL</span></div></div>
+      <div style="margin-bottom:12px;"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">最近记录</span></div>
+      <div class="hl3" style="padding:0;">
+        <div class="hi3"><div class="hi4"><span class="hn2">随机组卷 10题</span><span class="ht3">正确 7 题</span></div><span class="hb2 bhi">70%</span></div>
+        <div class="hi3"><div class="hi4"><span class="hn2">并发编程 5题</span><span class="ht3">正确 4 题</span></div><span class="hb2 bhi">80%</span></div>
+      </div>
+    </div>
+    <div class="ml">自由刷题 · 入口</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 11 — 刷题中 PracticeDoView -->
+<!-- ============================================================ -->
+<h2 class="gse">11 — 刷题中 + 完成覆盖</h2>
+<p class="gsd">进度条 + 选择题/判断题/填空题 + 即时判分 + 完成覆盖层 · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">选择题答题 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">刷题中</span><span style="font-size:13px;color:var(--text3);margin-left:auto;">3/10</span></div>
+      <div class="pb2"><div class="pf" style="width:30%;"></div></div>
+      <div class="ns" style="flex:1;overflow-y:auto;">
+        <div class="qc"><span class="qt">单选题</span><p class="qt3">在 Java 中，以下哪个集合类是线程安全的？</p>
+          <div class="ops">
+            <div class="ob"><span class="ol">A</span>ArrayList</div>
+            <div class="ob"><span class="ol">B</span>HashMap</div>
+            <div class="ob sel"><span class="ol">C</span>ConcurrentHashMap</div>
+            <div class="ob"><span class="ol">D</span>LinkedList</div>
+          </div>
+          <div style="margin-top:20px;padding:16px;border-radius:12px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-size:18px;color:#22C55E;font-weight:700;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="8 13 11 16 16 8"/></svg></span><span style="font-size:14px;font-weight:600;color:#22C55E;">回答正确</span></div>
+            <p style="font-size:12px;color:var(--text2);line-height:1.6;">ConcurrentHashMap 使用分段锁机制保证线程安全。</p>
+          </div>
+        </div>
+      </div>
+      <div class="act3" style="padding:16px 20px 32px;"><button class="abtn as2">上一题</button><button class="abtn ap2">下一题</button></div>
+      <div class="ml">刷题中 · 已判分</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">完成覆盖层 (375px)</div>
+    <div class="mm" style="position:relative;">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">刷题中</span><span style="font-size:13px;color:var(--text3);margin-left:auto;">10/10</span></div>
+      <div class="pb2"><div class="pf" style="width:100%;"></div></div>
+      <div style="position:absolute;inset:0;z-index:50;background:var(--paper);display:flex;align-items:center;justify-content:center;flex-direction:column;">
+        <div style="width:120px;height:120px;border-radius:50%;border:6px solid var(--ok);display:flex;align-items:center;justify-content:center;margin-bottom:20px;"><span style="font-size:36px;font-weight:900;font-family:var(--serif);">7/10</span></div>
+        <span style="font-size:18px;font-weight:600;font-family:var(--serif);margin-bottom:8px;">太棒了！</span>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:24px;">正确率 70%，继续保持！</p>
+        <div style="display:flex;gap:12px;"><button class="embtn">再刷一次</button><button style="background:var(--paper);border:1px solid var(--bm);color:var(--text);padding:10px 28px;border-radius:12px;font-size:14px;">返回</button></div>
+      </div>
+      <div class="ml">刷题完成 · 覆盖层</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 12 — 查看题库 QuestionsView + QuestionDetailView -->
+<!-- ============================================================ -->
+<h2 class="gse">12 — 查看题库 + 题目详情</h2>
+<p class="gsd">分类chips筛选 + 题目列表 + 详情页 + 上一题/下一题 · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">题库列表 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">查看题库</span><div style="width:32px;"></div></div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:16px 20px 40px;">
+        <div class="cr" style="margin-bottom:20px;"><span class="chip act">全部</span><span class="chip">Java基础</span><span class="chip">并发编程</span><span class="chip">Redis</span><span class="chip">MySQL</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="qc3"><span class="qn2">Q1</span><div><span class="qtt">HashMap 的扩容机制是怎样的？</span><span class="qm2">Java基础 · 中等</span></div></div>
+          <div class="qc3"><span class="qn2">Q2</span><div><span class="qtt">volatile 关键字的作用是什么？</span><span class="qm2">并发编程 · 简单</span></div></div>
+          <div class="qc3"><span class="qn2">Q3</span><div><span class="qtt">Redis 的持久化策略有哪些？</span><span class="qm2">Redis · 中等</span></div></div>
+          <div class="qc3"><span class="qn2">Q4</span><div><span class="qtt">解释 MySQL 的索引下推优化</span><span class="qm2">MySQL · 困难</span></div></div>
+          <div class="qc3"><span class="qn2">Q5</span><div><span class="qtt">AQS 中 CLH 队列的作用是什么？</span><span class="qm2">并发编程 · 困难</span></div></div>
+        </div>
+      </div>
+      <div class="ml">查看题库</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">题目详情 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">题目详情</span><span style="font-size:12px;color:var(--text3);margin-left:auto;">并发编程</span></div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:16px 20px;">
+        <div class="qc" style="padding:24px 0;margin-bottom:12px;">
+          <span class="qt">单选题</span><p class="qt3">volatile 关键字的作用是什么？</p>
+          <div class="ops">
+            <div class="ob"><span class="ol">A</span>保证原子性</div>
+            <div class="ob cor"><span class="ol">B</span>保证可见性，禁止指令重排序</div>
+            <div class="ob"><span class="ol">C</span>保证线程安全</div>
+            <div class="ob"><span class="ol">D</span>保证数据持久化</div>
+          </div>
+        </div>
+        <div class="ac3"><span class="at3">答案解析</span><p class="at4">volatile 是 Java 中的轻量级同步机制，用于修饰变量。它确保变量的可见性（一个线程修改后其他线程立即可见）和有序性（通过内存屏障禁止指令重排序），但不保证原子性。</p></div>
+      </div>
+      <div class="act3" style="padding:16px 20px 32px;"><button class="abtn as2">&lt; 上一题</button><button class="abtn ap2">下一题 &gt;</button></div>
+      <div class="ml">题目详情</div>
+    </div>
+  </div>
+</div>
+<!-- ============================================================ -->
+<!-- 13 — 错题本 WrongBookView -->
+<!-- ============================================================ -->
+<h2 class="gse">13 — 错题本</h2>
+<p class="gsd">错题列表 + 错误次数标签(红色>=3/橙色<3) + 空状态 · 移动端</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">错题列表 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">错题本</span><div style="width:32px;"></div></div>
+      <div class="ns" style="flex:1;overflow-y:auto;padding:16px 0 40px;">
+        <div class="hl3">
+          <div class="qc3"><div class="hi4"><span class="qtt">HashMap 的扩容机制是怎样的？</span><span class="qm2">Java基础 · 中等</span></div><span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;background:#FEF2F2;color:#DC2626;">错 5 次</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="qc3"><div class="hi4"><span class="qtt">Redis 的持久化策略有哪些？</span><span class="qm2">Redis · 中等</span></div><span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;background:#FFFBEB;color:#D97706;">错 2 次</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+          <div class="qc3"><div class="hi4"><span class="qtt">volatile 关键字的作用是什么？</span><span class="qm2">并发编程 · 简单</span></div><span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;background:#FFFBEB;color:#D97706;">错 1 次</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        </div>
+      </div>
+      <div class="ml">错题本</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">空状态 (375px)</div>
+    <div class="mm">
+      <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">错题本</span><div style="width:32px;"></div></div>
+      <div class="em"><div style="font-size:44px;margin-bottom:12px;"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><span class="emt">还没有错题</span><p class="emd">多练习几道题，错题会自动出现在这里</p></div>
+      <div class="ml">错题本 · 空</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 14 — 个人中心 ProfileView -->
+<!-- ============================================================ -->
+<h2 class="gse">14 — 个人中心</h2>
+<p class="gsd">头像 + 数据统计 + 菜单组 + API Key模态框 · 移动端 + PC</p>
+<div class="pair">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">个人中心 (375px)</div>
+    <div class="mm">
+      <div class="ph"><div class="pav3"><span class="avl" style="font-size:28px;">D</span></div><span class="pn">开发者</span><span class="pid2">ID: 1001</span></div>
+      <div class="str"><div class="stc"><span class="stn">128</span><span class="stl">刷题数</span></div><div class="stc"><span class="stn">5</span><span class="stl">面试次数</span></div><div class="stc"><span class="stn">23</span><span class="stl">错题积累</span></div></div>
+      <div style="margin:0 20px 14px;padding:12px 14px;border-radius:14px;background:rgba(217,117,10,0.04);border:1px solid rgba(217,117,10,0.12);font-size:12px;display:flex;align-items:center;gap:8px;"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>剩余免费次数：5 次 · 配置 API Key 后无限</div>
+      <div class="mg">
+        <div class="mi2"><span class="mil">面试历史</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        <div class="mi2"><span class="mil">自由刷题</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        <div class="mi2"><span class="mil">错题本</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+      </div>
+      <div class="mg">
+        <div class="mi2"><span class="mil">AI API Key</span><span style="font-size:12px;color:var(--text3);">未配置</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+      </div>
+      <div class="mg"><div class="mi2"><span class="mil mid">退出登录</span></div></div>
+      <div class="ml">个人中心</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="pl">API Key 模态框 (375px)</div>
+    <div class="mm">
+      <div class="ph"><div class="pav3"><span class="avl" style="font-size:28px;">D</span></div><span class="pn">开发者</span><span class="pid2">ID: 1001</span></div>
+      <div class="str"><div class="stc"><span class="stn">128</span><span class="stl">刷题数</span></div><div class="stc"><span class="stn">5</span><span class="stl">面试次数</span></div><div class="stc"><span class="stn">23</span><span class="stl">错题积累</span></div></div>
+      <div class="mg">
+        <div class="mi2"><span class="mil">面试历史</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        <div class="mi2"><span class="mil">自由刷题</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+        <div class="mi2"><span class="mil">错题本</span><span style="color:#CCC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+      </div>
+      <div class="mov"><div class="mc2"><h3 class="mct">配置 AI API Key</h3>
+        <div class="tb" style="margin-bottom:16px;"><span class="tbi act">DeepSeek</span><span class="tbi">千问</span></div>
+        <input class="mi3" type="password" placeholder="输入 API Key">
+        <p style="font-size:11px;color:var(--text3);margin-bottom:12px;">Key 加密存储，仅用于 API 调用</p>
+        <div class="mac2"><button class="mbc2">取消</button><button class="mbs2">保存</button></div>
+      </div></div>
+      <div class="ml">个人中心 · Key模态</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 15 — 管理后台 AdminView -->
+<!-- ============================================================ -->
+<h2 class="gse">15 — 管理后台</h2>
+<p class="gsd">统计卡片 + 用户表 + 面试记录表 + 公告管理 + 模态框 · PC宽屏</p>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:80px;">
+  <div class="md" style="height:700px;display:block;overflow-y:auto;">
+    <div style="max-width:800px;margin:0 auto;padding:24px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;"><span style="font-family:var(--serif);font-size:22px;font-weight:600;">管理后台</span><span class="tag ta">Admin</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:28px;">
+        <div class="stc"><span class="stn">1,234</span><span class="stl">总用户</span></div>
+        <div class="stc"><span class="stn">5,678</span><span class="stl">总面试</span></div>
+        <div class="stc"><span class="stn">89</span><span class="stl">已配置Key</span></div>
+        <div class="stc"><span class="tg" style="font-size:11px;font-weight:600;display:block;">已配置</span><span class="stl">系统Key</span></div>
+      </div>
+      <div style="margin-bottom:28px;"><span style="font-size:14px;font-weight:600;display:block;margin-bottom:12px;">用户列表</span>
+        <div class="tw"><table><thead><tr><th>ID</th><th>昵称</th><th>角色</th><th>Key</th><th>面试</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td>1001</td><td>开发者</td><td><span class="tag ta">admin</span></td><td>已配置</td><td>5</td><td>05-15</td><td style="display:flex;gap:4px;"><button class="bgh">剩余</button><button class="bgh">上限</button><button class="bgh" style="color:var(--err);">删除</button></td></tr>
+          <tr><td>1002</td><td>测试用户</td><td><span class="tag tgr">user</span></td><td>未配置</td><td>3</td><td>05-14</td><td style="display:flex;gap:4px;"><button class="bgh">剩余</button><button class="bgh">上限</button><button class="bgh">升管</button><button class="bgh" style="color:var(--err);">删除</button></td></tr>
+        </tbody></table></div>
+      </div>
+      <div style="margin-bottom:28px;"><span style="font-size:14px;font-weight:600;display:block;margin-bottom:12px;">最近面试记录</span>
+        <div class="tw"><table><thead><tr><th>ID</th><th>用户</th><th>岗位</th><th>分数</th><th>状态</th><th>时间</th></tr></thead>
+        <tbody>
+          <tr><td>100</td><td>1001</td><td>Java 后端</td><td>8</td><td><span class="tag tg">已结束</span></td><td>05-15</td></tr>
+          <tr><td>99</td><td>1002</td><td>算法工程师</td><td>6</td><td><span class="tag tg">已结束</span></td><td>05-12</td></tr>
+        </tbody></table></div>
+      </div>
+      <div style="margin-bottom:28px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><span style="font-size:14px;font-weight:600;">公告管理</span><button class="btd">新建公告</button></div>
+        <div class="tw"><table><thead><tr><th>ID</th><th>标题</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>系统维护通知</td><td><span class="tag tg">已发布</span></td><td>05-20</td><td style="display:flex;gap:4px;"><button class="bgh">编辑</button><button class="bgh">下架</button><button class="bgh" style="color:var(--err);">删除</button></td></tr>
+        </tbody></table></div>
+      </div>
+      <div style="margin-bottom:28px;"><span style="font-size:14px;font-weight:600;display:block;margin-bottom:12px;">操作</span><button style="background:var(--err);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;">清空面试记录</button></div>
+    </div>
+    <div class="ml">管理后台 · PC</div>
+  </div>
+</div>
+<!-- ============================================================ -->
+<!-- 16 — 学术润色 PolishView -->
+<!-- ============================================================ -->
+<h2 class="gse">16 — 学术润色 PolishView</h2>
+<p class="gsd">App-shell卡片 + 3模式tab + 高级选项折叠 + 50/50分屏编辑器 · PC宽屏</p>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:80px;">
+  <div class="md" style="height:660px;flex-direction:column;">
+    <div class="ph3"><div style="display:flex;align-items:center;gap:12px;"><span class="brand">Mianmian.</span><span style="font-size:11px;color:var(--accent);background:rgba(217,117,10,0.08);padding:3px 10px;border-radius:100px;">学术润色</span><div style="display:flex;gap:4px;"><button class="bgh">降AI</button><button class="bgh">降查重</button></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="mopt act">Flash</span><span class="mopt">Pro</span><span style="font-size:12px;color:var(--text3);">配额: 98</span></div></div>
+    <div class="tbar">
+      <div class="ttabs"><span class="ttab act">词汇优化</span><span class="ttab">逻辑强化</span><span class="ttab">全面润色</span></div>
+      <div class="tsp"></div>
+      <button class="bo3">高级选项</button>
+      <button class="bo3">上传文档</button>
+      <button class="bac">开始润色</button>
+    </div>
+    <div class="p50">
+      <div class="pl3"><div class="ph3"><span style="font-size:13px;font-weight:600;">原文参考</span><span style="font-size:11px;color:var(--text3);">只读对照</span></div><div class="pb3 ns"><div style="line-height:1.8;font-size:14px;color:var(--text2);"><h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">基于Spring Boot的电商系统设计与实现</h3><p>本文设计并实现了一个基于Spring Boot框架的电商系统。系统采用微服务架构，包含用户服务、商品服务、订单服务和支付服务四个核心模块。</p></div></div></div>
+      <div class="pr3"><div class="ph3"><span style="font-size:13px;font-weight:600;">润色结果</span><div style="display:flex;align-items:center;gap:8px;"><span class="tag tg">完成</span><button class="bgh">复制结果</button></div></div><div class="pb3 ns"><div style="line-height:1.8;font-size:14px;color:var(--text2);"><h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">基于Spring Boot的电商系统设计与实现</h3><p>本文基于Spring Boot框架，<span style="background:rgba(34,197,94,0.12);">围绕</span>电商系统展开设计并完成工程实现。该系统<span style="background:rgba(34,197,94,0.12);">全面采用</span>微服务架构，<span style="background:rgba(239,68,68,0.08);text-decoration:line-through;">包含</span><span style="background:rgba(34,197,94,0.12);">划分为</span>用户服务、商品服务、订单服务及支付服务四大核心模块。</p></div></div></div>
+    </div>
+    <div class="ml">学术润色 · PC</div>
+<div class="pair">
+
+<!-- PolishView Mobile -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+  <div class="pl">学术润色 · 移动端 (375px)</div>
+  <div class="mm">
+    <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">学术润色</span><div style="display:flex;gap:4px;"><span class="mopt act">Flash</span><span class="mopt">Pro</span></div></div>
+    <div class="tbar" style="flex-wrap:wrap;gap:8px;">
+      <div class="ttabs"><span class="ttab act">词汇优化</span><span class="ttab">逻辑强化</span><span class="ttab">全面润色</span></div>
+    </div>
+    <div style="display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid var(--bl);">
+      <button class="bo3" style="flex:1;">上传文档</button>
+      <button class="bac" style="flex:1;">开始润色</button>
+    </div>
+    <div class="tb" style="justify-content:center;padding:12px 16px;"><span class="tbi act">原文参考</span><span class="tbi">润色结果</span></div>
+    <div class="ns" style="flex:1;overflow-y:auto;padding:16px;">
+      <div style="line-height:1.8;font-size:14px;color:var(--text2);">
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">基于Spring Boot的电商系统</h3>
+        <p>本文设计并实现了一个基于Spring Boot框架的电商系统。系统采用微服务架构，包含用户服务、商品服务、订单服务和支付服务四个核心模块。</p>
+      </div>
+    </div>
+    <div class="ml">学术润色 · 移动端</div>
+  </div>
+</div>
+
+</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 17 — 降AI检测 AiReduceView -->
+<!-- ============================================================ -->
+<h2 class="gse">17 — 降AI检测 AiReduceView</h2>
+<p class="gsd">Bento布局(1fr+340px) + 步骤流 + 扫描高亮 + 洞察侧栏 · PC宽屏</p>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:80px;">
+  <div class="md" style="height:660px;flex-direction:column;">
+    <div class="ph3"><div style="display:flex;align-items:center;gap:12px;"><span class="brand">Mianmian.</span><span style="font-size:11px;color:var(--accent);background:rgba(217,117,10,0.08);padding:3px 10px;border-radius:100px;">降AI检测</span><div style="display:flex;gap:4px;"><button class="bgh">学术润色</button><button class="bgh">降查重</button></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="mopt act">Flash</span><span class="mopt">Pro</span></div></div>
+    <div class="tbar">
+      <div class="ttabs"><span class="ttab act">轻度去痕</span><span class="ttab">深度重构</span><span class="ttab">学术拟合</span></div>
+      <div class="tsp"></div>
+      <button class="bo3">高级选项</button>
+      <button class="bo3">上传文档</button>
+      <button class="bac">重扫</button>
+      <button class="bac" style="background:var(--dark);">标注净化 (3处)</button>
+    </div>
+    <div class="sfbar">
+      <div class="sfstep"><div class="sfc done"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="8 13 11 16 16 8"/></svg></div><span class="sfname">上传文档</span></div><div class="sfl"></div>
+      <div class="sfstep"><div class="sfc done"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="8 13 11 16 16 8"/></svg></div><span class="sfname">AI扫描</span></div><div class="sfl"></div>
+      <div class="sfstep"><div class="sfc act2">3</div><span class="sfname">一键净化</span></div>
+    </div>
+    <div class="blo">
+      <div class="bl2 ns">
+        <div class="ph3" style="padding:8px 0;margin-bottom:12px;"><div class="tb"><span class="tbi act">改写结果</span><span class="tbi">文档扫描</span></div><span style="font-size:11px;color:var(--text3);">3处AI痕迹</span></div>
+        <p style="line-height:1.8;font-size:14px;color:var(--text2);">本文基于Spring Boot框架，<span class="hl-d">围绕</span>电商系统展开设计并完成工程实现。该系统<span class="hl-w">全面采用</span>微服务架构，<span class="hl-d">划分为</span>用户服务、商品服务、订单服务及支付服务四大核心模块。</p>
+      </div>
+      <div class="br2 ns">
+        <div class="risk-card"><span style="font-size:12px;font-weight:600;display:block;margin-bottom:12px;">风险评分</span>
+          <div class="risk-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="none" stroke="var(--bl)" stroke-width="5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#EF4444" stroke-width="5" stroke-dasharray="239" stroke-dashoffset="72" stroke-linecap="round"/></svg><span class="risk-num" style="color:var(--err);">70%</span></div>
+          <span style="font-weight:600;color:var(--err);">高风险</span>
+        </div>
+        <div class="ann"><span style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">洞察面板</span><p style="font-size:12px;color:var(--text2);line-height:1.6;">"围绕...展开" 是AI生成文本的典型句式。建议替换为更直接的表达。</p>
+          <div style="margin-top:12px;display:flex;gap:6px;"><button class="bo3" style="flex:1;">忽略</button><button class="bac" style="flex:1;">应用替换</button></div>
+        </div>
+        <div class="legend"><span>图例:</span><span class="ldot ldr"></span>高风险<span class="ldot lda"></span>风格<span class="ldot ldp"></span>报告</div>
+      </div>
+    </div>
+    <div class="ml">降AI检测 · PC Bento布局</div>
+<div class="pair">
+
+<!-- AiReduceView Mobile -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+  <div class="pl">降AI检测 · 移动端 (375px)</div>
+  <div class="mm">
+    <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">降AI检测</span><div style="display:flex;gap:4px;"><span class="mopt act">Flash</span><span class="mopt">Pro</span></div></div>
+    <div class="tbar" style="flex-wrap:wrap;gap:8px;">
+      <div class="ttabs"><span class="ttab act">轻度去痕</span><span class="ttab">深度重构</span><span class="ttab">学术拟合</span></div>
+    </div>
+    <div style="display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid var(--bl);">
+      <button class="bo3" style="flex:1;">上传文档</button>
+      <button class="bac" style="flex:1;">重扫</button>
+    </div>
+    <div class="sfbar" style="padding:12px 16px;margin-bottom:0;">
+      <div class="sfstep"><div class="sfc done">&#10003;</div><span class="sfname">上传</span></div><div class="sfl"></div>
+      <div class="sfstep"><div class="sfc done">&#10003;</div><span class="sfname">扫描</span></div><div class="sfl"></div>
+      <div class="sfstep"><div class="sfc act2">3</div><span class="sfname">净化</span></div>
+    </div>
+    <div class="tb" style="justify-content:center;padding:12px 16px;"><span class="tbi act">改写结果</span><span class="tbi">文档扫描</span></div>
+    <div class="ns" style="flex:1;overflow-y:auto;padding:16px;">
+      <p style="line-height:1.8;font-size:14px;color:var(--text2);">本文基于Spring Boot框架，<span class="hl-d">围绕</span>电商系统展开设计。该系统<span class="hl-w">全面采用</span>微服务架构，<span class="hl-d">划分为</span>四大核心模块。</p>
+      <div class="risk-card" style="margin-top:16px;">
+        <span style="font-size:12px;font-weight:600;display:block;margin-bottom:12px;">风险评分</span>
+        <div class="risk-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="none" stroke="var(--bl)" stroke-width="5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#EF4444" stroke-width="5" stroke-dasharray="239" stroke-dashoffset="72" stroke-linecap="round"/></svg><span class="risk-num" style="color:var(--err);">70%</span></div>
+        <span style="font-weight:600;color:var(--err);">高风险</span>
+        <div style="margin-top:12px;display:flex;gap:6px;"><button class="bo3" style="flex:1;">忽略</button><button class="bac" style="flex:1;">应用替换</button></div>
+      </div>
+    </div>
+    <div class="ml">降AI检测 · 移动端</div>
+  </div>
+</div>
+
+</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 18 — 降查重 PlagiarismReduceView -->
+<!-- ============================================================ -->
+<h2 class="gse">18 — 降查重 PlagiarismReduceView</h2>
+<p class="gsd">50/50分屏 + 扫描风险卡片 + 匹配片段 + 高亮标注 · PC宽屏</p>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:80px;">
+  <div class="md" style="height:660px;flex-direction:column;">
+    <div class="ph3"><div style="display:flex;align-items:center;gap:12px;"><span class="brand">Mianmian.</span><span style="font-size:11px;color:var(--accent);background:rgba(217,117,10,0.08);padding:3px 10px;border-radius:100px;">降查重</span><div style="display:flex;gap:4px;"><button class="bgh">学术润色</button><button class="bgh">降AI</button></div></div><div style="display:flex;align-items:center;gap:8px;"><span class="mopt act">Flash</span><span class="mopt">Pro</span></div></div>
+    <div class="tbar">
+      <div class="ttabs"><span class="ttab act">轻度降重</span><span class="ttab">中度降重</span><span class="ttab">深度降重</span></div>
+      <div class="tsp"></div>
+      <button class="bo3">高级选项</button>
+      <button class="bo3">上传文档</button>
+      <button class="bo3">重扫</button>
+      <button class="bac">报告引导降重</button>
+    </div>
+    <div style="padding:12px 20px;display:flex;gap:16px;border-bottom:1px solid var(--bl);flex-wrap:wrap;">
+      <div class="stc" style="flex:1;min-width:80px;"><span class="stn" style="color:var(--err);">42%</span><span class="stl">模拟查重率</span></div>
+      <div class="stc" style="flex:1;min-width:80px;"><span class="stn">15</span><span class="stl">重复短语</span></div>
+      <div class="stc" style="flex:1;min-width:80px;"><span class="stn">3</span><span class="stl">重叠片段</span></div>
+      <div class="stc" style="flex:1;min-width:80px;"><span class="stn">2</span><span class="stl">风险段落</span></div>
+      <div class="stc" style="flex:1;min-width:80px;"><span class="stn">0</span><span class="stl">引用问题</span></div>
+    </div>
+    <div class="p50">
+      <div class="pl3">
+        <div class="ph3"><span style="font-size:13px;font-weight:600;">原文参考</span><div class="legend"><span class="ldot ldr"></span>片段<span class="ldot lda"></span>短语</div></div>
+        <div class="pb3 ns">
+          <p style="line-height:1.8;font-size:14px;color:var(--text2);">基于Spring Boot的微服务架构设计<span style="background:rgba(239,68,68,0.15);">，系统包括用户管理模块、订单处理模块</span>和支付网关。<span style="background:rgba(217,117,10,0.15);">整个架构</span>采用前后端分离模式。</p>
+          <div style="margin-top:20px;padding:12px;background:var(--surface);border-radius:10px;"><span style="font-size:11px;font-weight:600;display:block;margin-bottom:6px;">匹配片段 (重叠率 85%)</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">
+              <div><span style="color:var(--text3);display:block;">重复源</span>系统包括用户管理模块、订单处理模块</div>
+              <div><span style="color:var(--text3);display:block;">正文</span>系统包括用户管理模块、订单处理模块</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pr3"><div class="ph3"><span style="font-size:13px;font-weight:600;">降重结果</span><div style="display:flex;align-items:center;gap:8px;"><span class="tag tg">完成</span><button class="bgh">复制</button></div></div><div class="pb3 ns"><p style="line-height:1.8;font-size:14px;color:var(--text2);">系统结构基于Spring Boot微服务体系，涵盖用户身份管理、订单流转处理及支付网关三大模块。整体采用前后端分离的架构模式。</p></div></div>
+    </div>
+    <div class="ml">降查重 · PC 分屏</div>
+<div class="pair">
+
+<!-- PlagiarismReduceView Mobile -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+  <div class="pl">降查重 · 移动端 (375px)</div>
+  <div class="mm">
+    <div class="bh"><div class="bb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div><span class="pt">降查重</span><div style="display:flex;gap:4px;"><span class="mopt act">Flash</span><span class="mopt">Pro</span></div></div>
+    <div class="tbar" style="flex-wrap:wrap;gap:8px;">
+      <div class="ttabs"><span class="ttab act">轻度降重</span><span class="ttab">中度降重</span><span class="ttab">深度降重</span></div>
+    </div>
+    <div style="display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid var(--bl);">
+      <button class="bo3" style="flex:1;">上传文档</button>
+      <button class="bo3" style="flex:1;">重扫</button>
+      <button class="bac" style="flex:1;">降重</button>
+    </div>
+    <div style="padding:10px 16px;display:flex;gap:8px;border-bottom:1px solid var(--bl);flex-wrap:wrap;">
+      <div class="stc" style="flex:1;min-width:60px;padding:10px 6px;"><span class="stn" style="color:var(--err);font-size:18px;">42%</span><span class="stl">查重率</span></div>
+      <div class="stc" style="flex:1;min-width:60px;padding:10px 6px;"><span class="stn" style="font-size:18px;">15</span><span class="stl">短语</span></div>
+      <div class="stc" style="flex:1;min-width:60px;padding:10px 6px;"><span class="stn" style="font-size:18px;">3</span><span class="stl">片段</span></div>
+    </div>
+    <div class="tb" style="justify-content:center;padding:12px 16px;"><span class="tbi act">原文参考</span><span class="tbi">降重结果</span></div>
+    <div class="ns" style="flex:1;overflow-y:auto;padding:16px;">
+      <p style="line-height:1.8;font-size:14px;color:var(--text2);">基于Spring Boot的微服务架构设计<span style="background:rgba(239,68,68,0.15);">，系统包括用户管理模块、订单处理模块</span>和支付网关。</p>
+      <div style="margin-top:16px;padding:12px;background:var(--surface);border-radius:10px;">
+        <span style="font-size:11px;font-weight:600;display:block;margin-bottom:6px;">匹配片段 (85%)</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">
+          <div><span style="color:var(--text3);display:block;">重复源</span>系统包括用户管理模块、订单处理模块</div>
+          <div><span style="color:var(--text3);display:block;">正文</span>系统包括用户管理模块、订单处理模块</div>
+        </div>
+      </div>
+    </div>
+    <div class="ml">降查重 · 移动端</div>
+  </div>
+</div>
+
+</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Design System Summary -->
+<!-- ============================================================ -->
+<h2 class="gse">Design System</h2>
+<p class="gsd">Warm Tech 设计语言 · 响应式策略 · 色彩/字体/圆角/阴影</p>
+<div style="display:flex;flex-wrap:wrap;gap:24px;justify-content:center;margin-bottom:80px;">
+  <div class="ann" style="max-width:380px;">
+    <div class="sh"><div class="sl2"></div><span class="slb">色彩系统</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:8px;background:#F3EFE8;border:1px solid var(--bl);"></div><div><span style="font-weight:600;font-size:12px;">Canvas 背景</span><span style="display:block;font-size:10px;color:var(--text3);">#F3EFE8</span></div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:8px;background:#FDFCFB;border:1px solid var(--bl);"></div><div><span style="font-weight:600;font-size:12px;">Paper 卡片</span><span style="display:block;font-size:10px;color:var(--text3);">#FDFCFB</span></div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:8px;background:#141413;"></div><div><span style="font-weight:600;font-size:12px;">Dark 暗色</span><span style="display:block;font-size:10px;color:var(--text3);">#141413</span></div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:8px;background:#D9750A;"></div><div><span style="font-weight:600;font-size:12px;">Accent 强调</span><span style="display:block;font-size:10px;color:var(--text3);">#D9750A</span></div></div>
+    </div>
+  </div>
+  <div class="ann" style="max-width:380px;">
+    <div class="sh"><div class="sl2"></div><span class="slb">字体系统</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+      <div><span style="font-family:var(--serif);font-size:20px;font-weight:600;">Georgia Serif</span><span style="display:block;font-size:10px;color:var(--text3);">标题 · 品牌 · 评分数字</span></div>
+      <div><span style="font-family:var(--sans);font-size:15px;font-weight:500;">Inter Sans</span><span style="display:block;font-size:10px;color:var(--text3);">正文 · UI · 标签</span></div>
+      <div><span style="font-family:var(--mono);font-size:13px;">JetBrains Mono</span><span style="display:block;font-size:10px;color:var(--text3);">代码块 · 技术内容</span></div>
+    </div>
+  </div>
+  <div class="ann" style="max-width:380px;">
+    <div class="sh"><div class="sl2"></div><span class="slb">响应式策略</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+      <div style="padding:10px;background:var(--surface);border-radius:8px;font-size:12px;"><b>窄屏 &lt;768px</b> · 单列 · 全屏卡片 · 胶囊输入 · 375px基准</div>
+      <div style="padding:10px;background:var(--surface);border-radius:8px;font-size:12px;"><b>宽屏 &ge;768px</b> · 居中宽栏 · 更大Hero · 多栏布局</div>
+      <div style="padding:10px;background:var(--surface);border-radius:8px;font-size:12px;"><b>面试三栏 &ge;1024px</b> · 侧栏280px + 对话flex + 代码420px</div>
+      <div style="padding:10px;background:var(--surface);border-radius:8px;font-size:12px;"><b>论文工具1280px</b> · 50/50分屏 或 Bento布局（1fr+340px）</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

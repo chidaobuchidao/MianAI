@@ -11,7 +11,7 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/polish')">学术润色</button>
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/plagiarism-reduce')">降查重</button>
       </div>
-      <div style="display:flex;align-items:center;gap:16px;">
+      <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
         <div class="capsule-toggle">
           <div class="capsule-slider" :class="{ right: aiModel === 'deepseek-v4-pro' }" />
           <button class="capsule-opt" :class="{ active: aiModel === 'deepseek-v4-flash' }" @click="aiModel = 'deepseek-v4-flash'">Flash</button>
@@ -28,7 +28,7 @@
           <div v-if="showExport" class="export-menu">
             <div class="export-item" @click="exportDoc('preserve')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              保留原格式导出<span class="export-badge">推荐</span>
+              原格式导出<span class="export-badge">推荐</span>
             </div>
             <div class="export-item" @click="exportDoc('standard')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -118,13 +118,13 @@
     </div>
 
     <!-- Workspace: Bento Layout -->
-    <div v-if="hasDocument" class="workspace split-bento">
+    <div v-if="isDesktop && hasDocument" class="workspace split-bento">
       <!-- LEFT: Document / Result toggle -->
       <div class="editor-pane left">
         <div class="pane-header">
           <div style="display:flex;gap:0;">
-            <button :class="['pane-tab', { active: showResult }]" @click="showResult = true">改写结果</button>
             <button :class="['pane-tab', { active: !showResult }]" @click="showResult = false">文档扫描</button>
+            <button :class="['pane-tab', { active: showResult }]" @click="showResult = true">改写结果</button>
           </div>
           <span class="pane-action" v-if="!showResult && scanDone">共发现 {{ activeFlaggedCount }} 处风险痕迹</span>
           <span class="pane-action" v-else-if="showResult && resultText">改写完成 · {{ resultCharCount }} 字</span>
@@ -142,6 +142,14 @@
               >{{ part.text }}</span>
             </template>
           </p>
+          <!-- Unmatched flags fallback -->
+          <div v-if="unmatchedFlags.length" class="unmatched-section">
+            <span class="unmatched-title">以下疑似 AI 痕迹未能定位到原文（可能为全局特征判断）</span>
+            <div v-for="(uf, i) in unmatchedFlags" :key="'uf-'+i" class="unmatched-item">
+              <span class="unmatched-quote">"{{ uf.text }}"</span>
+              <span class="unmatched-reason">{{ uf.reason }}</span>
+            </div>
+          </div>
         </div>
         <div class="editor-content placeholder" v-else-if="!showResult && !scanDone">
           <p style="text-align:center;color:var(--text-muted);margin-top:60px;">
@@ -207,52 +215,247 @@
         </div>
 
         <!-- Interactive Insight Panel -->
-        <div v-if="activeInsight" class="bento-card insight-panel" :class="{ pulse: insightPulse }" :style="{ borderLeftColor: activeInsight.risk === 'critical' || activeInsight.risk === 'high' ? 'var(--color-danger)' : 'var(--color-warning)' }">
-          <div class="insight-header" :style="{ color: activeInsight.risk === 'critical' || activeInsight.risk === 'high' ? 'var(--color-danger)' : 'var(--color-warning)' }">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>{{ activeInsight.risk === 'critical' || activeInsight.risk === 'high' ? 'AI 标志性问题' : '表达优化建议' }}</span>
-          </div>
-          <div class="insight-quote">"{{ activeInsight.text.length > 60 ? activeInsight.text.slice(0,60)+'…' : activeInsight.text }}"</div>
-          <div class="insight-issue">
-            <strong>{{ activeInsight.risk === 'critical' || activeInsight.risk === 'high' ? '高危风险分析' : '格式/表达优化' }}</strong>
-            <span>{{ activeInsight.reason }}</span>
-          </div>
-          <div class="insight-suggestion">
-            <div class="insight-sugg-label">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              <span>AI 建议重新表达</span>
-            </div>
-            <div class="insight-textarea-wrap">
-              <textarea v-model="editableSuggestion" class="insight-sugg-textarea" rows="5"
-                placeholder="编辑建议文本，或点击右下角 ⚡ 让 AI 精修..." />
-              <button class="btn btn-ai-send" @click="sendToAiRewrite" :disabled="sentenceStreaming"
-                title="AI 精修此句">
-                <svg v-if="!sentenceStreaming" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <span v-else class="btn-ai-spinner" />
-              </button>
-            </div>
+        <!-- Insight Panel: context-aware optimization card -->
+        <div v-if="activeInsight" class="bento-card insight-panel" :class="{ pulse: insightPulse, 'insight--danger': activeInsight.risk === 'critical' || activeInsight.risk === 'high', 'insight--warn': activeInsight.risk !== 'critical' && activeInsight.risk !== 'high' }">
+
+          <!-- Severity badge + close -->
+          <div class="insight-top">
+            <span class="insight-badge" :class="activeInsight.risk === 'critical' || activeInsight.risk === 'high' ? 'insight-badge--danger' : 'insight-badge--warn'">
+              {{ activeInsight.risk === 'critical' ? '严重' : activeInsight.risk === 'high' ? '高危' : activeInsight.risk === 'medium' ? '中等' : '风格' }}
+            </span>
+            <button class="insight-close" @click="closeInsight" title="关闭">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
 
-          <!-- AI rewrite sub-flow result -->
+          <!-- Flagged text: original -->
+          <div class="insight-block">
+            <span class="insight-block__label">标记原文</span>
+            <p class="insight-block__quote">{{ activeInsight.text }}</p>
+          </div>
+
+          <!-- Analysis reason -->
+          <div class="insight-block insight-block--reason">
+            <span class="insight-block__label">问题分析</span>
+            <p class="insight-block__text">{{ activeInsight.reason }}</p>
+          </div>
+
+          <!-- Suggestion editor -->
+          <div class="insight-block">
+            <div class="insight-block__label-row">
+              <span class="insight-block__label">优化建议</span>
+              <button class="insight-ai-btn" @click="sendToAiRewrite" :disabled="sentenceStreaming" title="AI 精修此句">
+                <svg v-if="!sentenceStreaming" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span v-else class="btn-ai-spinner" />
+                {{ sentenceStreaming ? 'AI 精修中...' : 'AI 精修' }}
+              </button>
+            </div>
+            <textarea v-model="editableSuggestion" class="insight-textarea" rows="4"
+              placeholder="可手动编辑建议文本，或点击 AI 精修自动优化..." />
+          </div>
+
+          <!-- Streaming indicator -->
           <div v-if="sentenceStreaming" class="insight-stream">
             <span class="streaming-dot" /> AI 正在重写此句...
           </div>
-          <div v-if="sentenceRewriteResult && !sentenceStreaming" class="insight-suggestion" style="margin-top:10px;">
-            <div class="insight-sugg-label" style="color:var(--color-success);">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-              <span>AI 精修结果</span>
+
+          <!-- AI rewrite result -->
+          <div v-if="sentenceRewriteResult && !sentenceStreaming" class="insight-block insight-block--result">
+            <div class="insight-block__label-row">
+              <span class="insight-block__label" style="color:var(--color-success);">AI 精修结果</span>
             </div>
-            <textarea v-model="sentenceRewriteResult" class="insight-sugg-textarea insight-sugg-result" rows="4" placeholder="可继续编辑..." />
+            <textarea v-model="sentenceRewriteResult" class="insight-textarea insight-textarea--result" rows="4" placeholder="可继续编辑..." />
           </div>
 
+          <!-- Actions -->
           <div class="insight-actions">
-            <button class="btn btn-outline" style="flex:1;" @click="dismissInsight">忽略</button>
-            <button class="btn btn-solid accent" style="flex:1;" @click="applyInsight" :disabled="sentenceStreaming">应用替换</button>
+            <button class="insight-btn insight-btn--ghost" @click="dismissInsight">忽略此项</button>
+            <button class="insight-btn insight-btn--apply" @click="applyInsight" :disabled="sentenceStreaming">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              应用替换
+            </button>
           </div>
         </div>
 
-        <div v-if="!activeInsight && scanDone" class="bento-card">
+        <!-- Issues summary: always expanded on desktop -->
+        <div v-if="scanDone && !flaggedTotal && scanResult.issues?.length" class="bento-card issues-card">
+          <div class="issues-card__head">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>诊断特征 · {{ scanResult.issues.length }} 项</span>
+          </div>
+          <div v-if="aiSignalIssues.length" class="issues-group">
+            <span class="issues-group__label">AI 写作信号</span>
+            <div class="issues-tags">
+              <span v-for="(iss, i) in aiSignalIssues" :key="'ai-'+i" class="issue-tag" :class="'issue-tag--'+iss.severity">{{ iss.text }}<em>{{ iss.count }}</em></span>
+            </div>
+          </div>
+          <div v-if="styleIssues.length" class="issues-group">
+            <span class="issues-group__label">结构 / 风格</span>
+            <div class="issues-tags">
+              <span v-for="(iss, i) in styleIssues" :key="'st-'+i" class="issue-tag issue-tag--style">{{ iss.text }}<em>{{ iss.count }}</em></span>
+            </div>
+          </div>
+          <div v-if="humanSignals.length" class="issues-group issues-group--positive">
+            <span class="issues-group__label" style="color:var(--color-success);">人类写作信号</span>
+            <div class="issues-tags">
+              <span v-for="(sig, i) in humanSignals" :key="'hs-'+i" class="issue-tag issue-tag--human">{{ sig }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="!activeInsight && scanDone && flaggedTotal" class="bento-card">
           <p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px 0;">点击左侧高亮文本查看详情</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Workspace: stacked -->
+    <div v-if="!isDesktop && hasDocument" class="workspace workspace--mobile">
+      <!-- Tabs -->
+      <div class="mobile-pane-tabs">
+        <button :class="{ active: mobilePane === 'scan' }" @click="mobilePane = 'scan'">文档扫描</button>
+        <button :class="{ active: mobilePane === 'result' }" @click="mobilePane = 'result'">改写结果</button>
+      </div>
+
+      <!-- Result pane -->
+      <div class="mobile-pane" v-show="mobilePane === 'result'">
+        <div v-if="isStreaming" class="streaming-text">
+          <template v-for="(line, i) in streamingLines" :key="'sm-'+i"><p v-if="line" class="streaming-line">{{ line }}</p></template>
+          <span class="cursor-blink" />
+        </div>
+        <template v-else-if="resultText && formatResultParagraphs.length">
+          <div v-for="p in formatResultParagraphs" :key="'mr-'+p.index">
+            <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.fontSize + 'px', fontFamily: p.fontFamily, fontWeight: '700' }">{{ p.text }}</div>
+            <div v-else class="fp-body" :style="{ fontFamily: p.fontFamily, fontSize: p.fontSize + 'pt', fontWeight: p.bold ? '700' : '400', fontStyle: p.italic ? 'italic' : 'normal', textAlign: p.alignment || 'left' }">{{ p.text }}</div>
+          </div>
+        </template>
+        <template v-else-if="resultText">
+          <p v-for="(p, i) in resultParagraphs" :key="i" style="margin-bottom:12px;">{{ p }}</p>
+        </template>
+        <div v-else class="result-placeholder">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span>点击「一键净化全文」开始改写</span>
+        </div>
+      </div>
+
+      <!-- Scan pane -->
+      <div class="mobile-pane" v-show="mobilePane === 'scan'">
+        <!-- Compact risk + diagnostic card -->
+        <div class="risk-card-mobile" v-if="scanDone">
+          <div class="risk-hero" style="margin-bottom:0;">
+            <div style="width:48px;height:48px;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg viewBox="0 0 80 80" style="width:48px;height:48px;position:absolute;"><circle cx="40" cy="40" r="34" fill="none" stroke="var(--border-light)" stroke-width="5"/><circle cx="40" cy="40" r="34" fill="none" :stroke="riskColor" stroke-width="5" :stroke-dasharray="213.6" :stroke-dashoffset="213.6 * (1 - scanScore / 100)" stroke-linecap="round" transform="rotate(-90 40 40)"/></svg>
+              <span style="font-size:16px;font-weight:900;font-family:var(--serif);" :style="{color:riskColor}">{{ scanScore }}%</span>
+            </div>
+            <div style="margin-left:10px;flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-weight:600;font-size:14px;">{{ scanResult.riskLevel }}</span>
+                <span v-if="!flaggedTotal && scanResult.issues?.length" style="font-size:11px;color:var(--text-light);">· {{ scanResult.issues.length }} 项特征</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-light);line-height:1.4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ riskSummary }}</div>
+            </div>
+          </div>
+          <!-- Inline issue tags (collapsed preview) -->
+          <div v-if="!flaggedTotal && scanResult.issues?.length && !showIssuesDetail" class="risk-tags-preview">
+            <span v-for="(iss, i) in aiSignalIssues.slice(0,4)" :key="'rp-'+i" class="issue-tag" :class="'issue-tag--'+iss.severity" style="font-size:11px;padding:2px 8px;">{{ iss.text }}<em>{{ iss.count }}</em></span>
+            <button v-if="aiSignalIssues.length > 4 || styleIssues.length" class="risk-tags-more" @click="showIssuesDetail = true">+{{ aiSignalIssues.length - 4 + styleIssues.length }}</button>
+          </div>
+          <!-- Expanded drawer -->
+          <div v-if="!flaggedTotal && scanResult.issues?.length" class="issues-drawer" :class="{ open: showIssuesDetail }">
+            <div class="issues-drawer__body">
+              <div v-if="aiSignalIssues.length" class="issues-group" style="margin-bottom:8px;">
+                <div class="issues-tags">
+                  <span v-for="(iss, i) in aiSignalIssues" :key="'mai-'+i" class="issue-tag" :class="'issue-tag--'+iss.severity" style="font-size:11px;padding:3px 8px;">{{ iss.text }}<em>{{ iss.count }}</em></span>
+                </div>
+              </div>
+              <div v-if="styleIssues.length" class="issues-group" style="margin-bottom:8px;">
+                <div class="issues-tags">
+                  <span v-for="(iss, i) in styleIssues" :key="'mst-'+i" class="issue-tag issue-tag--style" style="font-size:11px;padding:3px 8px;">{{ iss.text }}<em>{{ iss.count }}</em></span>
+                </div>
+              </div>
+              <div v-if="humanSignals.length" class="issues-group">
+                <div class="issues-tags">
+                  <span v-for="(sig, i) in humanSignals" :key="'mhs-'+i" class="issue-tag issue-tag--human" style="font-size:10px;padding:2px 8px;">{{ sig }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Expand/collapse toggle -->
+          <button v-if="!flaggedTotal && scanResult.issues?.length" class="risk-toggle" @click="showIssuesDetail = !showIssuesDetail">
+            <span>{{ showIssuesDetail ? '收起' : '展开详情' }}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="issues-drawer__chevron" :class="{ open: showIssuesDetail }"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+
+        <div v-if="scanDone">
+          <p v-for="(seg, si) in shownSegments" :key="si" style="margin-bottom:14px;font-size:14px;line-height:1.8;">
+            <template v-for="(part, pi) in seg" :key="pi">
+              <span v-if="part.type === 'text'">{{ part.text }}</span>
+              <span v-else-if="part.type === 'resolved'" class="hl-resolved">{{ part.text }}</span>
+              <span v-else class="hl-item" :class="[part.risk === 'critical' || part.risk === 'high' ? 'hl-danger' : 'hl-warning', { active: activeHighlight === part.id }]" @click="selectHighlight(part)">{{ part.text }}</span>
+            </template>
+          </p>
+          <div v-if="unmatchedFlags.length" class="unmatched-section">
+            <span class="unmatched-title">以下疑似 AI 痕迹未能定位到原文</span>
+            <div v-for="(uf, i) in unmatchedFlags" :key="'ufm-'+i" class="unmatched-item">
+              <span class="unmatched-quote">"{{ uf.text }}"</span>
+              <span class="unmatched-reason">{{ uf.reason }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="!scanDone" style="text-align:center;color:var(--text-muted);padding:60px 0;">
+          {{ isScanning ? '正在扫描 AI 写作痕迹...' : '文档已加载，扫描将自动开始' }}
+        </div>
+      </div>
+
+      <!-- Mobile insight bottom sheet -->
+      <div v-if="activeInsight" class="insight-overlay-mobile" @click.self="dismissInsight">
+        <div class="insight-sheet">
+          <div class="insight-sheet__handle" />
+          <div class="insight-sheet__body">
+            <div class="insight-top">
+              <span class="insight-badge" :class="activeInsight.risk==='critical'||activeInsight.risk==='high'?'insight-badge--danger':'insight-badge--warn'">
+                {{ activeInsight.risk==='critical'?'严重':activeInsight.risk==='high'?'高危':activeInsight.risk==='medium'?'中等':'风格' }}
+              </span>
+              <button class="insight-close" @click="dismissInsight">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="insight-block">
+              <span class="insight-block__label">标记原文</span>
+              <p class="insight-block__quote">{{ activeInsight.text }}</p>
+            </div>
+            <div class="insight-block insight-block--reason">
+              <span class="insight-block__label">问题分析</span>
+              <p class="insight-block__text">{{ activeInsight.reason }}</p>
+            </div>
+            <div class="insight-block">
+              <div class="insight-block__label-row">
+                <span class="insight-block__label">优化建议</span>
+                <button class="insight-ai-btn" @click="sendToAiRewrite" :disabled="sentenceStreaming">
+                  <svg v-if="!sentenceStreaming" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span v-else class="btn-ai-spinner" />
+                  {{ sentenceStreaming ? '精修中...' : 'AI 精修' }}
+                </button>
+              </div>
+              <textarea v-model="editableSuggestion" class="insight-textarea" rows="3"
+                placeholder="可手动编辑，或点击 AI 精修..." />
+            </div>
+            <div v-if="sentenceStreaming" class="insight-stream">
+              <span class="streaming-dot" /> AI 正在重写此句...
+            </div>
+            <div v-if="sentenceRewriteResult && !sentenceStreaming" class="insight-block insight-block--result">
+              <span class="insight-block__label" style="color:var(--color-success);">AI 精修结果</span>
+              <textarea v-model="sentenceRewriteResult" class="insight-textarea insight-textarea--result" rows="3" />
+            </div>
+            <div class="insight-actions">
+              <button class="insight-btn insight-btn--ghost" @click="dismissInsight">忽略此项</button>
+              <button class="insight-btn insight-btn--apply" @click="applyInsight" :disabled="sentenceStreaming">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                应用替换
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -265,9 +468,14 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuota } from '@/composables/useQuota'
+import { useResponsive } from '@/composables/useResponsive'
+import { usePaperStore } from '@/composables/usePaperStore'
 
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
+const { isDesktop } = useResponsive()
+const mobilePane = ref<'result' | 'scan'>('scan')
+const paperStore = usePaperStore()
 
 const aiModel = ref('deepseek-v4-flash')
 const rewriteMode = ref('light')
@@ -293,6 +501,7 @@ let abortController: AbortController | null = null
 // Insight panel state
 interface HighlightPart { type: string; text: string; id?: string; risk?: string; reason?: string; suggestion?: string }
 const segmentedText = ref<HighlightPart[][]>([])
+const unmatchedFlags = ref<any[]>([])
 const activeHighlight = ref<string | null>(null)
 const activeInsight = ref<HighlightPart | null>(null)
 const insightPulse = ref(false)
@@ -314,6 +523,20 @@ const shownSegments = computed(() => {
   )
 })
 const flaggedTotal = computed(() => scanResult.value.flaggedSentences?.length || 0)
+
+const aiSignalIssues = computed(() => {
+  const issues = scanResult.value.issues || []
+  return issues.filter((i: any) => i.severity === 'critical' || i.severity === 'high')
+})
+const styleIssues = computed(() => {
+  const issues = scanResult.value.issues || []
+  return issues.filter((i: any) => i.severity === 'medium' || i.severity === 'style')
+})
+const showIssuesDetail = ref(false)
+
+const humanSignals = computed(() => {
+  return scanResult.value.humanSignals || []
+})
 
 const streamingLines = computed(() => resultText.value ? resultText.value.split('\n').filter(l => l !== undefined) : [''])
 const resultCharCount = computed(() => resultText.value.replace(/\s/g, '').length)
@@ -364,6 +587,18 @@ function moveIndicator(v?: string) {
 }
 onMounted(() => nextTick(() => moveIndicator()))
 onMounted(async () => { const q = await fetchQuota(); if (q) quotaInfo.value = q })
+onMounted(() => {
+  if (hasDocument.value) return
+  const doc = paperStore.load()
+  if (!doc?.sourceText) return
+  sourceText.value = doc.sourceText
+  paragraphData.value = doc.paragraphs?.length ? doc.paragraphs : fallbackParagraphs(doc.sourceText)
+  rewrittenParagraphs.value = new Map()
+  for (const p of paragraphData.value) rewrittenParagraphs.value.set(p.index, p.text || '')
+  hasDocument.value = true
+  storedFile.value = null
+  runScan(doc.sourceText)
+})
 let _resizeObs: ResizeObserver | null = null
 onMounted(() => {
   _resizeObs = new ResizeObserver(() => moveIndicator())
@@ -463,6 +698,7 @@ async function handleFileUpload(e: Event) {
     sourceText.value = data.fullText
     paragraphData.value = (data.paragraphs?.length ? data.paragraphs : fallbackParagraphs(data.fullText))
     rewrittenParagraphs.value = new Map(); resultText.value = ''; hasDocument.value = true
+    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: uploadedFile.name, timestamp: Date.now() })
     for (const p of paragraphData.value) rewrittenParagraphs.value.set(p.index, p.text||'')
     await runScan(data.fullText)
   } catch(e:any) { error.value = '解析失败: '+(e.message||String(e)) }
@@ -502,7 +738,15 @@ function buildSegments() {
     }
   }
 
-  if (!allFlagged.length) { segmentedText.value = []; return }
+  // Track which flags couldn't be located in the document
+  const unmatched: any[] = []
+  const usedFlags = new Set<number>()
+
+  if (!allFlagged.length) {
+    segmentedText.value = text.split('\n').filter(p => p.trim()).map(p => [{ type: 'text' as const, text: p }])
+    unmatchedFlags.value = []
+    return
+  }
 
   const paragraphs = text.split('\n').filter(p => p.trim())
   const result: HighlightPart[][] = []
@@ -511,24 +755,42 @@ function buildSegments() {
   for (const para of paragraphs) {
     const pSegs: HighlightPart[] = []
     let remaining = para
-    for (const fs of allFlagged) {
+    for (let fi = 0; fi < allFlagged.length; fi++) {
+      const fs = allFlagged[fi]
       const flagText = fs.text || ''
       if (flagText.length < 4) continue
-      // 先精确匹配，失败则用包含匹配（处理截断/差异）
+
       let idx = remaining.indexOf(flagText)
+      // Fallback 1: whitespace-insensitive
+      if (idx < 0) {
+        const stripped = flagText.replace(/\s+/g, '')
+        if (stripped.length >= 4) {
+          const remainingStripped = remaining.replace(/\s+/g, '')
+          const si = remainingStripped.indexOf(stripped)
+          if (si >= 0) {
+            // Map back to original position
+            let origIdx = 0, strippedIdx = 0
+            while (strippedIdx < si && origIdx < remaining.length) {
+              if (remaining[origIdx].match(/\s/)) origIdx++
+              else { origIdx++; strippedIdx++ }
+            }
+            idx = origIdx
+          }
+        }
+      }
+      // Fallback 2: half-prefix match
       if (idx < 0 && flagText.length > 8) {
-        // 用 flagText 的前半段做包含搜索
         const half = flagText.substring(0, Math.floor(flagText.length / 2))
         idx = remaining.indexOf(half)
       }
+      // Fallback 3: first 8 chars
       if (idx < 0 && flagText.length > 6) {
-        // 用前 8 个字符做包含搜索
         const prefix = flagText.substring(0, Math.min(8, flagText.length))
         idx = remaining.indexOf(prefix)
       }
       if (idx >= 0) {
+        usedFlags.add(fi)
         if (idx > 0) pSegs.push({ type: 'text', text: remaining.substring(0, idx) })
-        // 用实际匹配的长度（不一定是 flagText 的长度）
         const matchLen = Math.min(flagText.length, remaining.length - idx)
         const actualMatch = remaining.substring(idx, idx + matchLen)
         const risk = fs.reason?.includes('机械连接词') || fs.reason?.includes('空洞宏大词') || fs.reason?.includes('模糊匹配') ? 'critical' :
@@ -541,6 +803,12 @@ function buildSegments() {
     if (remaining.trim()) pSegs.push({ type: 'text', text: remaining })
     if (pSegs.length) result.push(pSegs)
   }
+
+  // Collect unmatched flags
+  for (let fi = 0; fi < allFlagged.length; fi++) {
+    if (!usedFlags.has(fi)) unmatched.push(allFlagged[fi])
+  }
+  unmatchedFlags.value = unmatched
   segmentedText.value = result
 }
 
@@ -560,6 +828,10 @@ function selectHighlight(part: HighlightPart) {
   insightPulse.value = false
   nextTick(() => { insightPulse.value = true })
 }
+function closeInsight() {
+  sentenceAbort?.abort()
+  resetInsight()
+}
 function dismissInsight() {
   if (activeInsight.value?.id) resolvedIds.value.add(activeInsight.value.id)
   sentenceAbort?.abort()
@@ -568,6 +840,7 @@ function dismissInsight() {
 function resetInsight() {
   activeInsight.value = null; activeHighlight.value = null
   editableSuggestion.value = ''; sentenceRewriteResult.value = ''; sentenceStreaming.value = false
+  unmatchedFlags.value = []; showIssuesDetail.value = false
 }
 
 async function sendToAiRewrite() {
@@ -623,6 +896,8 @@ async function startRewrite() {
   const needed = aiModel.value.includes('pro') ? 2 : 1
   const qr = checkQuota(needed, `今日免费次数不足（需 ${needed} 次），请配置 API Key 后继续使用`)
   if (!qr.ok) { error.value = qr.msg || '配额不足'; return }
+  showResult.value = true
+  if (!isDesktop.value) mobilePane.value = 'result'
 
   const taggedText = paragraphData.value.length>0 ? paragraphData.value.map((p:any)=>`[P${p.index}] ${p.text||''}`).join('\n\n') : `[P0] ${sourceText.value}`
   resultText.value = ''; error.value = ''; isStreaming.value = true; abortController = new AbortController()
@@ -779,6 +1054,13 @@ async function exportDoc(mode: string) {
 .hl-warning:hover, .hl-item.active.hl-warning { background-position:bottom; border-bottom-color:var(--color-warning); }
 .hl-resolved { opacity:0.4; text-decoration:line-through; }
 
+/* Unmatched flags fallback */
+.unmatched-section { margin-top:24px; padding-top:16px; border-top:1px dashed var(--border-medium); }
+.unmatched-title { font-size:11px; font-weight:600; color:var(--text-light); display:block; margin-bottom:10px; }
+.unmatched-item { padding:8px 12px; background:rgba(245,158,11,0.04); border:1px solid rgba(245,158,11,0.15); border-radius:8px; margin-bottom:6px; }
+.unmatched-quote { font-family:var(--font-serif); font-size:13px; color:var(--text-muted); font-style:italic; display:block; margin-bottom:2px; }
+.unmatched-reason { font-size:11px; color:var(--accent); }
+
 /* Pane tabs */
 .pane-tab { padding:6px 16px; border:none; background:transparent; font-size:12px; font-weight:500; color:var(--text-light); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; font-family:inherit; }
 .pane-tab.active { color:var(--text-main); font-weight:600; border-bottom-color:var(--accent); }
@@ -814,41 +1096,51 @@ async function exportDoc(mode: string) {
 .sev-bar { display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:#fff; min-width:44px; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:clip; }
 .sev-crit { background:#EF4444; } .sev-high { background:#F59E0B; } .sev-med { background:#3B82F6; } .sev-style { background:#9CA3AF; }
 
-.insight-panel { transition:transform 0.2s var(--spring); border-left:4px solid var(--color-danger); }
+/* ===== Insight Panel ===== */
+.insight-panel { transition:transform 0.2s var(--spring); }
 .insight-panel.pulse { animation:insightPulse 0.4s var(--spring); }
-@keyframes insightPulse { 0%{transform:scale(1)} 50%{transform:scale(0.98)} 100%{transform:scale(1)} }
-.insight-header { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
-.insight-quote { font-family:var(--font-serif); font-size:13px; color:var(--text-muted); line-height:1.6; padding:6px 0 6px 12px; border-left:3px solid var(--border-medium); margin-bottom:16px; font-style:italic; word-break:break-all; }
-.insight-issue { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text-muted); line-height:1.5; padding:12px; background:rgba(0,0,0,0.02); border-radius:8px; border-left:3px solid var(--color-danger); margin-bottom:16px; }
-.insight-issue strong { color:var(--text-main); font-weight:600; }
-.insight-suggestion { background:rgba(217,117,10,0.05); border:1px solid rgba(217,117,10,0.15); border-radius:12px; padding:16px; }
-.insight-sugg-label { font-size:11px; font-weight:600; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; gap:4px; }
-.insight-sugg-text { font-family:var(--font-serif); font-size:14px; color:var(--text-main); line-height:1.6; }
-.insight-sugg-textarea { width:100%; border:1px solid var(--border-light); border-radius:10px; padding:10px 44px 10px 12px; font-family:var(--font-serif); font-size:13px; line-height:1.7; color:var(--text-main); background:var(--bg-surface); resize:vertical; outline:none; transition:border-color 0.2s, box-shadow 0.2s; }
-.insight-sugg-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(217,117,10,0.08); background:var(--bg-paper); }
-.insight-sugg-textarea::placeholder { color:var(--text-light); font-family:var(--font-sans); font-size:12px; }
-.insight-sugg-result { border-color:rgba(22,163,74,0.2); background:rgba(22,163,74,0.02); }
-.insight-sugg-result:focus { border-color:var(--color-success); box-shadow:0 0 0 3px rgba(22,163,74,0.06); }
+.insight--danger { border-left:4px solid var(--color-danger); }
+.insight--warn { border-left:4px solid var(--accent); }
+@keyframes insightPulse { 0%,100%{transform:scale(1)}50%{transform:scale(1.015)} }
 
-.insight-textarea-wrap { position:relative; }
-.btn-ai-send {
-  position:absolute; bottom:10px; right:10px;
-  width:36px; height:36px; padding:0;
-  border-radius:10px; border:none;
-  background:var(--accent); color:#fff; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:all 0.2s var(--spring);
-  box-shadow:0 2px 6px rgba(217,117,10,0.2);
-}
-.btn-ai-send:hover { background:var(--accent-hover); transform:scale(1.08); box-shadow:0 4px 12px rgba(217,117,10,0.3); }
-.btn-ai-send:active { transform:scale(0.94); }
-.btn-ai-send:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
-.btn-ai-spinner { width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; }
+.insight-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.insight-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:100px; text-transform:uppercase; letter-spacing:0.5px; }
+.insight-badge--danger { background:rgba(239,68,68,0.08); color:var(--color-danger); }
+.insight-badge--warn { background:rgba(217,117,10,0.08); color:var(--accent); }
+.insight-close { width:28px; height:28px; border-radius:50%; border:none; background:transparent; color:var(--text-light); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+.insight-close:hover { background:var(--bg-surface); color:var(--text-main); }
+
+.insight-block { margin-bottom:14px; }
+.insight-block--reason { padding:12px; background:rgba(0,0,0,0.02); border-radius:10px; }
+.insight-block--result { padding:12px; background:rgba(34,197,94,0.03); border-radius:10px; border:1px solid rgba(34,197,94,0.12); }
+.insight-block__label { font-size:10px; font-weight:600; color:var(--text-light); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px; }
+.insight-block__label-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.insight-block__quote { font-family:var(--font-serif); font-size:13px; color:var(--text-muted); line-height:1.7; padding:8px 0 8px 12px; border-left:3px solid var(--border-medium); word-break:break-all; }
+.insight-block__text { font-size:12px; color:var(--text-muted); line-height:1.6; }
+
+.insight-textarea { width:100%; border:1px solid var(--border-light); border-radius:10px; padding:10px 12px; font-family:var(--font-serif); font-size:13px; line-height:1.7; color:var(--text-main); background:var(--bg-surface); resize:vertical; outline:none; transition:border-color 0.2s, box-shadow 0.2s; }
+.insight-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(217,117,10,0.08); background:var(--bg-paper); }
+.insight-textarea::placeholder { color:var(--text-light); font-family:var(--font-sans); font-size:12px; }
+.insight-textarea--result { border-color:rgba(34,197,94,0.3); background:rgba(34,197,94,0.02); }
+.insight-textarea--result:focus { border-color:var(--color-success); box-shadow:0 0 0 3px rgba(34,197,94,0.08); }
+
+.insight-ai-btn { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:100px; border:1px solid var(--accent); background:rgba(217,117,10,0.06); color:var(--accent); font-size:12px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+.insight-ai-btn:hover:not(:disabled) { background:var(--accent); color:#fff; }
+.insight-ai-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-ai-spinner { width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:currentColor; border-radius:50%; animation:spin 0.6s linear infinite; }
 @keyframes spin { to{transform:rotate(360deg)} }
-.insight-stream { display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:var(--accent); }
-.streaming-dot { width:6px; height:6px; background:var(--accent); border-radius:50%; animation:pulse 1s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-.insight-actions { display:flex; gap:10px; margin-top:16px; }
+
+.insight-stream { display:flex; align-items:center; gap:6px; padding:8px 0; font-size:12px; color:var(--accent); }
+.streaming-dot { width:6px; height:6px; background:var(--accent); border-radius:50%; animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.insight-actions { display:flex; gap:10px; margin-top:4px; }
+.insight-btn { flex:1; padding:10px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:6px; }
+.insight-btn--ghost { background:var(--bg-paper); border:1px solid var(--border-medium); color:var(--text-muted); }
+.insight-btn--ghost:hover { background:var(--bg-surface); color:var(--text-main); }
+.insight-btn--apply { background:var(--bg-dark); color:#fff; border:none; box-shadow:var(--shadow-md); }
+.insight-btn--apply:hover:not(:disabled) { background:var(--accent); }
+.insight-btn--apply:disabled { opacity:0.4; cursor:not-allowed; }
 
 .capsule-toggle { position:relative; display:inline-flex; border:1px solid var(--border-medium); border-radius:100px; overflow:hidden; background:var(--bg-surface); }
 .capsule-slider { position:absolute; top:0; left:0; width:50%; height:100%; background:#141413; border-radius:100px; transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1); z-index:0; }
@@ -860,4 +1152,124 @@ async function exportDoc(mode: string) {
 
 .spin-icon{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .error-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--color-danger); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; cursor:pointer; z-index:200; }
+@media (max-width: 767px) {
+  .app-header { padding:10px 14px; flex-wrap:wrap; gap:8px; }
+  .app-brand { gap:6px; }
+  .brand-name { font-size:18px; }
+  .brand-tag { font-size:9px; padding:3px 8px; }
+  .btn-switch { font-size:10px; padding:4px 8px; margin-left:0; }
+  .btn { padding:6px 10px; font-size:12px; }
+  .btn-icon { width:32px; height:32px; }
+  .quota-badge { font-size:10px; padding:2px 8px; }
+  .export-dropdown .btn { padding:5px 8px; font-size:11px; gap:4px; }
+  .export-menu { right:0; top:calc(100% + 6px); bottom:auto; min-width:160px; max-width:calc(100vw - 32px); }
+  .pro-toolbar { flex-wrap:wrap; gap:8px; padding:10px 16px; }
+  .tabs-container { width:100%; overflow-x:auto; }
+  .advanced-panel { padding:12px 16px; }
+  .advanced-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .advanced-item--grow:last-child { grid-column:1 / -1; }
+  .step-flow { padding:10px 16px; gap:12px; }
+  .sf-step-name { font-size:11px; }
+  .app-shell { max-width:100%; height:100vh; margin:0; border-radius:0; }
+}
+.workspace--mobile {
+  display:flex; flex-direction:column; flex:1; min-height:0; background:var(--bg-canvas); overflow:hidden;
+}
+.risk-card-mobile {
+  margin-bottom:14px; padding:14px;
+  background:var(--bg-paper); border:1px solid var(--border-light); border-radius:14px;
+}
+.risk-tags-preview {
+  display:flex; flex-wrap:wrap; gap:5px; align-items:center;
+  margin-top:10px; padding-top:10px;
+  border-top:1px solid var(--border-light);
+}
+.risk-tags-more {
+  font-size:11px; font-weight:600; color:var(--accent);
+  background:rgba(217,117,10,0.06); border:1px dashed rgba(217,117,10,0.25);
+  border-radius:6px; padding:2px 8px; cursor:pointer;
+  font-family:inherit; transition:background 0.15s;
+}
+.risk-tags-more:hover { background:rgba(217,117,10,0.12); }
+.risk-toggle {
+  display:flex; align-items:center; justify-content:center; gap:5px;
+  width:100%; padding:8px 0 2px; border:none; background:none;
+  cursor:pointer; font-size:12px; color:var(--text-light);
+  font-family:inherit; min-height:auto;
+  transition:color 0.2s;
+}
+.risk-toggle:hover { color:var(--accent); }
+
+/* ===== Issues diagnostic card ===== */
+.issues-card { padding:18px 20px; }
+.issues-card__head {
+  display:flex; align-items:center; gap:7px;
+  font-size:12px; font-weight:600; color:var(--text-muted);
+  margin-bottom:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--border-light);
+}
+.issues-card__summary-m {
+  font-size:11px; color:var(--text-light); margin-left:auto;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:50%;
+}
+
+/* ===== Mobile drawer ===== */
+.issues-drawer {
+  display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows 0.45s cubic-bezier(0.22,1,0.36,1);
+}
+.issues-drawer.open { grid-template-rows:1fr; }
+.issues-drawer__body { overflow:hidden; }
+.issues-drawer__chevron {
+  transition:transform 0.45s cubic-bezier(0.22,1,0.36,1);
+}
+.issues-drawer__chevron.open { transform:rotate(180deg); }
+.issues-group { margin-bottom:12px; }
+.issues-group:last-child { margin-bottom:0; }
+.issues-group--positive { padding-top:8px; border-top:1px solid var(--border-light); }
+.issues-group__label {
+  font-size:10px; font-weight:600; color:var(--text-light);
+  text-transform:uppercase; letter-spacing:0.5px;
+  display:block; margin-bottom:8px;
+}
+.issues-tags { display:flex; flex-wrap:wrap; gap:6px; }
+
+.issue-tag {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:4px 10px; border-radius:6px;
+  font-size:12px; font-weight:500; color:var(--text-muted);
+  background:var(--bg-surface); border:1px solid var(--border-light);
+}
+.issue-tag em {
+  font-style:normal; font-size:10px; font-weight:700;
+  min-width:16px; height:16px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:4px; margin-left:2px;
+}
+.issue-tag--critical { border-color:rgba(239,68,68,0.2); background:rgba(239,68,68,0.04); }
+.issue-tag--critical em { background:var(--color-danger); color:#fff; }
+.issue-tag--high { border-color:rgba(245,158,11,0.2); background:rgba(245,158,11,0.04); }
+.issue-tag--high em { background:#F59E0B; color:#fff; }
+.issue-tag--style { border-color:var(--border-light); }
+.issue-tag--style em { background:var(--text-light); color:#fff; }
+.issue-tag--human { border-color:rgba(34,197,94,0.15); background:rgba(34,197,94,0.03); color:var(--color-success); font-size:11px; }
+.risk-card-mobile .risk-hero { display:flex; align-items:center; }
+.insight-overlay-mobile {
+  position:fixed; inset:0; z-index:200; background:rgba(20,20,19,0.4);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.insight-sheet {
+  background:var(--bg-paper); border-radius:20px 20px 0 0;
+  width:100%; max-height:80vh; overflow-y:auto;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.15);
+  animation:slideUp 0.3s var(--spring);
+}
+.insight-sheet__handle {
+  width:36px; height:4px; background:var(--border-medium); border-radius:2px;
+  margin:10px auto 0;
+}
+.insight-sheet__body {
+  padding:8px 20px 24px;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
 </style>

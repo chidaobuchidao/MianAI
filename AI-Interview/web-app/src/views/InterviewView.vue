@@ -37,7 +37,7 @@
       <div class="sidebar__body no-scrollbar">
         <span class="sidebar__section-label">
           Interview Progress
-          <button class="dev-test-btn" @click="startCoding()" title="开发者：直接进入编程环节">[测试]</button>
+          <button v-if="userStore.isAdmin" class="dev-test-btn" @click="startCoding()" title="开发者：直接进入编程环节">[测试]</button>
         </span>
         <div class="progress-tree">
           <div class="progress-tree__line" />
@@ -291,6 +291,84 @@
       </div>
     </aside>
 
+    <!-- ====== Mobile: Code FAB ====== -->
+    <button
+      class="code-fab"
+      v-if="!isDesktop && codeProblemText && !showCodePanel && !finished"
+      @click="showCodePanel = true"
+      title="打开代码编辑器"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+    </button>
+
+    <!-- ====== Mobile: Code Overlay ====== -->
+    <div class="code-overlay" v-if="!isDesktop && showCodePanel">
+      <div class="code-overlay__head">
+        <button class="code-overlay__back" @click="showCodePanel = false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="code-overlay__title">{{ codeFilename || 'Solution.java' }}</span>
+        <div style="width:36px" />
+      </div>
+      <div class="code-overlay__problem" v-if="codeProblemText">
+        <p class="code-overlay__problem-text">{{ codeProblemText }}</p>
+      </div>
+      <div class="code-overlay__editor-wrap">
+        <CodeEditor
+          v-model="currentCode"
+          :filename="codeFilename || 'Solution.java'"
+          :language="codeLanguage"
+          :languages="availableLanguages"
+          @update:language="switchCodeLanguage"
+        />
+      </div>
+      <div class="code-overlay__stdin">
+        <input
+          v-model="codeStdin"
+          class="code-overlay__stdin-input"
+          placeholder="程序输入(stdin) — 每行一个值"
+          spellcheck="false"
+          @keyup.enter.ctrl="runCode"
+        />
+      </div>
+      <div class="code-overlay__toolbar">
+        <button class="code-overlay__run-btn" :disabled="codeRunning" @click="runCode">
+          <svg v-if="codeRunning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          {{ codeRunning ? '执行中...' : 'Run' }}
+        </button>
+        <button class="code-overlay__reset-btn" title="重置" :disabled="codeRunning || codeSubmitting" @click="resetCode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
+        <button class="code-overlay__submit-btn" :disabled="codeSubmitting || !currentCode.trim()" @click="submitCode">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          {{ codeSubmitting ? '审查中...' : '提交' }}
+        </button>
+      </div>
+      <div class="code-overlay__results" v-if="codeResult">
+        <div class="code-overlay__results-head">
+          <span class="code-overlay__results-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" :stroke="codeResult.run?.code === 0 ? 'var(--color-success)' : 'var(--color-danger)'" stroke-width="2">
+              <polyline v-if="codeResult.run?.code === 0" points="20 6 9 17 4 12"/>
+              <template v-else><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></template>
+            </svg>
+            {{ codeResult.run?.code === 0 ? '执行成功' : '执行出错' }}
+          </span>
+          <button class="code-overlay__results-close" @click="codeResult = null">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="code-overlay__results-body" v-if="codeResult.error">
+          <pre class="code-overlay__output code-overlay__output--error">{{ codeResult.error }}</pre>
+        </div>
+        <div class="code-overlay__results-body" v-else-if="codeResult.run">
+          <pre class="code-overlay__output" v-if="codeResult.run.stdout">{{ codeResult.run.stdout }}</pre>
+          <pre class="code-overlay__output code-overlay__output--error" v-if="codeResult.run.stderr">{{ codeResult.run.stderr }}</pre>
+          <span class="code-overlay__meta">exit code: {{ codeResult.run.code }} | signal: {{ codeResult.run.signal || 'none' }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Finished overlay -->
     <!-- Ending loading overlay -->
     <div class="finish-overlay" v-if="finishing && !finished">
@@ -326,6 +404,7 @@ import SkeletonBar from '@/components/SkeletonBar.vue'
 import { getPosIcon } from '@/utils/positionIcons'
 import { useInterviewStream, type InterviewMessage, type ReportData, type CodeProblem, type CodingReview } from '@/composables/useInterviewStream'
 import { useQuota } from '@/composables/useQuota'
+import { useResponsive } from '@/composables/useResponsive'
 
 interface ProgressItem {
   name: string
@@ -397,7 +476,8 @@ interface InterviewSession {
 }
 
 const router = useRouter()
-const isDesktop = ref(window.innerWidth > 768)
+const { isDesktop } = useResponsive()
+const userStore = useUserStore()
 const started = ref(false)
 const messages = ref<InterviewMessage[]>([])
 const loading = ref(false)
@@ -422,6 +502,7 @@ const codePanelWidth = ref(450)
 const inputText = ref('')
 const inputMode = ref<'keyboard' | 'voice'>('keyboard')
 const inputEl = ref<HTMLTextAreaElement>()
+const codeProblemText = ref('')
 
 function autoResizeInput() {
   const el = inputEl.value
@@ -487,6 +568,7 @@ async function startInterview(position: string) {
     sessionStorage.removeItem('interviewDims')
     sessionStorage.removeItem('interviewSuggestion')
     sessionStorage.removeItem('interviewCodingReview')
+    codeProblemText.value = ''
     started.value = true
   } catch (e: unknown) {
     errorMsg.value = e instanceof Error ? e.message : '启动失败'
@@ -572,6 +654,7 @@ async function skipCoding() {
 
 function handleCodeProblem(data: CodeProblem) {
   showCodePanel.value = true
+  codeProblemText.value = data.description || ''
   const dbTemplates = data.templates || {}
   // Merge DB templates with default stubs for unsupported languages
   allTemplates.value = {
@@ -830,6 +913,7 @@ function stopResize() {
 function submitCode() {
   if (!currentCode.value.trim() || codeSubmitting.value) return
   codeSubmitting.value = true
+  if (!isDesktop.value) showCodePanel.value = false
   // Insert loading card in chat immediately
   messages.value = [...messages.value, { role: 'ai', content: '__CODING_REVIEW_LOADING__' }]
   sendAnswer({
@@ -1723,4 +1807,128 @@ function submitCode() {
   0%{background-position:200% 0}
   100%{background-position:-200% 0}
 }
+
+/* ===== Mobile Code FAB ===== */
+.code-fab {
+  position: fixed; bottom: 100px; right: 20px; z-index: 60;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--bg-dark); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-lg);
+  transition: background 0.2s, transform 0.2s;
+}
+.code-fab:hover { background: var(--accent); transform: scale(1.06); }
+
+/* ===== Mobile Code Overlay ===== */
+.code-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg-dark);
+  display: flex; flex-direction: column;
+}
+.code-overlay__problem {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.code-overlay__problem-text {
+  font-size: 14px; color: #ccc; line-height: 1.7;
+  white-space: pre-wrap;
+}
+.code-overlay__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.code-overlay__back {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #999;
+}
+.code-overlay__title {
+  font-size: 14px; font-weight: 500; color: #ccc;
+  font-family: var(--font-mono);
+}
+.code-overlay__editor-wrap {
+  flex: 1; min-height: 0; overflow: hidden;
+}
+.code-overlay__stdin {
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.code-overlay__stdin-input {
+  width: 100%; padding: 7px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 5px; color: #aaa;
+  font-family: var(--font-mono); font-size: 12px; outline: none;
+}
+.code-overlay__stdin-input:focus {
+  border-color: rgba(255,255,255,0.2); color: #ddd;
+}
+.code-overlay__stdin-input::placeholder { color: #555; }
+.code-overlay__toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.code-overlay__run-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 18px; border-radius: 6px;
+  border: 1px solid var(--color-success);
+  background: rgba(97,197,84,0.1); color: var(--color-success);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.code-overlay__run-btn:hover:not(:disabled) { background: var(--color-success); color: #fff; }
+.code-overlay__run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.code-overlay__reset-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent; color: #999;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.code-overlay__reset-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.25); color: #fff; }
+.code-overlay__reset-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.code-overlay__submit-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 18px; border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: rgba(217,117,10,0.1); color: var(--accent);
+  font-size: 13px; font-weight: 500; cursor: pointer; margin-left: auto;
+}
+.code-overlay__submit-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.code-overlay__submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.code-overlay__results {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0; max-height: 200px;
+  display: flex; flex-direction: column;
+}
+.code-overlay__results-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; background: rgba(255,255,255,0.03);
+}
+.code-overlay__results-title {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: #aaa;
+}
+.code-overlay__results-close {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; background: transparent; color: #888; cursor: pointer;
+}
+.code-overlay__results-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.code-overlay__results-body { padding: 10px 14px; overflow-y: auto; }
+.code-overlay__output {
+  margin: 0; padding: 10px 12px;
+  background: rgba(0,0,0,0.3); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
+  color: #d4d4d4; white-space: pre-wrap; word-break: break-all;
+}
+.code-overlay__output--error { color: #ED6A5E; }
+.code-overlay__meta { display: block; margin-top: 6px; font-size: 11px; color: #666; }
 </style>

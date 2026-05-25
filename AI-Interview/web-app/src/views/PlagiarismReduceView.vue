@@ -13,7 +13,7 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/polish')">学术润色</button>
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/ai-reduce')">降AI</button>
       </div>
-      <div style="display:flex;align-items:center;gap:16px;">
+      <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
         <div class="capsule-toggle">
           <div class="capsule-slider" :class="{ right: aiModel === 'deepseek-v4-pro' }" />
           <button class="capsule-opt" :class="{ active: aiModel === 'deepseek-v4-flash' }"
@@ -39,7 +39,7 @@
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
               </svg>
-              保留原格式导出<span class="export-badge">推荐</span>
+              原格式导出<span class="export-badge">推荐</span>
             </div>
             <div class="export-item" @click="exportDoc('standard')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
@@ -207,8 +207,8 @@
         </div>
       </div>
 
-      <!-- Workspace -->
-      <div class="workspace split-50">
+      <!-- Workspace PC -->
+      <div v-if="isDesktop" class="workspace split-50">
         <!-- LEFT: Source + SourceRef -->
         <div class="editor-pane left">
           <div class="pane-header"><span class="pane-title">原文参考</span><span class="pane-hint"><span class="legend-dot dup-frag"></span>匹配片段 <span class="legend-dot dup-phr"></span>重复短语 <span class="legend-dot dup-rep"></span>报告标注</span></div>
@@ -254,6 +254,49 @@
           </div>
         </div>
       </div>
+
+      <!-- Workspace Mobile: tab-switch stack -->
+      <div v-if="!isDesktop" class="workspace workspace--mobile">
+        <div class="mobile-pane-tabs">
+          <button :class="{ active: mobilePane === 'original' }" @click="mobilePane = 'original'">原文参考</button>
+          <button :class="{ active: mobilePane === 'result' }" @click="mobilePane = 'result'">降重结果</button>
+        </div>
+
+        <!-- Original pane -->
+        <div class="mobile-pane" v-show="mobilePane === 'original'">
+          <div class="editor-content">
+            <template v-for="p in markedParagraphs" :key="'mref-'+p.index">
+              <div v-if="p.isHeading" class="fp-heading">{{ p.originalText }}</div>
+              <div v-else class="fp-body" v-html="p.markedHtml" />
+            </template>
+          </div>
+          <div v-if="sourceRef" class="source-ref-panel" style="margin-top:12px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;">重复源</div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">{{ sourceRef }}</div>
+          </div>
+        </div>
+
+        <!-- Result pane -->
+        <div class="mobile-pane" v-show="mobilePane === 'result'">
+          <button v-if="resultText && !isStreaming" class="btn btn-outline" style="font-size:11px;padding:4px 10px;margin-bottom:8px;" @click="copyResult">
+            复制结果
+          </button>
+          <div class="editor-content">
+            <div v-if="!resultText && !isStreaming" class="result-placeholder">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>扫描完成后点击「开始降重」</span>
+            </div>
+            <div v-else-if="isStreaming" class="streaming-text">
+              <template v-for="(line, i) in streamingLines" :key="'sm-'+i"><p v-if="line" class="streaming-line">{{ line }}</p></template>
+              <span class="cursor-blink" />
+            </div>
+            <template v-else v-for="p in resultParagraphs" :key="'rm-'+p.index">
+              <div v-if="p.isHeading" class="fp-heading">{{ p.polishedText }}</div>
+              <div v-else class="fp-body" contenteditable="true" @blur="onParaEdit($event, p.index)" @keydown="onParaKey">{{ p.polishedText }}</div>
+            </template>
+          </div>
+        </div>
+      </div>
     </template>
 
     <p v-if="error" class="error-toast" @click="error = ''">{{ error }}</p>
@@ -264,9 +307,14 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuota } from '@/composables/useQuota'
+import { useResponsive } from '@/composables/useResponsive'
+import { usePaperStore } from '@/composables/usePaperStore'
 
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
+const { isDesktop } = useResponsive()
+const mobilePane = ref<'original' | 'result'>('original')
+const paperStore = usePaperStore()
 
 const aiModel = ref('deepseek-v4-flash')
 const reduceMode = ref('medium')
@@ -318,6 +366,18 @@ function moveIndicator(v?: string) {
   indicator.style.transform = `translateX(${tr.left - pr.left}px)`
 }
 onMounted(async () => { nextTick(() => moveIndicator()); const q = await fetchQuota(); if (q) quotaInfo.value = q })
+onMounted(() => {
+  if (hasDocument.value) return
+  const doc = paperStore.load()
+  if (!doc?.sourceText) return
+  sourceText.value = doc.sourceText
+  paragraphData.value = doc.paragraphs?.length ? doc.paragraphs : fallbackParagraphs(doc.sourceText)
+  reducedParagraphs.value = new Map()
+  for (const p of paragraphData.value) reducedParagraphs.value.set(p.index, p.text || '')
+  hasDocument.value = true
+  storedFile.value = null
+  runScan(doc.sourceText)
+})
 let _resizeObs3: ResizeObserver | null = null
 onMounted(() => {
   _resizeObs3 = new ResizeObserver(() => moveIndicator())
@@ -498,6 +558,7 @@ async function handleFileUpload(e: Event) {
     sourceText.value = data.fullText
     paragraphData.value = (data.paragraphs?.length ? data.paragraphs : fallbackParagraphs(data.fullText))
     reducedParagraphs.value = new Map(); resultText.value = ''; hasDocument.value = true; scanDone.value = false
+    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: uploadedFile.name, timestamp: Date.now() })
     for (const p of paragraphData.value) reducedParagraphs.value.set(p.index, p.text || '')
     await runScan(data.fullText)
   } catch (e: any) { error.value = '解析失败: ' + (e.message || String(e)) }
@@ -545,6 +606,7 @@ async function startReduce() {
   const needed = aiModel.value.includes('pro') ? 2 : 1
   const qr = checkQuota(needed, `今日免费次数不足（需 ${needed} 次），请配置 API Key 后继续使用`)
   if (!qr.ok) { error.value = qr.msg || '配额不足'; return }
+  if (!isDesktop.value) mobilePane.value = 'result'
 
   const taggedText = paragraphData.value.length > 0 ? paragraphData.value.map((p: any) => `[P${p.index}] ${p.text || ''}`).join('\n\n') : `[P0] ${sourceText.value}`
   const annotationPayload = reportAnnotations.value.length > 0
@@ -588,6 +650,7 @@ function parseMarked(resp: string): Map<number, string> {
   return r
 }
 
+function copyResult() { if (resultText.value) { navigator.clipboard.writeText(resultText.value).catch(() => {}) } }
 function onParaEdit(e: FocusEvent, idx: number) { const t = (e.target as HTMLElement).innerText?.trim() || ''; if (t) reducedParagraphs.value.set(idx, t) }
 function onParaKey(e: KeyboardEvent) { if (e.key === 'Tab') { e.preventDefault(); const n = (e.target as HTMLElement).nextElementSibling as HTMLElement | null; if (n?.contentEditable === 'true') n.focus() } }
 
@@ -1510,4 +1573,25 @@ async function exportDoc(mode: string) {
   cursor: pointer;
   z-index: 200;
 }
+@media (max-width: 767px) {
+  .app-header { padding:10px 14px; flex-wrap:wrap; gap:8px; }
+  .app-brand { gap:6px; }
+  .brand-name { font-size:18px; }
+  .brand-tag { font-size:9px; padding:3px 8px; }
+  .btn-switch { font-size:10px; padding:4px 8px; margin-left:0; }
+  .btn { padding:6px 10px; font-size:12px; }
+  .btn-icon { width:32px; height:32px; }
+  .quota-badge { font-size:10px; padding:2px 8px; }
+  .export-dropdown .btn { padding:5px 8px; font-size:11px; gap:4px; }
+  .export-menu { right:0; top:calc(100% + 6px); bottom:auto; min-width:160px; max-width:calc(100vw - 32px); }
+  .pro-toolbar { flex-wrap:wrap; gap:8px; padding:10px 16px; }
+  .tabs-container { width:100%; overflow-x:auto; }
+  .advanced-panel { padding:12px 16px; }
+  .advanced-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .advanced-item:last-child { grid-column:1 / -1; }
+  .app-shell { max-width:100%; height:100vh; margin:0; border-radius:0; }
+  .risk-card__grid { grid-template-columns:repeat(3,1fr); gap:8px; }
+  .fragments-panel { margin:0 0 10px; }
+}
+.workspace--mobile { display:flex; flex-direction:column; flex:1; min-height:0; background:var(--bg-canvas); overflow:hidden; }
 </style>

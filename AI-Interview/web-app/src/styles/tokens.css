@@ -44,4 +44,17 @@
   --duration-fast: 150ms;
   --duration-normal: 300ms;
   --duration-slow: 500ms;
+
+  /* Breakpoints (sync with useResponsive.ts) */
+  --bp-mobile: 768px;
+  --bp-desktop: 768px;
+  --bp-wide: 1024px;
+  --bp-tool: 1280px;
+
+  /* Page widths */
+  --page-max-width: 640px;
+  --page-padding: 20px;
+
+  /* Touch targets */
+  --touch-min-height: 44px;
 }
