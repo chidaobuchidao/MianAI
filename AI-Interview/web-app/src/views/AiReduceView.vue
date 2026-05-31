@@ -178,12 +178,18 @@
           <template v-else-if="resultText && formatResultParagraphs.length">
             <div v-for="p in formatResultParagraphs" :key="'rr-'+p.index">
               <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p)">{{ p.text }}</div>
-              <div v-else class="fp-body" :style="bodyStyle(p)">{{ p.text }}</div>
+              <div v-else class="fp-body" :style="bodyStyle(p)" v-html="applyCitationChips(escapeHtml(p.text))"></div>
             </div>
           </template>
           <template v-else-if="resultText">
-            <p v-for="(p, i) in resultParagraphs" :key="i" style="margin-bottom:12px;">{{ p }}</p>
+            <p v-for="(p, i) in resultParagraphs" :key="i" style="margin-bottom:12px;" v-html="applyCitationChips(escapeHtml(p))"></p>
           </template>
+          <div v-if="citedReferences.length > 0" class="reference-section">
+            <h4>参考文献</h4>
+            <ol>
+              <li v-for="(ref, i) in citedReferences" :key="i">{{ ref }}</li>
+            </ol>
+          </div>
           <div v-else class="result-placeholder">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             <span>点击「一键净化全文」开始改写</span>
@@ -338,12 +344,18 @@
         <template v-else-if="resultText && formatResultParagraphs.length">
           <div v-for="p in formatResultParagraphs" :key="'mr-'+p.index">
             <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p)">{{ p.text }}</div>
-            <div v-else class="fp-body" :style="bodyStyle(p)">{{ p.text }}</div>
+            <div v-else class="fp-body" :style="bodyStyle(p)" v-html="applyCitationChips(escapeHtml(p.text))"></div>
           </div>
         </template>
         <template v-else-if="resultText">
-          <p v-for="(p, i) in resultParagraphs" :key="i" style="margin-bottom:12px;">{{ p }}</p>
+          <p v-for="(p, i) in resultParagraphs" :key="i" style="margin-bottom:12px;" v-html="applyCitationChips(escapeHtml(p))"></p>
         </template>
+        <div v-if="citedReferences.length > 0" class="reference-section">
+          <h4>参考文献</h4>
+          <ol>
+            <li v-for="(ref, i) in citedReferences" :key="'mref-'+i">{{ ref }}</li>
+          </ol>
+        </div>
         <div v-else class="result-placeholder">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           <span>点击「一键净化全文」开始改写</span>
@@ -502,6 +514,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, type StyleValue } from 'vue'
 import { usePaperKbPanel } from '@/composables/usePaperKbPanel'
+import { renderCitations } from '@/modules/paper-kb'
+import type { CitedChunk } from '@/modules/paper-kb'
 import PaperKbPanel from '@/components/PaperKbPanel.vue'
 import KbHitDetails from '@/components/KbHitDetails.vue'
 import { useRouter } from 'vue-router'
@@ -582,6 +596,30 @@ const {
   handleRestore: handleKbRestore, retrieveRaw: kbRetrieveRaw,
 } = usePaperKbPanel('ai_reduce')
 const showKbHitDetails = ref(false)
+
+// === Citation chips ===
+function escapeHtml(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
+function applyCitationChips(html: string): string {
+  return html.replace(/\[(\d+)\]/g, (match, numStr) => {
+    const index = parseInt(numStr, 10)
+    if (index < 1 || index > 50) return match
+    return `<span class="cite-chip" data-cite-index="${index}">${index}</span>`
+  })
+}
+
+const citedReferences = computed(() => {
+  if (!lastRetrievedChunks.value.length) return []
+  const citedChunks: CitedChunk[] = lastRetrievedChunks.value.map((c, i) => ({
+    index: i + 1,
+    paperTitle: c.paperTitle,
+    section: c.section,
+    content: c.content,
+  }))
+  const allText = resultText.value
+  const { references } = renderCitations(allText, citedChunks)
+  return references
+})
 
 // Insight panel state
 interface HighlightPart { type: string; text: string; id?: string; risk?: string; reason?: string; suggestion?: string }
@@ -1405,4 +1443,20 @@ async function exportDoc(mode: string) {
   padding:8px 20px 24px;
 }
 @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+/* Citation chips */
+:deep(.cite-chip) {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.2em; height: 1.2em; padding: 0 0.3em; margin: 0 0.1em;
+  font-size: 0.7em; font-weight: 600; line-height: 1;
+  color: #4f6ef7; background: rgba(79, 110, 247, 0.1);
+  border: 1px solid rgba(79, 110, 247, 0.3); border-radius: 0.3em;
+  cursor: pointer; vertical-align: super; transition: background 0.15s;
+}
+:deep(.cite-chip:hover) { background: rgba(79, 110, 247, 0.2); }
+
+.reference-section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #e8e8e8; }
+.reference-section h4 { font-size: 0.95em; margin-bottom: 0.5em; color: #333; }
+.reference-section ol { padding-left: 1.5em; font-size: 0.85em; color: #555; line-height: 1.8; }
+.reference-section li { margin-bottom: 0.3em; }
 </style>

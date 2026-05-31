@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue'
-import { usePaperKnowledgeBase, buildContextBlock, formatCitedContext } from '@/modules/paper-kb'
+import { usePaperKnowledgeBase, formatCitedContext } from '@/modules/paper-kb'
 import type { PaperTaskType, ContextChunk, CitedChunk } from '@/modules/paper-kb'
 
 export interface KbSettings {

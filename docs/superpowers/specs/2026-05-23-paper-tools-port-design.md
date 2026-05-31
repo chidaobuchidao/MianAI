@@ -1,6 +1,6 @@
 # Paper Tools Port — 论文工具移植设计文档
 
-> 从纸研社 (AI_paper) 移植文档润色、降AI、降查重 + 格式保留导出至面面通 (IntervVault)
+> 从纸研社 (AI_paper) 移植文档润色、降AI、降查重 + 格式保留导出至面面通 (MainAI)
 >
 > 2026-05-23 | chidaobuchidao
 
@@ -15,7 +15,7 @@
 | **学术润色** | AI_paper `polisher.py` | 新增 `PolishService` + `/api/polish` |
 | **降AI** | AI_paper `ai_reducer.py` | 新增 `AiReduceService` + `/api/ai-reduce` |
 | **降查重** | AI_paper `plagiarism.py` | 新增 `PlagiarismReduceService` + `/api/plagiarism-reduce` |
-| **格式保留导出** | AI_paper `aux_tools.py:export_docx` + IntervVault `TemplatePreservingExportService` | 改造 `TemplatePreservingExportService` |
+| **格式保留导出** | AI_paper `aux_tools.py:export_docx` + MainAI `TemplatePreservingExportService` | 改造 `TemplatePreservingExportService` |
 
 ### 1.2 核心设计原则
 

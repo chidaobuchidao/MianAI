@@ -167,9 +167,15 @@
               @input="onParaInput(p.index)"
               @blur="onParaEdit($event, p.index)"
               @keydown="onParaKey"
-              v-html="renderDiff(p.originalText, p.polishedText)"
+              v-html="applyCitationChips(renderDiff(p.originalText, p.polishedText))"
             ></div>
           </template>
+          <div v-if="citedReferences.length > 0" class="reference-section">
+            <h4>参考文献</h4>
+            <ol>
+              <li v-for="(ref, i) in citedReferences" :key="i">{{ ref }}</li>
+            </ol>
+          </div>
         </div>
       </div>
     </div>
@@ -218,9 +224,15 @@
               @input="onParaInput(p.index)"
               @blur="onParaEdit($event, p.index)"
               @keydown="onParaKey"
-              v-html="renderDiff(p.originalText, p.polishedText)"
+              v-html="applyCitationChips(renderDiff(p.originalText, p.polishedText))"
             ></div>
           </template>
+          <div v-if="citedReferences.length > 0" class="reference-section">
+            <h4>参考文献</h4>
+            <ol>
+              <li v-for="(ref, i) in citedReferences" :key="'mref-'+i">{{ ref }}</li>
+            </ol>
+          </div>
         </div>
       </div>
     </div>
@@ -264,6 +276,8 @@ import { readJsonResponse } from '@/utils/httpResponse'
 import { authFetch } from '@/utils/authFetch'
 import { isDocxFile, isPdfFile } from '@/utils/documentFile'
 import { preserveOriginalSpacing } from '@/utils/spacingGuard'
+import { renderCitations } from '@/modules/paper-kb'
+import type { CitedChunk } from '@/modules/paper-kb'
 import PaperKbPanel from '@/components/PaperKbPanel.vue'
 import KbHitDetails from '@/components/KbHitDetails.vue'
 
@@ -338,6 +352,28 @@ const {
   handleRestore: handleKbRestore, retrieveAndFormat: kbRetrieveAndFormat,
 } = usePaperKbPanel('paper_polish')
 const showKbHitDetails = ref(false)
+
+// === Citation chips ===
+function applyCitationChips(html: string): string {
+  return html.replace(/\[(\d+)\]/g, (match, numStr) => {
+    const index = parseInt(numStr, 10)
+    if (index < 1 || index > 50) return match
+    return `<span class="cite-chip" data-cite-index="${index}">${index}</span>`
+  })
+}
+
+const citedReferences = computed(() => {
+  if (!lastRetrievedChunks.value.length) return []
+  const citedChunks: CitedChunk[] = lastRetrievedChunks.value.map((c, i) => ({
+    index: i + 1,
+    paperTitle: c.paperTitle,
+    section: c.section,
+    content: c.content,
+  }))
+  const allText = resultParagraphs.value.map(p => p.polishedText).join(' ')
+  const { references } = renderCitations(allText, citedChunks)
+  return references
+})
 
 // === Tabs ===
 const polishTabs = [
@@ -927,6 +963,22 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 /* Diff highlights */
 :deep(.diff-add) { background: rgba(22, 163, 74, 0.1); color: #166534; padding: 2px 4px; border-radius: 4px; border-bottom: 1px solid rgba(22, 163, 74, 0.2); }
 :deep(.diff-del) { background: rgba(220, 38, 38, 0.06); color: #991B1B; text-decoration: line-through; padding: 2px 4px; border-radius: 4px; }
+
+/* Citation chips */
+:deep(.cite-chip) {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.2em; height: 1.2em; padding: 0 0.3em; margin: 0 0.1em;
+  font-size: 0.7em; font-weight: 600; line-height: 1;
+  color: #4f6ef7; background: rgba(79, 110, 247, 0.1);
+  border: 1px solid rgba(79, 110, 247, 0.3); border-radius: 0.3em;
+  cursor: pointer; vertical-align: super; transition: background 0.15s;
+}
+:deep(.cite-chip:hover) { background: rgba(79, 110, 247, 0.2); }
+
+.reference-section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #e8e8e8; }
+.reference-section h4 { font-size: 0.95em; margin-bottom: 0.5em; color: #333; }
+.reference-section ol { padding-left: 1.5em; font-size: 0.85em; color: #555; line-height: 1.8; }
+.reference-section li { margin-bottom: 0.3em; }
 
 /* Streaming typewriter */
 .streaming-text {

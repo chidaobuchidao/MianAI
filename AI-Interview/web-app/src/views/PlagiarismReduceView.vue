@@ -264,8 +264,14 @@
             <template v-else v-for="p in resultParagraphs" :key="'r-' + p.index">
               <div v-if="p.isHeading" class="fp-heading">{{ p.polishedText }}</div>
               <div v-else class="fp-body" contenteditable="true" @blur="onParaEdit($event, p.index)"
-                @keydown="onParaKey">{{ p.polishedText }}</div>
+                @keydown="onParaKey" v-html="applyCitationChips(escapeHtml(p.polishedText))"></div>
             </template>
+            <div v-if="citedReferences.length > 0" class="reference-section">
+              <h4>参考文献</h4>
+              <ol>
+                <li v-for="(ref, i) in citedReferences" :key="i">{{ ref }}</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
@@ -307,8 +313,14 @@
             </div>
             <template v-else v-for="p in resultParagraphs" :key="'rm-'+p.index">
               <div v-if="p.isHeading" class="fp-heading">{{ p.polishedText }}</div>
-              <div v-else class="fp-body" contenteditable="true" @blur="onParaEdit($event, p.index)" @keydown="onParaKey">{{ p.polishedText }}</div>
+              <div v-else class="fp-body" contenteditable="true" @blur="onParaEdit($event, p.index)" @keydown="onParaKey" v-html="applyCitationChips(escapeHtml(p.polishedText))"></div>
             </template>
+            <div v-if="citedReferences.length > 0" class="reference-section">
+              <h4>参考文献</h4>
+              <ol>
+                <li v-for="(ref, i) in citedReferences" :key="'mref-'+i">{{ ref }}</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
@@ -352,6 +364,8 @@ import { readJsonResponse } from '@/utils/httpResponse'
 import { authFetch } from '@/utils/authFetch'
 import { isDocxFile, isPdfFile } from '@/utils/documentFile'
 import { preserveOriginalSpacing } from '@/utils/spacingGuard'
+import { renderCitations } from '@/modules/paper-kb'
+import type { CitedChunk } from '@/modules/paper-kb'
 import PaperKbPanel from '@/components/PaperKbPanel.vue'
 import KbHitDetails from '@/components/KbHitDetails.vue'
 
@@ -396,6 +410,28 @@ const {
   handleRestore: handleKbRestore, retrieveRaw: kbRetrieveRaw,
 } = usePaperKbPanel('plagiarism_reduce')
 const showKbHitDetails = ref(false)
+
+// === Citation chips ===
+function applyCitationChips(html: string): string {
+  return html.replace(/\[(\d+)\]/g, (match, numStr) => {
+    const index = parseInt(numStr, 10)
+    if (index < 1 || index > 50) return match
+    return `<span class="cite-chip" data-cite-index="${index}">${index}</span>`
+  })
+}
+
+const citedReferences = computed(() => {
+  if (!lastRetrievedChunks.value.length) return []
+  const citedChunks: CitedChunk[] = lastRetrievedChunks.value.map((c, i) => ({
+    index: i + 1,
+    paperTitle: c.paperTitle,
+    section: c.section,
+    content: c.content,
+  }))
+  const allText = resultText.value
+  const { references } = renderCitations(allText, citedChunks)
+  return references
+})
 
 // Scan results
 const repeatedPhrases = ref<[string, number][]>([])
@@ -1728,4 +1764,20 @@ async function exportDoc(mode: string) {
   .fragments-panel { margin:0 0 10px; }
 }
 .workspace--mobile { display:flex; flex-direction:column; flex:1; min-height:0; background:var(--bg-canvas); overflow:hidden; }
+
+/* Citation chips */
+:deep(.cite-chip) {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.2em; height: 1.2em; padding: 0 0.3em; margin: 0 0.1em;
+  font-size: 0.7em; font-weight: 600; line-height: 1;
+  color: #4f6ef7; background: rgba(79, 110, 247, 0.1);
+  border: 1px solid rgba(79, 110, 247, 0.3); border-radius: 0.3em;
+  cursor: pointer; vertical-align: super; transition: background 0.15s;
+}
+:deep(.cite-chip:hover) { background: rgba(79, 110, 247, 0.2); }
+
+.reference-section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #e8e8e8; }
+.reference-section h4 { font-size: 0.95em; margin-bottom: 0.5em; color: #333; }
+.reference-section ol { padding-left: 1.5em; font-size: 0.85em; color: #555; line-height: 1.8; }
+.reference-section li { margin-bottom: 0.3em; }
 </style>
