@@ -143,6 +143,8 @@ public class ResumeController {
         if (optimizedText == null || optimizedText.isBlank()) {
             throw new IllegalArgumentException("优化简历内容为空，请先完成深度优化");
         }
+        // 剥离 AI 输出中的引用标记 [1][2] 等，确保导出文本干净
+        optimizedText = optimizedText.replaceAll("\\[\\d+\\]", "");
         String fileName = String.valueOf(report.getOrDefault("fileName", "简历优化"));
 
         // 直接使用优化后的 Markdown 生成 Word（标准导出，不保留原模板格式）
@@ -213,6 +215,11 @@ public class ResumeController {
      */
     private byte[] buildFormatPreservedDocx(Long resumeId, String optimizedText, String fileName,
                                               Map<String, Object> report) {
+        // 剥离 AI 输出中的引用标记 [1][2] 等，确保导出文本干净
+        if (optimizedText != null) {
+            optimizedText = optimizedText.replaceAll("\\[\\d+\\]", "");
+        }
+
         Resume resume = resumeService.getById(resumeId);
         byte[] fileData = resume.getFileData();
 
