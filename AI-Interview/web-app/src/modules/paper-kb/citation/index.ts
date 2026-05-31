@@ -1,3 +1,5 @@
 export { extractCitation } from './citationExtractor'
 export { formatCitedContext } from './citationFormatter'
+export { renderCitations } from './citationRenderer'
+export type { CitationRenderResult } from './citationRenderer'
 export type { PaperCitation, CitedChunk } from './types'
