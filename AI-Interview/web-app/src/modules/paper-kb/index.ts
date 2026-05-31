@@ -16,4 +16,11 @@ export type {
   ContextChunk,
 } from './types'
 
-export type { PaperCitation, CitedChunk } from './citation/types'
+export {
+  extractCitation,
+  formatCitedContext,
+  renderCitations,
+  stripCitationMarkers,
+} from './citation'
+
+export type { PaperCitation, CitedChunk, CitationRenderResult } from './citation'
