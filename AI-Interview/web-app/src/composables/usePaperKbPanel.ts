@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue'
-import { usePaperKnowledgeBase, buildContextBlock } from '@/modules/paper-kb'
-import type { PaperTaskType, ContextChunk } from '@/modules/paper-kb'
+import { usePaperKnowledgeBase, buildContextBlock, formatCitedContext } from '@/modules/paper-kb'
+import type { PaperTaskType, ContextChunk, CitedChunk } from '@/modules/paper-kb'
 
 export interface KbSettings {
   topK: number
@@ -88,7 +88,16 @@ export function usePaperKbPanel(taskType: PaperTaskType) {
   async function retrieveAndFormat(queryText: string, hints?: KbRetrievalHints): Promise<string> {
     const chunks = await retrieveRaw(queryText, hints)
     if (chunks.length === 0) return ''
-    return buildContextBlock(chunks)
+
+    // 将 ContextChunk 转为 CitedChunk（带索引和 citation 元数据）
+    const citedChunks: CitedChunk[] = chunks.map((c, i) => ({
+      index: i + 1,
+      paperTitle: c.paperTitle,
+      section: c.section,
+      content: c.content,
+    }))
+
+    return formatCitedContext(citedChunks)
   }
 
   /**
