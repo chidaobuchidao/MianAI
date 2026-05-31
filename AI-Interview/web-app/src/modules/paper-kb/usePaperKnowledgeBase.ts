@@ -6,6 +6,7 @@ import { ensureSearchIndex } from './paperSearchIndex'
 import { retrieveContext, toContextChunks } from './paperRetriever'
 import { buildQuestionWithContext } from './paperPromptBuilder'
 import { exportBackup, importBackup, downloadBackupFile } from './paperKbBackup'
+import { extractCitation } from './citation'
 import type { LocalPaper, PaperTaskType, ContextChunk, KbBackup } from './types'
 
 export function usePaperKnowledgeBase() {
@@ -33,6 +34,7 @@ export function usePaperKnowledgeBase() {
       }
 
       const chunks = chunkPaper(parsed.fullText)
+      const citation = extractCitation(parsed.fullText)
       const wordCount = parsed.wordCount
       const chunkCount = chunks.length
 
@@ -43,6 +45,7 @@ export function usePaperKnowledgeBase() {
         uploadTime: Date.now(),
         wordCount,
         chunkCount,
+        citation: citation ?? undefined,
       })
 
       await paperKnowledgeDb.chunks.bulkAdd(
