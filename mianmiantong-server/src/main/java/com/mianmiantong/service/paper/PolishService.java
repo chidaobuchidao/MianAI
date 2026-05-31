@@ -39,7 +39,9 @@ public class PolishService {
             "task_type", req.getTaskType() != null ? req.getTaskType() : "章节正文",
             "polish_type", req.getPolishType() != null ? req.getPolishType() : "full",
             "topic", req.getTopic() != null ? req.getTopic() : "",
-            "notes", req.getNotes() != null ? req.getNotes() : ""
+            "notes", req.getNotes() != null ? req.getNotes() : "",
+            "output_language", outputLanguageLabel(req.getLanguage()),
+            "language_policy", outputLanguagePolicy(req.getLanguage())
         ));
 
         List<Map<String, String>> messages = List.of(
@@ -146,6 +148,25 @@ public class PolishService {
             log.error("Failed to load prompt: {}", path, e);
             return vars.getOrDefault("text", "");
         }
+    }
+
+    private String outputLanguageLabel(String language) {
+        return isEnglishOutput(language) ? "英文" : "中文";
+    }
+
+    private String outputLanguagePolicy(String language) {
+        if (isEnglishOutput(language)) {
+            return "输出语言=英文：可将中文学术表达润色为英文，但不得改写事实、数字、引用、图表编号、公式和专业术语含义；原文已有英文专业术语、缩写、URL、机构名、期刊名等片段必须保持原样，仅修正明显拼写或空格错误。";
+        }
+        return "输出语言=中文：整体保持中文学术表达，不得把中文正文翻译成英文；原文已有英文标题、英文摘要、英文关键词、专业术语、缩写、URL、机构名、期刊名等英文片段必须保持原样，仅修正明显拼写或空格错误，不翻译、不扩写。";
+    }
+
+    private boolean isEnglishOutput(String language) {
+        if (language == null) {
+            return false;
+        }
+        String normalized = language.trim().toLowerCase();
+        return normalized.equals("en") || normalized.equals("english") || normalized.equals("英文");
     }
 
     private void safeSend(SseEmitter emitter, String name, String data) {

@@ -36,9 +36,13 @@
               PDF 转 Word 保留导出
               <span class="export-badge">Beta</span>
             </div>
+            <div v-else-if="needsOriginalFileForPreserve" class="export-item export-item--disabled">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              重新上传原 DOCX 后可保留格式
+            </div>
             <div class="export-item" @click="exportDoc('standard')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              标准 Word 导出
+              标准 Word 导出（不保留格式/图片）
             </div>
           </div>
         </div>
@@ -81,6 +85,13 @@
     <!-- Advanced Options (collapsible) -->
     <div v-if="showAdvanced" class="advanced-panel">
       <div class="advanced-grid">
+        <div class="advanced-item">
+          <label class="advanced-label">输出语言</label>
+          <select v-model="outputLanguage" class="advanced-select">
+            <option value="zh">中文</option>
+            <option value="en">英文</option>
+          </select>
+        </div>
         <div class="advanced-item">
           <label class="advanced-label">任务类型</label>
           <select v-model="taskType" class="advanced-select">
@@ -293,6 +304,7 @@ const sourceText = ref('')
 const resultText = ref('')
 const polishModel = ref('deepseek-v4-flash')
 const polishType = ref('full')
+const outputLanguage = ref<'zh' | 'en'>('zh')
 const taskType = ref('章节正文')
 const topic = ref('')
 const notes = ref('')
@@ -309,8 +321,10 @@ const warnToast = ref('')
 let warnTimer: ReturnType<typeof setTimeout> | null = null
 function showWarn(msg: string) { warnToast.value = msg; if (warnTimer) clearTimeout(warnTimer); warnTimer = setTimeout(() => { warnToast.value = '' }, 5000) }
 const storedFile = ref<File | null>(null)
+const originalFileName = ref('')
 const canPreserveFormat = computed(() => isDocxFile(storedFile.value))
 const canUsePdfToWordExport = computed(() => isPdfFile(storedFile.value))
+const needsOriginalFileForPreserve = computed(() => !storedFile.value && /\.docx$/i.test(originalFileName.value))
 const paragraphData = ref<any[]>([])
 const polishedParagraphs = ref<Map<number, string>>(new Map())
 const dirtyParagraphs = ref<Set<number>>(new Set())
@@ -411,6 +425,7 @@ onMounted(() => {
   polishedParagraphs.value = new Map()
   for (const p of paragraphData.value) polishedParagraphs.value.set(p.index, p.text || p.originalText || '')
   hasDocument.value = true
+  originalFileName.value = doc.fileName || ''
   storedFile.value = null
 })
 
@@ -492,6 +507,8 @@ function usePastedText() {
   polishedParagraphs.value = new Map()
   for (const p of paragraphData.value) polishedParagraphs.value.set(p.index, p.text)
   hasDocument.value = true
+  originalFileName.value = ''
+  storedFile.value = null
   resultText.value = ''
 }
 
@@ -501,6 +518,7 @@ async function handleFileUpload(e: Event) {
   if (!file) return
   if (file.name.toLowerCase().endsWith('.pdf')) showWarn('PDF格式可能导致导出效果不佳，建议上传Word文档(.docx)以保证最佳导出效果')
   storedFile.value = file
+  originalFileName.value = file.name
   input.value = '' // 清除以允许重复选同一文件
   const fd = new FormData(); fd.append('file', file)
   try {
@@ -644,6 +662,9 @@ async function startPolish() {
     })
     const augmentedNotes = [
       notes.value,
+      outputLanguage.value === 'zh'
+        ? '输出语言为中文。不得将中文正文翻译成英文；原文已有英文专业术语、缩写、URL、期刊名、机构名和英文摘要/关键词保持原样。'
+        : '输出语言为英文。保留原文中的专业术语、缩写、URL、引文、图表编号和事实信息。',
       paragraphData.value.length > 1 ? '按[P{n}]标记逐段润色。保持[P{n}]标记不变。段落数量必须与输入一致。' : '',
       kbContext,
     ].filter(Boolean).join('\n')
@@ -660,6 +681,7 @@ async function startPolish() {
         text,
         taskType: taskType.value,
         polishType: polishType.value,
+        language: outputLanguage.value,
         topic: topic.value,
         notes: augmentedNotes,
         model: polishModel.value,
@@ -763,8 +785,13 @@ function extractEditablePolishedText(el: HTMLElement): string {
 async function exportDoc(mode: string) {
   showExport.value = false
   if (mode === 'preserve' && !canPreserveFormat.value) {
-    error.value = 'PDF 暂不支持原格式导出，已改用标准 Word 导出。原格式和图片保留目前仅支持 DOCX。'
-    mode = 'standard'
+    error.value = '原格式导出需要当前页面持有原始 DOCX 文件，请重新上传原 DOCX 后再导出。'
+    showWarn(error.value)
+    return
+  }
+  if (mode === 'standard' && needsOriginalFileForPreserve.value) {
+    const ok = confirm('当前页面没有原始 DOCX 文件，标准 Word 导出不会保留原格式和图片。建议重新上传原 DOCX 后使用“原格式导出”。仍要继续标准导出吗？')
+    if (!ok) return
   }
   const allParas = paragraphData.value.map((p: any) => ({
     index: p.index, text: polishedParagraphs.value.get(p.index) ?? p.text ?? '', originalText: p.text ?? '',
@@ -780,10 +807,10 @@ async function exportDoc(mode: string) {
       const res = await authFetch('/api/paper-export/pdf-to-docx-preserve-format', { method:'POST', body:fd })
       if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
       const errData = await res.json().catch(() => null)
-      error.value = (errData?.detail || errData?.error || 'PDF 转 Word 保留导出失败') + '。是否改用标准导出？'
+      error.value = (errData?.detail || errData?.error || 'PDF 转 Word 保留导出失败') + '。标准导出不会保留原格式和图片，是否继续？'
       if (!confirm(error.value)) { error.value = ''; return }
     } catch(err: any) {
-      error.value = 'PDF 转 Word 导出失败: ' + (err.message || String(err)) + '。是否改用标准导出？'
+      error.value = 'PDF 转 Word 导出失败: ' + (err.message || String(err)) + '。标准导出不会保留原格式和图片，是否继续？'
       if (!confirm(error.value)) { error.value = ''; return }
     } finally {
       isExporting.value = false
@@ -798,10 +825,10 @@ async function exportDoc(mode: string) {
       const res = await authFetch('/api/paper-export/preserve-format', { method:'POST', body:fd })
       if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
       const errData = await res.json().catch(() => null)
-      error.value = (errData?.detail || errData?.error || '格式保留导出失败') + '。是否改用标准导出？'
+      error.value = (errData?.detail || errData?.error || '格式保留导出失败') + '。标准导出不会保留原格式和图片，是否继续？'
       if (!confirm(error.value)) { error.value = ''; return }
     } catch(err: any) {
-      error.value = '导出失败: ' + (err.message || String(err)) + '。是否改用标准导出？'
+      error.value = '导出失败: ' + (err.message || String(err)) + '。标准导出不会保留原格式和图片，是否继续？'
       if (!confirm(error.value)) { error.value = ''; return }
     }
   }
@@ -896,6 +923,8 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 .export-item { padding: 10px 14px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
 .export-item:last-child { border-bottom: none; }
 .export-item:hover { background: var(--bg-surface); }
+.export-item--disabled { cursor: default; color: var(--text-light); background: rgba(0,0,0,0.02); }
+.export-item--disabled:hover { background: rgba(0,0,0,0.02); }
 .export-badge { font-size: 10px; padding: 2px 8px; border-radius: 100px; background: rgba(217,117,10,0.08); color: var(--accent); font-weight: 600; margin-left: auto; }
 
 /* Toolbar */

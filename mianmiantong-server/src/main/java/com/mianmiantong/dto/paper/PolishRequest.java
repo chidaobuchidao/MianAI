@@ -10,6 +10,7 @@ public class PolishRequest {
     private String polishType = "full";
     private String topic = "";
     private String notes = "";
+    private String language = "zh";
     private String model;
     private List<ContextChunk> contextChunks;
 }
