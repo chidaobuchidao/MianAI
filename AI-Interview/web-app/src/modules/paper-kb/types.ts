@@ -1,3 +1,5 @@
+import type { PaperCitation } from './citation/types'
+
 export interface LocalPaper {
   id?: number
   title: string
@@ -6,6 +8,7 @@ export interface LocalPaper {
   uploadTime: number
   wordCount: number
   chunkCount: number
+  citation?: PaperCitation
 }
 
 export interface LocalPaperChunk {

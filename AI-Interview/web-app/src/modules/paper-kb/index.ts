@@ -15,3 +15,5 @@ export type {
   PaperTaskType,
   ContextChunk,
 } from './types'
+
+export type { PaperCitation, CitedChunk } from './citation/types'
