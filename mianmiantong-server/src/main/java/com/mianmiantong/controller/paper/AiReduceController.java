@@ -2,6 +2,7 @@ package com.mianmiantong.controller.paper;
 
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.dto.paper.AiReduceRequest;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.paper.AiReduceService;
 import com.mianmiantong.service.user.QuotaService;
 import lombok.RequiredArgsConstructor;
@@ -25,12 +26,14 @@ public class AiReduceController {
 
     @PostMapping("/rewrite")
     public SseEmitter rewrite(@RequestBody AiReduceRequest request) {
-        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), request.getModel());
+        String selectedModel = AiModelSelector.normalize(request.getModel());
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), selectedModel);
         return aiReduceService.rewrite(
             request.getText(),
             request.getMode(),
-            request.getModel(),
-            request.getFlaggedSentences()
+            selectedModel,
+            request.getFlaggedSentences(),
+            request.getContextChunks()
         );
     }
 }

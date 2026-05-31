@@ -2,6 +2,7 @@ package com.mianmiantong.service.resume;
 
 import com.mianmiantong.entity.resume.ResumeTemplate;
 import com.mianmiantong.mapper.resume.ResumeTemplateMapper;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.ai.AiService;
 import com.mianmiantong.service.document.WordExportService;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +64,10 @@ public class TemplateResumeService {
 
         ## 自我评价
         2-3句话的专业总结
+
+        ## 硬约束
+        - 英文专业术语、技术名词、框架名称必须保留原文拼写，不得翻译或改写（如MyBatis、Spring Boot MVC、Docker、RESTful API、JSON等保持原样）。
+        - 数学表达式和公式中的空格必须原样保留（如"1 + 1 = 2"不得改为"1+1=2"）。
         """;
 
     /**
@@ -78,7 +83,7 @@ public class TemplateResumeService {
                 Map.of("role", "user", "content", "请生成简历")
         );
 
-        String aiResponse = aiService.chat(prompt, messages);
+        String aiResponse = aiService.chat(prompt, messages, null, AiModelSelector.FLASH);
         log.info("AI模板简历生成完成: templateId={}, len={}", templateId, aiResponse.length());
 
         return wordExportService.exportMarkdown(aiResponse,

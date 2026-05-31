@@ -10,12 +10,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Service
 public class DocumentAiService {
+
+    private static final int CONVERT_MAX_ATTEMPTS = 36;
+    private static final Duration CONVERT_POLL_INTERVAL = Duration.ofSeconds(5);
+    private static final Duration DOWNLOAD_TIMEOUT = Duration.ofSeconds(60);
 
     @Value("${aliyun.docmind.endpoint}")
     private String endpoint;
@@ -69,6 +78,165 @@ public class DocumentAiService {
             log.error("文档解析任务提交失败: fileName={}, 错误类型={}, 详情={}, 根因={}",
                     fileName, e.getClass().getSimpleName(), e.getMessage(), cause);
             throw new RuntimeException("文档解析提交失败: " + e.getMessage(), e);
+        }
+    }
+
+    public String submitPdfToWord(Client client, InputStream fileStream, String fileName) {
+        try {
+            SubmitConvertPdfToWordJobAdvanceRequest request = new SubmitConvertPdfToWordJobAdvanceRequest();
+            request.fileUrlObject = fileStream;
+            request.fileName = fileName;
+
+            RuntimeOptions runtime = new RuntimeOptions();
+            SubmitConvertPdfToWordJobResponse response = client.submitConvertPdfToWordJobAdvance(request, runtime);
+            SubmitConvertPdfToWordJobResponseBody body = response == null ? null : response.getBody();
+
+            if (body == null || body.getData() == null || body.getData().getId() == null || body.getData().getId().isBlank()) {
+                log.error("PDF convert submit rejected: fileName={}, code={}, message={}, requestId={}, rawBody={}",
+                    fileName,
+                    body == null ? null : body.getCode(),
+                    body == null ? null : body.getMessage(),
+                    body == null ? null : body.getRequestId(),
+                    toJsonQuietly(body));
+                throw new RuntimeException(buildSubmitConvertError(body));
+            }
+
+            String taskId = body.getData().getId();
+            log.info("PDF转Word任务提交成功: fileName={}, taskId={}", fileName, taskId);
+            return taskId;
+        } catch (Exception e) {
+            log.error("PDF转Word任务提交失败: fileName={}, error={}", fileName, e.getMessage(), e);
+            throw new RuntimeException("PDF转Word提交失败: " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] convertPdfToWord(InputStream fileStream, String fileName) {
+        try {
+            Client client = createClient();
+            String taskId = submitPdfToWord(client, fileStream, fileName);
+            String docxUrl = waitForConvertedDocumentUrl(client, taskId);
+            return downloadConvertedDocument(docxUrl);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("PDF转Word初始化失败: " + e.getMessage(), e);
+        }
+    }
+
+    private String waitForConvertedDocumentUrl(Client client, String taskId) {
+        for (int attempt = 1; attempt <= CONVERT_MAX_ATTEMPTS; attempt++) {
+            try {
+                RuntimeOptions runtime = new RuntimeOptions();
+                GetDocumentConvertResultRequest request = new GetDocumentConvertResultRequest();
+                request.setId(taskId);
+
+                GetDocumentConvertResultResponse response = client.getDocumentConvertResultWithOptions(request, runtime);
+                GetDocumentConvertResultResponseBody body = response.getBody();
+
+                if (body == null) {
+                    log.warn("PDF convert result returned empty body: taskId={}, attempt={}/{}",
+                        taskId, attempt, CONVERT_MAX_ATTEMPTS);
+                    sleepBeforeNextPoll();
+                    continue;
+                }
+
+                boolean completed = Boolean.TRUE.equals(body.getCompleted());
+
+                if (isFailedConvertStatus(body) && completed) {
+                    log.error("PDF convert task failed: taskId={}, code={}, status={}, message={}, requestId={}, rawBody={}",
+                        taskId, body.getCode(), body.getStatus(), body.getMessage(), body.getRequestId(), toJsonQuietly(body));
+                    throw new RuntimeException(buildConvertResultError(body));
+                }
+
+                if (completed && body.getData() != null && !body.getData().isEmpty()) {
+                    String url = body.getData().get(0).getUrl();
+                    if (url != null && !url.isBlank()) {
+                        log.info("PDF转Word完成: taskId={}, attempts={}, url={}", taskId, attempt, url);
+                        return url;
+                    }
+                }
+
+                log.info("PDF转Word处理中: taskId={}, status={}, attempt={}/{}",
+                    taskId, body.getStatus(), attempt, CONVERT_MAX_ATTEMPTS);
+                sleepBeforeNextPoll();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("PDF转Word轮询被中断", e);
+            } catch (Exception e) {
+                log.warn("PDF转Word结果查询失败: taskId={}, attempt={}, error={}",
+                    taskId, attempt, e.getMessage());
+                if (attempt == CONVERT_MAX_ATTEMPTS) {
+                    throw new RuntimeException("PDF转Word结果查询失败: " + e.getMessage(), e);
+                }
+            }
+        }
+        throw new RuntimeException("PDF转Word处理超时，请稍后重试");
+    }
+
+    private void sleepBeforeNextPoll() throws InterruptedException {
+        Thread.sleep(CONVERT_POLL_INTERVAL.toMillis());
+    }
+
+    private boolean isFailedConvertStatus(GetDocumentConvertResultResponseBody body) {
+        return isFailureValue(body.getStatus()) || isFailureValue(body.getCode());
+    }
+
+    private boolean isFailureValue(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String normalized = value.trim().toLowerCase();
+        return normalized.contains("fail") || normalized.contains("error");
+    }
+
+    private String buildSubmitConvertError(SubmitConvertPdfToWordJobResponseBody body) {
+        if (body == null) {
+            return "PDF转Word提交失败: 阿里云返回空响应";
+        }
+        return "PDF转Word提交失败: code=" + safeText(body.getCode())
+            + ", message=" + safeText(body.getMessage())
+            + ", requestId=" + safeText(body.getRequestId());
+    }
+
+    private String buildConvertResultError(GetDocumentConvertResultResponseBody body) {
+        return "PDF转Word处理失败: code=" + safeText(body.getCode())
+            + ", status=" + safeText(body.getStatus())
+            + ", message=" + safeText(body.getMessage())
+            + ", requestId=" + safeText(body.getRequestId());
+    }
+
+    private String safeText(String text) {
+        return text == null || text.isBlank() ? "-" : text;
+    }
+
+    private String toJsonQuietly(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return String.valueOf(value);
+        }
+    }
+
+    private byte[] downloadConvertedDocument(String url) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(DOWNLOAD_TIMEOUT)
+                .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .timeout(DOWNLOAD_TIMEOUT)
+                .GET()
+                .build();
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new RuntimeException("下载转换结果失败: HTTP " + response.statusCode());
+            }
+            return response.body();
+        } catch (Exception e) {
+            log.error("下载PDF转Word结果失败: url={}, error={}", url, e.getMessage(), e);
+            throw new RuntimeException("下载PDF转Word结果失败: " + e.getMessage(), e);
         }
     }
 

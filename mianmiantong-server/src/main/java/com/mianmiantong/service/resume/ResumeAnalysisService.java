@@ -4,13 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mianmiantong.entity.resume.Resume;
 import com.mianmiantong.entity.resume.ResumeAnalysis;
-import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.mapper.resume.ResumeAnalysisMapper;
 import com.mianmiantong.mapper.resume.ResumeMapper;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.ai.AiService;
 import com.mianmiantong.service.document.DocumentAiService;
 import com.mianmiantong.service.document.DocumentParseResult;
-import com.mianmiantong.service.user.QuotaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -27,7 +26,6 @@ public class ResumeAnalysisService {
     private final AiService aiService;
     private final DocumentAiService documentAiService;
     private final ObjectMapper objectMapper;
-    private final QuotaService quotaService;
 
     /** Phase 1: 快速评分，轻量快速 */
     private static final String QUICK_PROMPT = """
@@ -46,7 +44,7 @@ public class ResumeAnalysisService {
         }
         简历内容：
         %s
-        要求：JSON一行，不要markdown标记。简评15字以内。
+        要求：JSON一行，不要markdown标记。简评15字以内。英文专业术语（如MyBatis、Spring Boot MVC、Docker、RESTful API、JSON等）保持原样不翻译不改写。
         """;
 
     /** Phase 2: 深度优化 */
@@ -61,25 +59,30 @@ public class ResumeAnalysisService {
         输出JSON（一行，不要markdown代码围栏）：
         {
           "highlights": [
-            {"section":"段落名","before":"原文","after":"优化文","reason":"理由"}
+            {"section":"段落名","before":"原文片段（15-50字，精确引用原文）","after":"对应优化后的纯文本片段","reason":"理由"}
           ],
-          "optimizedText": "完整优化后简历（Markdown）",
+          "optimizedText": "完整优化后简历，段落之间用\\n\\n分隔",
           "interviewQuestions": ["追问1","追问2","追问3"]
         }
 
-        【重要】highlights[].before 和 highlights[].after 必须是纯文本，禁止使用任何Markdown格式标记（如**加粗**、*斜体*、##标题、-列表等）。optimizedText 可以使用Markdown。
+        【硬约束 — 违反即不合格】
+        1. 全部输出禁止使用任何emoji表情符号。
+        2. highlights[].before 必须是原文的精确引用（15-50字），用于前端对比展示，不得改写或重组。
+        3. highlights[].after 必须是 before 对应片段的优化版本，保持相近长度。
+        4. 英文专业术语、技术名词、框架名称必须保留原文拼写，不得翻译、替换或改写（如MyBatis、Spring Boot MVC、Docker、Kubernetes、RESTful API、JSON、HTML等保持原样）。
+        5. 数学表达式和公式中的空格必须原样保留（如"1 + 1 = 2"不得改为"1+1=2"）。
+        6. 禁止改写或合并个人信息/联系方式字段块（如姓名、求职意向、出生年月、籍贯、民族、政治面貌、学历、手机、现居地、工作年限、邮箱）。这些字段在 optimizedText 中必须保持原有换行、空格和字段分隔；不得把多个字段压缩成连续文本。
+        7. highlights 不要选择个人信息/联系方式字段块作为 before/after 优化项；只优化经历、项目、技能、自我评价等正文内容。
         """;
 
     public ResumeAnalysisService(ResumeMapper resumeMapper,
                                   ResumeAnalysisMapper analysisMapper,
                                   AiService aiService,
-                                  DocumentAiService documentAiService,
-                                  QuotaService quotaService) {
+                                  DocumentAiService documentAiService) {
         this.resumeMapper = resumeMapper;
         this.analysisMapper = analysisMapper;
         this.aiService = aiService;
         this.documentAiService = documentAiService;
-        this.quotaService = quotaService;
         this.objectMapper = new ObjectMapper();
         // AI 可能返回 literal newlines 等未转义控制字符，Jackson 默认拒绝
         this.objectMapper.configure(
@@ -87,7 +90,8 @@ public class ResumeAnalysisService {
     }
 
     /** Phase 1: 快速评分（异步后台） */
-    public void analyzeQuickAsync(Long resumeId) {
+    public void analyzeQuickAsync(Long resumeId, String model) {
+        String selectedModel = AiModelSelector.normalize(model);
         CompletableFuture.runAsync(() -> {
             try {
                 Resume resume = resumeMapper.selectById(resumeId);
@@ -107,7 +111,7 @@ public class ResumeAnalysisService {
 
                 String prompt = String.format(QUICK_PROMPT, resume.getJobDescription(), resume.getParsedText());
                 List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", "开始评估"));
-                String response = aiService.chat(prompt, messages);
+                String response = aiService.chat(prompt, messages, null, selectedModel);
                 Map<String, Object> report = objectMapper.readValue(extractJson(response), Map.class);
 
                 ResumeAnalysis analysis = upsert(resumeId);
@@ -134,6 +138,7 @@ public class ResumeAnalysisService {
 
     /** Phase 2: 深度优化 SSE 流式（含重试与断点续传） */
     public SseEmitter analyzeDeepStream(Long resumeId, String model) {
+        String selectedModel = AiModelSelector.normalize(model);
         Resume resume = resumeMapper.selectById(resumeId);
         ResumeAnalysis analysis = upsert(resumeId);
 
@@ -210,7 +215,7 @@ public class ResumeAnalysisService {
             try {
                 final long[] lastSaveTime = {System.currentTimeMillis()};
 
-                aiService.streamChat(basePrompt, messages, null, model, token -> {
+                aiService.streamChat(basePrompt, messages, null, selectedModel, token -> {
                     buf.append(token);
                     safeSend(emitter, "token", token);
 
@@ -224,7 +229,9 @@ public class ResumeAnalysisService {
 
                 // 解析最终 JSON
                 String fullResponse = buf.toString();
-                Map<String, Object> report = objectMapper.readValue(extractJson(fullResponse), Map.class);
+                String jsonStr = extractJson(fullResponse);
+                log.info("深度优化AI响应长度: {}, JSON长度: {}", fullResponse.length(), jsonStr.length());
+                Map<String, Object> report = objectMapper.readValue(jsonStr, Map.class);
 
                 analysis.setHighlights(toJson(report.get("highlights")));
                 analysis.setOptimizedText((String) report.get("optimizedText"));
@@ -241,7 +248,8 @@ public class ResumeAnalysisService {
                 log.info("深度优化(SSE)完成: resumeId={}, retry={}", resumeId, analysis.getRetryCount());
 
             } catch (Exception e) {
-                log.error("深度优化(SSE)失败: resumeId={}", resumeId, e);
+                log.error("深度优化(SSE)失败: resumeId={}, 响应前500字: {}", resumeId,
+                    buf.length() > 500 ? buf.substring(0, 500) : buf.toString(), e);
                 safeSavePartial(analysis, buf.toString());
                 safeSend(emitter, "error", "{\"message\":\"AI分析失败\",\"retryCount\":" + analysis.getRetryCount() + "}");
                 try {
@@ -272,7 +280,7 @@ public class ResumeAnalysisService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(prompt, messages, null, token -> {
+                aiService.streamChat(prompt, messages, null, AiModelSelector.FLASH, token -> {
                     buf.append(token);
                     safeSend(emitter, "token", token);
                 });
@@ -317,9 +325,11 @@ public class ResumeAnalysisService {
                         keywords, resume.getParsedText());
 
                 List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", "开始深度优化"));
-                String response = aiService.chat(prompt, messages);
+                String response = aiService.chat(prompt, messages, null, AiModelSelector.FLASH);
 
-                Map<String, Object> report = objectMapper.readValue(extractJson(response), Map.class);
+                String jsonStr = extractJson(response);
+                log.info("深度优化(异步)AI响应长度: {}, JSON长度: {}", response.length(), jsonStr.length());
+                Map<String, Object> report = objectMapper.readValue(jsonStr, Map.class);
                 analysis.setHighlights(toJson(report.get("highlights")));
                 analysis.setOptimizedText((String) report.get("optimizedText"));
                 analysis.setInterviewQuestions(toJson(report.get("interviewQuestions")));
@@ -327,7 +337,7 @@ public class ResumeAnalysisService {
                 save(analysis);
                 log.info("深度优化完成: resumeId={}", resumeId);
             } catch (Exception e) {
-                log.error("深度优化失败: resumeId={}", resumeId, e);
+                log.error("深度优化(异步)失败: resumeId={}", resumeId, e);
                 try {
                     ResumeAnalysis analysis = upsert(resumeId);
                     analysis.setDeepStatus(-1);
@@ -401,24 +411,20 @@ public class ResumeAnalysisService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ResumeAnalysis>()
                         .eq(ResumeAnalysis::getResumeId, resumeId));
 
-        // 解析已完成但无分析记录 → 自动触发快速评分（先校验配额再消耗）
-        if (resume.getParseStatus() == 1 && analysis == null) {
-            log.info("getReport自动触发快速评分: resumeId={}", resumeId);
-            Long uid = resume.getUserId();
-            if (uid != null && !JwtAuthFilter.isAdmin()) {
-                try {
-                    quotaService.checkQuota();  // 自动触发仅检查不消耗
-                } catch (QuotaService.QuotaExhaustedException e) {
-                    log.warn("配额不足，拒绝自动分析: userId={}", uid);
-                    Map<String, Object> quotaErr = new LinkedHashMap<>();
-                    quotaErr.put("resumeId", resumeId);
-                    quotaErr.put("overallScore", null);
-                    quotaErr.put("suggestion", e.getMessage());
-                    quotaErr.put("deepStatus", -1);
-                    return quotaErr;
-                }
-            }
-            analyzeQuickAsync(resumeId);
+        if (analysis == null) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("resumeId", resumeId);
+            result.put("fileName", resume.getFileName());
+            result.put("parseStatus", resume.getParseStatus());
+            result.put("overallScore", null);
+            result.put("suggestion", null);
+            result.put("deepStatus", null);
+            result.put("dimensions", null);
+            result.put("missingKeywords", null);
+            result.put("highlights", null);
+            result.put("optimizedText", null);
+            result.put("interviewQuestions", null);
+            return result;
         }
 
         Map<String, Object> result = new LinkedHashMap<>();

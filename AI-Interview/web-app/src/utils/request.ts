@@ -8,6 +8,20 @@ interface ApiResponse<T> {
 
 const BASE_URL = import.meta.env.VITE_API_BASE || ''
 
+function buildUrl(url: string, params?: Record<string, unknown>): string {
+  if (!params) return url
+
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue
+    query.set(key, String(value))
+  }
+
+  const queryString = query.toString()
+  if (!queryString) return url
+  return `${url}${url.includes('?') ? '&' : '?'}${queryString}`
+}
+
 async function request<T>(method: string, url: string, data?: unknown, isFormData?: boolean): Promise<ApiResponse<T>> {
   const userStore = useUserStore()
 
@@ -54,8 +68,8 @@ async function request<T>(method: string, url: string, data?: unknown, isFormDat
   return json
 }
 
-export function get<T>(url: string): Promise<ApiResponse<T>> {
-  return request<T>('GET', url)
+export function get<T>(url: string, params?: Record<string, unknown>): Promise<ApiResponse<T>> {
+  return request<T>('GET', buildUrl(url, params))
 }
 
 export function post<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {

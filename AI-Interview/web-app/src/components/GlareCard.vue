@@ -1,6 +1,5 @@
 <template>
   <div
-    ref="cardRef"
     class="glare-card"
     :class="{
       'glare-card--hover': isHovering,
@@ -58,7 +57,6 @@ const props = withDefaults(defineProps<Props>(), {
   tiltAmount: 8
 })
 
-const cardRef = ref<HTMLElement>()
 const isHovering = ref(false)
 const sweepPlayed = ref(false)
 const mouseX = ref(0.5)

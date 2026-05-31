@@ -20,15 +20,21 @@
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
         </span>
         <div v-if="hasDocument && resultText" class="export-dropdown">
-          <button class="btn btn-outline" @click="showExport = !showExport">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            导出文档
+          <button class="btn btn-outline" :disabled="isExporting" @click="showExport = !showExport">
+            <svg v-if="!isExporting" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span v-if="isExporting" class="btn-spinner"></span>
+            {{ isExporting ? '转换中...' : '导出文档' }}
           </button>
           <div v-if="showExport" class="export-menu">
-            <div class="export-item" @click="exportDoc('preserve')">
+            <div v-if="canPreserveFormat" class="export-item" @click="exportDoc('preserve')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               原格式导出
               <span class="export-badge">推荐</span>
+            </div>
+            <div v-if="canUsePdfToWordExport && quotaInfo.isAdmin" class="export-item" @click="exportDoc('pdf-beta')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              PDF 转 Word 保留导出
+              <span class="export-badge">Beta</span>
             </div>
             <div class="export-item" @click="exportDoc('standard')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -54,15 +60,22 @@
         高级选项
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" :style="{ transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0)' }"><polyline points="2 3 5 6 8 3"/></svg>
       </button>
+      <button class="btn btn-outline btn-kb" @click="showKbPanel = true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        知识库
+        <span v-if="kbPapers.length" class="kb-badge">{{ kbPapers.length }}</span>
+      </button>
       <button class="btn btn-outline btn-upload" @click="triggerUpload">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         上传文档
       </button>
       <input ref="fileInput" type="file" accept=".docx,.pdf" style="display:none" @change="handleFileUpload" />
-      <button class="btn btn-solid accent" @click="startPolish" :disabled="isStreaming || !hasDocument">
+      <button class="btn btn-solid accent" @click="startPolish" :disabled="isPolishBusy || !hasDocument">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        {{ isStreaming ? '润色中...' : '开始润色' }}
+        {{ isPolishBusy ? '润色中...' : '开始润色' }}
       </button>
+      <button v-if="lastRetrievedCount > 0" class="kb-hint kb-hint--button" @click="showKbHitDetails = true">命中 {{ lastRetrievedCount }} 个片段 / 来自 {{ lastRetrievedPaperCount }} 篇论文</button>
+      <span v-else-if="kbSettings.autoRetrieve && kbPapers.length > 0 && !isStreaming" class="kb-hint kb-hint--idle">知识库就绪（{{ kbPapers.length }} 篇）</span>
     </div>
 
     <!-- Advanced Options (collapsible) -->
@@ -111,8 +124,8 @@
         </div>
         <div class="editor-content">
           <template v-for="p in formatParagraphs" :key="'ref-'+p.index">
-            <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.style.fontSize + 'px', fontFamily: p.style.fontFamily, fontWeight: '700' }">{{ p.originalText }}</div>
-            <div v-else class="fp-body" :style="{ fontFamily: p.style.fontFamily, fontSize: p.style.fontSize + 'pt', fontWeight: p.style.bold ? '700' : '400', fontStyle: p.style.italic ? 'italic' : 'normal', textAlign: p.style.alignment || 'left' }">{{ p.originalText }}</div>
+            <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p.style)">{{ p.originalText }}</div>
+            <div v-else class="fp-body" :style="bodyStyle(p.style)">{{ p.originalText }}</div>
           </template>
         </div>
       </div>
@@ -130,7 +143,7 @@
             </button>
           </div>
         </div>
-        <div class="editor-content" ref="resultPane">
+        <div class="editor-content">
           <!-- Empty placeholder -->
           <div v-if="!resultText && !isStreaming" class="result-placeholder">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -147,10 +160,11 @@
 
           <!-- Done: parsed per-paragraph with diff -->
           <template v-else v-for="p in resultParagraphs" :key="'r-'+p.index">
-            <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.style.fontSize + 'px', fontFamily: p.style.fontFamily, fontWeight: '700' }">{{ p.polishedText }}</div>
+            <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p.style)">{{ p.polishedText }}</div>
             <div v-else class="fp-body" contenteditable="true"
               :data-index="p.index"
-              :style="{ fontFamily: p.style.fontFamily, fontSize: p.style.fontSize + 'pt', fontWeight: p.style.bold ? '700' : '400', fontStyle: p.style.italic ? 'italic' : 'normal', textAlign: p.style.alignment || 'left' }"
+              :style="bodyStyle(p.style)"
+              @input="onParaInput(p.index)"
               @blur="onParaEdit($event, p.index)"
               @keydown="onParaKey"
               v-html="renderDiff(p.originalText, p.polishedText)"
@@ -171,8 +185,8 @@
       <div class="mobile-pane" v-show="mobilePane === 'original'">
         <div class="editor-content">
           <template v-for="p in formatParagraphs" :key="'mref-'+p.index">
-            <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.style.fontSize + 'px', fontFamily: p.style.fontFamily, fontWeight: '700' }">{{ p.originalText }}</div>
-            <div v-else class="fp-body" :style="{ fontFamily: p.style.fontFamily, fontSize: p.style.fontSize + 'pt', fontWeight: p.style.bold ? '700' : '400', fontStyle: p.style.italic ? 'italic' : 'normal', textAlign: p.style.alignment || 'left' }">{{ p.originalText }}</div>
+            <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p.style)">{{ p.originalText }}</div>
+            <div v-else class="fp-body" :style="bodyStyle(p.style)">{{ p.originalText }}</div>
           </template>
         </div>
       </div>
@@ -197,10 +211,11 @@
             <span class="cursor-blink" />
           </div>
           <template v-else v-for="p in resultParagraphs" :key="'rm-'+p.index">
-            <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.style.fontSize + 'px', fontFamily: p.style.fontFamily, fontWeight: '700' }">{{ p.polishedText }}</div>
+            <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p.style)">{{ p.polishedText }}</div>
             <div v-else class="fp-body" contenteditable="true"
               :data-index="p.index"
-              :style="{ fontFamily: p.style.fontFamily, fontSize: p.style.fontSize + 'pt', fontWeight: p.style.bold ? '700' : '400', fontStyle: p.style.italic ? 'italic' : 'normal', textAlign: p.style.alignment || 'left' }"
+              :style="bodyStyle(p.style)"
+              @input="onParaInput(p.index)"
               @blur="onParaEdit($event, p.index)"
               @keydown="onParaKey"
               v-html="renderDiff(p.originalText, p.polishedText)"
@@ -211,15 +226,46 @@
     </div>
 
     <p v-if="error" class="error-toast">{{ error }}</p>
+    <p v-if="warnToast" class="warn-toast" @click="warnToast = ''">{{ warnToast }}</p>
+
+    <!-- Knowledge Base Panel -->
+    <PaperKbPanel
+      :visible="showKbPanel"
+      :papers="kbPapers"
+      :is-loading="kbLoading"
+      :importing-file="kbImporting"
+      :settings="kbSettings"
+      :error="kbError"
+      @close="showKbPanel = false"
+      @import="handleKbImport($event)"
+      @delete="handleKbDelete($event)"
+      @clear-all="handleKbClearAll()"
+      @backup="handleKbBackup()"
+      @restore="handleKbRestore($event)"
+      @update:settings="kbSettings = $event"
+    />
+    <KbHitDetails
+      :visible="showKbHitDetails"
+      :chunks="lastRetrievedChunks"
+      :optimized-text="resultText"
+      @close="showKbHitDetails = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, type StyleValue } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuota } from '@/composables/useQuota'
+import { useQuota, type QuotaInfo } from '@/composables/useQuota'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePaperStore } from '@/composables/usePaperStore'
+import { usePaperKbPanel } from '@/composables/usePaperKbPanel'
+import { readJsonResponse } from '@/utils/httpResponse'
+import { authFetch } from '@/utils/authFetch'
+import { isDocxFile, isPdfFile } from '@/utils/documentFile'
+import { preserveOriginalSpacing } from '@/utils/spacingGuard'
+import PaperKbPanel from '@/components/PaperKbPanel.vue'
+import KbHitDetails from '@/components/KbHitDetails.vue'
 
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
@@ -228,7 +274,7 @@ const mobilePane = ref<'original' | 'result'>('original')
 const paperStore = usePaperStore()
 
 // === State ===
-const quotaInfo = ref<{ unlimited: boolean; dailyQuota: number; quotaUsed: number; quotaRemaining: number }>({ unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
+const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
 const sourceText = ref('')
 const resultText = ref('')
 const polishModel = ref('deepseek-v4-flash')
@@ -239,13 +285,59 @@ const notes = ref('')
 const pasteText = ref('')
 const showAdvanced = ref(false)
 const showExport = ref(false)
+const isExporting = ref(false)
 const isStreaming = ref(false)
+const isPreparingPolish = ref(false)
+const isPolishBusy = computed(() => isPreparingPolish.value || isStreaming.value)
 const hasDocument = ref(false)
 const error = ref('')
+const warnToast = ref('')
+let warnTimer: ReturnType<typeof setTimeout> | null = null
+function showWarn(msg: string) { warnToast.value = msg; if (warnTimer) clearTimeout(warnTimer); warnTimer = setTimeout(() => { warnToast.value = '' }, 5000) }
 const storedFile = ref<File | null>(null)
+const canPreserveFormat = computed(() => isDocxFile(storedFile.value))
+const canUsePdfToWordExport = computed(() => isPdfFile(storedFile.value))
 const paragraphData = ref<any[]>([])
 const polishedParagraphs = ref<Map<number, string>>(new Map())
+const dirtyParagraphs = ref<Set<number>>(new Set())
 let abortController: AbortController | null = null
+
+type TextAlignValue = 'left' | 'right' | 'center' | 'justify' | 'start' | 'end'
+
+function headingStyle(style: any): StyleValue {
+  return {
+    fontSize: `${style?.fontSize ?? 14}px`,
+    fontFamily: style?.fontFamily,
+    fontWeight: '700',
+  }
+}
+
+function bodyStyle(style: any): StyleValue {
+  return {
+    fontFamily: style?.fontFamily,
+    fontSize: `${style?.fontSize ?? 12}pt`,
+    fontWeight: style?.bold ? '700' : '400',
+    fontStyle: style?.italic ? 'italic' : 'normal',
+    textAlign: normalizeTextAlign(style?.alignment),
+  }
+}
+
+function normalizeTextAlign(value: unknown): TextAlignValue {
+  return value === 'right' || value === 'center' || value === 'justify' || value === 'start' || value === 'end'
+    ? value
+    : 'left'
+}
+
+// === Knowledge Base ===
+const {
+  papers: kbPapers, isLoading: kbLoading, importingFile: kbImporting,
+  showKbPanel, settings: kbSettings, error: kbError,
+  lastRetrievedCount, lastRetrievedPaperCount, lastRetrievedChunks,
+  handleImport: handleKbImport, handleDelete: handleKbDelete,
+  handleClearAll: handleKbClearAll, handleBackup: handleKbBackup,
+  handleRestore: handleKbRestore, retrieveAndFormat: kbRetrieveAndFormat,
+} = usePaperKbPanel('paper_polish')
+const showKbHitDetails = ref(false)
 
 // === Tabs ===
 const polishTabs = [
@@ -292,7 +384,10 @@ onMounted(() => {
   const parent = tabIndicator.value?.parentElement
   if (parent) resizeObs.observe(parent)
 })
-onUnmounted(() => resizeObs?.disconnect())
+onUnmounted(() => {
+  resizeObs?.disconnect()
+  abortController?.abort()
+})
 
 watch(polishType, () => nextTick(() => moveIndicator()))
 
@@ -368,17 +463,16 @@ async function handleFileUpload(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
+  if (file.name.toLowerCase().endsWith('.pdf')) showWarn('PDF格式可能导致导出效果不佳，建议上传Word文档(.docx)以保证最佳导出效果')
   storedFile.value = file
   input.value = '' // 清除以允许重复选同一文件
-  const token = localStorage.getItem('token') || ''
   const fd = new FormData(); fd.append('file', file)
   try {
-    const res = await fetch('/api/paper/upload', {
+    const res = await authFetch('/api/paper/upload', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
       body: fd,
     })
-    const data = await res.json()
+    const data = await readJsonResponse(res, '文件上传失败')
     if (!res.ok) throw new Error(data.error || '上传失败')
     if (!data.fullText || data.fullText.trim().length < 10) {
       error.value = '文档解析失败：未提取到有效文本内容。请检查文档是否为扫描版图片，或尝试另存为标准 .docx 格式。'
@@ -410,54 +504,128 @@ function parseMarkedResponse(response: string): Map<number, string> {
   const re = /\[P(\d+)\]\s*([\s\S]*?)(?=\[P\d+\]|$)/g
   let match
   while ((match = re.exec(response)) !== null) {
-    result.set(parseInt(match[1]), match[2].trim())
+    const index = parseInt(match[1])
+    result.set(index, preserveParagraphSpacing(index, cleanPolishOutput(match[2].trim())))
   }
   if (result.size === 0 && response.trim()) {
     const paras = paragraphData.value
     const parts = response.split(/\n{2,}/).filter(p => p.trim())
     if (paras.length > 0 && parts.length > 0) {
       const count = Math.min(paras.length, parts.length)
-      for (let i = 0; i < count; i++) result.set(paras[i].index, parts[i].trim())
+      for (let i = 0; i < count; i++) {
+        result.set(paras[i].index, preserveParagraphSpacing(paras[i].index, cleanPolishOutput(parts[i].trim())))
+      }
     } else {
-      result.set(0, response.trim())
+      result.set(0, cleanPolishOutput(response.trim()))
     }
   }
   return result
 }
 
+interface SseEvent {
+  event: string
+  data: string
+}
+
+function parseSseEventBlock(block: string): SseEvent | null {
+  const lines = block.replace(/\r/g, '').split('\n')
+  let event = 'message'
+  const dataLines: string[] = []
+  for (const line of lines) {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim()
+      continue
+    }
+    if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5))
+    }
+  }
+  if (!dataLines.length) return null
+  return { event, data: dataLines.join('\n') }
+}
+
+function decodeTokenPayload(data: string): string {
+  const payload = data.trimStart()
+  if (!payload) return ''
+  try {
+    const parsed = JSON.parse(payload)
+    return typeof parsed === 'string' ? parsed : ''
+  } catch {
+    return data
+  }
+}
+
+function cleanPolishOutput(text: string): string {
+  return collapseRunawayRepetitions(text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ''))
+}
+
+function collapseRunawayRepetitions(text: string): string {
+  let result = text
+  const patterns = [
+    /([\u4e00-\u9fff]{2,36})(?:\1){2,}/g,
+    /([A-Za-z][A-Za-z0-9' -]{8,80})(?:\1){2,}/g,
+  ]
+  for (let pass = 0; pass < 3; pass++) {
+    const before = result
+    for (const pattern of patterns) {
+      result = result.replace(pattern, '$1')
+    }
+    if (result === before) break
+  }
+  return result
+}
+
+function preserveParagraphSpacing(index: number, text: string): string {
+  const original = paragraphData.value.find((p: any) => p.index === index)?.text ?? ''
+  return preserveOriginalSpacing(original, text)
+}
+
+function serializeMarkedParagraphs(paragraphs: Map<number, string>): string {
+  return paragraphData.value
+    .map((p: any) => `[P${p.index}] ${paragraphs.get(p.index) ?? p.text ?? ''}`)
+    .join('\n\n')
+}
+
 // === SSE Polish ===
 async function startPolish() {
-  if (!hasDocument.value || isStreaming.value) return
+  if (!hasDocument.value || isPolishBusy.value) return
 
   const needed = polishModel.value.includes('pro') ? 2 : 1
   const qr = checkQuota(needed, `今日免费次数不足（需 ${needed} 次），请配置 API Key 后继续使用`)
   if (!qr.ok) { error.value = qr.msg || '配额不足'; return }
   if (!isDesktop.value) mobilePane.value = 'result'
 
-  const text = paragraphData.value.length > 0 ? buildMarkedPrompt() : sourceText.value
-  const notes = paragraphData.value.length > 1
-    ? '按[P{n}]标记逐段润色。保持[P{n}]标记不变。段落数量必须与输入一致。'
-    : ''
-
+  isPreparingPolish.value = true
   resultText.value = ''
   error.value = ''
-  isStreaming.value = true
-  abortController = new AbortController()
+  dirtyParagraphs.value = new Set()
 
   try {
-    const token = localStorage.getItem('token') || ''
-    const res = await fetch('/api/polish/run', {
+    const text = paragraphData.value.length > 0 ? buildMarkedPrompt() : sourceText.value
+    const kbContext = await kbRetrieveAndFormat(text, {
+      focusText: `${taskType.value} ${topic.value}`.trim(),
+      notes: notes.value,
+    })
+    const augmentedNotes = [
+      notes.value,
+      paragraphData.value.length > 1 ? '按[P{n}]标记逐段润色。保持[P{n}]标记不变。段落数量必须与输入一致。' : '',
+      kbContext,
+    ].filter(Boolean).join('\n')
+
+    isStreaming.value = true
+    abortController = new AbortController()
+
+    const res = await authFetch('/api/polish/run', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         text,
         taskType: taskType.value,
         polishType: polishType.value,
         topic: topic.value,
-        notes: notes.value,
+        notes: augmentedNotes,
         model: polishModel.value,
       }),
       signal: abortController.signal,
@@ -479,23 +647,32 @@ async function startPolish() {
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-      for (const line of lines) {
-        if (line.startsWith('event:') || line.startsWith('id:') || line.startsWith('retry:')) continue
-        if (line.startsWith('data:')) {
-          const data = line.slice(5).trim()
-          if (data === 'finish' || data === '[DONE]') break
-          if (data.startsWith('{') || data.startsWith('"')) continue
-          rawResult += data
+      const blocks = buffer.split(/\r?\n\r?\n/)
+      buffer = blocks.pop() || ''
+      for (const block of blocks) {
+        const event = parseSseEventBlock(block)
+        if (!event) continue
+        if (event.event === 'token') {
+          rawResult += decodeTokenPayload(event.data)
           resultText.value = rawResult
+        } else if (event.event === 'error') {
+          throw new Error(event.data.trim() || '润色失败')
         }
       }
+    }
+    const tail = decoder.decode()
+    if (tail) buffer += tail
+    const finalEvent = parseSseEventBlock(buffer)
+    if (finalEvent?.event === 'token') {
+      rawResult += decodeTokenPayload(finalEvent.data)
+      resultText.value = rawResult
     }
 
     // Parse [Pn] markers
     if (rawResult && paragraphData.value.length > 0) {
-      polishedParagraphs.value = parseMarkedResponse(rawResult)
+      const parsed = parseMarkedResponse(rawResult)
+      polishedParagraphs.value = parsed
+      resultText.value = serializeMarkedParagraphs(parsed)
     }
     fetchQuota().then(q => { if (q) quotaInfo.value = q })
   } catch (e: unknown) {
@@ -503,6 +680,8 @@ async function startPolish() {
     error.value = '请求失败: ' + (e instanceof Error ? e.message : String(e))
   } finally {
     isStreaming.value = false
+    isPreparingPolish.value = false
+    abortController = null
   }
 }
 
@@ -512,16 +691,21 @@ async function copyResult() {
   }
 }
 
-function stopPolish() {
-  abortController?.abort()
-  isStreaming.value = false
+// === Contenteditable ===
+function onParaInput(idx: number) {
+  const next = new Set(dirtyParagraphs.value)
+  next.add(idx)
+  dirtyParagraphs.value = next
 }
 
-// === Contenteditable ===
 function onParaEdit(e: FocusEvent, idx: number) {
+  if (!dirtyParagraphs.value.has(idx)) return
   const el = e.target as HTMLElement
-  const text = el.innerText?.trim() || ''
+  const text = extractEditablePolishedText(el)
   if (text) polishedParagraphs.value.set(idx, text)
+  const next = new Set(dirtyParagraphs.value)
+  next.delete(idx)
+  dirtyParagraphs.value = next
 }
 
 function onParaKey(e: KeyboardEvent) {
@@ -533,31 +717,64 @@ function onParaKey(e: KeyboardEvent) {
   }
 }
 
+function extractEditablePolishedText(el: HTMLElement): string {
+  const clone = el.cloneNode(true) as HTMLElement
+  clone.querySelectorAll('.diff-del').forEach(node => node.remove())
+  return clone.innerText?.trim() || ''
+}
+
 // === Export ===
 async function exportDoc(mode: string) {
   showExport.value = false
-  const token = localStorage.getItem('token') || ''
-  const paras = paragraphData.value.map((p: any) => ({
-    index: p.index, text: polishedParagraphs.value.get(p.index) ?? p.text ?? '',
+  if (mode === 'preserve' && !canPreserveFormat.value) {
+    error.value = 'PDF 暂不支持原格式导出，已改用标准 Word 导出。原格式和图片保留目前仅支持 DOCX。'
+    mode = 'standard'
+  }
+  const allParas = paragraphData.value.map((p: any) => ({
+    index: p.index, text: polishedParagraphs.value.get(p.index) ?? p.text ?? '', originalText: p.text ?? '',
   }))
+  const changedParas = allParas.filter((p: any) => (polishedParagraphs.value.get(p.index) ?? '').trim())
 
-  if (mode === 'preserve' && storedFile.value) {
+  if (mode === 'pdf-beta' && storedFile.value && canUsePdfToWordExport.value) {
+    isExporting.value = true
     const fd = new FormData()
     fd.append('file', storedFile.value)
-    fd.append('mappings', JSON.stringify({ fileName: 'polished', paragraphs: paras }))
+    fd.append('mappings', JSON.stringify({ fileName: 'polished', paragraphs: allParas }))
     try {
-      const res = await fetch('/api/paper-export/preserve-format', { method:'POST', headers:{Authorization:`Bearer ${token}`}, body:fd })
-      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url) }
-    } catch(err) { console.error('Export failed:', err) }
-  } else {
-    try {
-      const res = await fetch('/api/paper-export/standard', { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify({ fileName:'polished', paragraphs:paras }) })
-      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url) }
-    } catch(err) { console.error('Export failed:', err) }
+      const res = await authFetch('/api/paper-export/pdf-to-docx-preserve-format', { method:'POST', body:fd })
+      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
+      const errData = await res.json().catch(() => null)
+      error.value = (errData?.detail || errData?.error || 'PDF 转 Word 保留导出失败') + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } catch(err: any) {
+      error.value = 'PDF 转 Word 导出失败: ' + (err.message || String(err)) + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } finally {
+      isExporting.value = false
+    }
   }
-}
 
-const resultPane = ref<HTMLElement | null>(null)
+  if (mode === 'preserve' && storedFile.value && canPreserveFormat.value) {
+    const fd = new FormData()
+    fd.append('file', storedFile.value)
+    fd.append('mappings', JSON.stringify({ fileName: 'polished', paragraphs: changedParas }))
+    try {
+      const res = await authFetch('/api/paper-export/preserve-format', { method:'POST', body:fd })
+      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
+      const errData = await res.json().catch(() => null)
+      error.value = (errData?.detail || errData?.error || '格式保留导出失败') + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } catch(err: any) {
+      error.value = '导出失败: ' + (err.message || String(err)) + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    }
+  }
+  try {
+    const res = await authFetch('/api/paper-export/standard', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fileName:'polished', paragraphs:allParas }) })
+    if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
+    error.value = '标准导出也失败了，请重试'
+  } catch(err: any) { error.value = '导出失败: ' + (err.message || String(err)) }
+}
 
 /** Simple word-level diff: marks added/deleted segments */
 function renderDiff(original: string, polished: string): string {
@@ -620,6 +837,8 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 .btn-icon:hover { background: var(--bg-surface); color: var(--text-main); }
 .btn-outline { background: var(--bg-paper); border-color: var(--border-medium); color: var(--text-main); }
 .btn-outline:hover { background: var(--bg-surface); }
+.btn-spinner { width: 14px; height: 14px; border: 2px solid var(--border-medium); border-top-color: var(--accent); border-radius: 50%; animation: btn-spin 0.6s linear infinite; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 .btn-solid { background: var(--bg-paper); color: #141413; box-shadow: var(--shadow-sm); border: 1px solid var(--border-medium); }
 .btn-solid:hover { opacity: 0.9; }
 .btn-solid.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -628,6 +847,13 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 .btn-upload:hover { background: rgba(217,117,10,0.06); border-color: var(--accent); color: var(--accent-hover); }
 .btn-switch { font-size: 11px; padding: 5px 12px; color: var(--text-muted); margin-left: 12px; }
 .btn-switch:hover { color: var(--accent); border-color: var(--accent); }
+.btn-kb { position: relative; font-weight: 600; color: var(--accent); border-color: rgba(217,117,10,0.25); }
+.btn-kb:hover { background: rgba(217,117,10,0.06); border-color: var(--accent); color: var(--accent-hover); }
+.kb-badge { font-size: 10px; min-width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; border-radius: 100px; padding: 0 4px; margin-left: 4px; }
+.kb-hint { font-size: 11px; color: var(--accent); white-space: nowrap; }
+.kb-hint--button { border: 0; background: transparent; padding: 0; cursor: pointer; font-family: inherit; }
+.kb-hint--button:hover { text-decoration: underline; }
+.kb-hint--idle { color: var(--text-light); }
 
 .export-dropdown { position: relative; }
 .export-menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--bg-paper); border: 1px solid var(--border-medium); border-radius: 12px; box-shadow: var(--shadow-md); min-width: 200px; z-index: 100; overflow: hidden; }
@@ -729,6 +955,7 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 .quota-badge.quota-low{color:var(--color-danger);border-color:rgba(239,68,68,0.25);background:rgba(239,68,68,0.04);}
 
 .error-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--color-danger); color: #fff; padding: 10px 24px; border-radius: 10px; font-size: 13px; z-index: 200; }
+.warn-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 10px; font-size: 13px; cursor: pointer; z-index: 200; }
 
 /* ===== Mobile ===== */
 .workspace--mobile {

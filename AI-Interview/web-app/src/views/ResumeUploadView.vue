@@ -186,6 +186,13 @@ async function submitResume() {
     return
   }
 
+  const selectedModelCost = resumeModel.value.includes('pro') ? 2 : 1
+  const modelQuota = checkQuota(selectedModelCost, `今日免费次数不足（需 ${selectedModelCost} 次），请配置 API Key 后继续使用`)
+  if (!modelQuota.ok) {
+    quotaError.value = modelQuota.msg!
+    return
+  }
+
   submitting.value = true
   quotaError.value = ''
   try {
@@ -197,7 +204,7 @@ async function submitResume() {
     const res = await postForm<{ resumeId: number }>('/api/resume/upload', fd)
     const code = (res as any).code
     if (code === 200 && res.data) {
-      router.push(`/resume/report?resumeId=${res.data.resumeId}`)
+      router.push(`/resume/report?resumeId=${res.data.resumeId}&model=${encodeURIComponent(resumeModel.value)}`)
     } else {
       alert('上传失败，请重试')
     }

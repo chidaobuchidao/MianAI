@@ -1,6 +1,7 @@
 package com.mianmiantong.service.paper;
 
 import com.mianmiantong.dto.paper.AiReduceRequest;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.ai.AiService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -611,8 +612,10 @@ public class AiReduceService {
     // ============================================================
 
     public SseEmitter rewrite(String text, String mode, String model,
-                               List<AiReduceRequest.FlaggedSentence> flaggedSentences) {
+                               List<AiReduceRequest.FlaggedSentence> flaggedSentences,
+                               List<com.mianmiantong.dto.paper.ContextChunk> contextChunks) {
         SseEmitter emitter = new SseEmitter(120_000L);
+        String selectedModel = AiModelSelector.normalize(model);
 
         Map<String, String> modeLabels = Map.of("light", "轻度去痕", "deep", "深度重构", "academic", "学术拟合");
         String modeLabel = modeLabels.getOrDefault(mode != null ? mode : "light", "轻度去痕");
@@ -620,11 +623,13 @@ public class AiReduceService {
         String safeText = text != null ? text : "";
 
         String flaggedPassages = buildFlaggedSentences(flaggedSentences);
+        var sanitizedChunks = PaperContextSanitizer.sanitize(contextChunks);
+        String contextBlock = PaperContextSanitizer.formatForPrompt(sanitizedChunks);
 
         String systemPrompt = getSystemPrompt("prompts/ai_reduce_transform.txt");
         String userPrompt = renderPrompt("prompts/ai_reduce_transform.txt", Map.of(
             "text", safeText, "mode", safeMode, "mode_label", modeLabel,
-            "flagged_passages", flaggedPassages
+            "flagged_passages", flaggedPassages, "context_chunks", contextBlock
         ));
 
         List<Map<String, String>> messages = List.of(
@@ -638,7 +643,7 @@ public class AiReduceService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, model, token ->
+                aiService.streamChat(systemPrompt, messages, null, selectedModel, token ->
                     safeSend(emitter, "token", token)
                 );
                 emitter.send(SseEmitter.event().name("finish")

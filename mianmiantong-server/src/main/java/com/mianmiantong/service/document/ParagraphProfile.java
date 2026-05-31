@@ -20,11 +20,17 @@ public record ParagraphProfile(
     String color,
     String alignment,
     Double indentLeft,
-    Double firstLineIndent
+    Double firstLineIndent,
+    DocxPath path
 ) {
 
-    /** 从 XWPFParagraph 提取格式快照 */
+    /** 从 XWPFParagraph 提取格式快照（无 path，向后兼容） */
     public static ParagraphProfile from(int index, XWPFParagraph para) {
+        return from(index, para, null);
+    }
+
+    /** 从 XWPFParagraph 提取格式快照，附带稳定路径 */
+    public static ParagraphProfile from(int index, XWPFParagraph para, DocxPath path) {
         String text = para.getText();
         if (text == null) text = "";
 
@@ -71,7 +77,26 @@ public record ParagraphProfile(
 
         return new ParagraphProfile(
             index, text, styleId, fontFamily, eastAsiaFont,
-            fontSize, bold, italic, color, alignment, indentLeft, firstLine
+            fontSize, bold, italic, color, alignment, indentLeft, firstLine, path
+        );
+    }
+
+    /** Build a profile from raw DOCX XML text when Apache POI cannot expose the paragraph. */
+    public static ParagraphProfile fromRaw(int index, String text, DocxPath path) {
+        return new ParagraphProfile(
+            index,
+            text == null ? "" : text,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            null,
+            "LEFT",
+            0.0,
+            0.0,
+            path
         );
     }
 

@@ -10,6 +10,7 @@ public class PlagiarismReduceRequest {
     private String mode = "medium";
     private String model;
     private List<ReportAnnotation> annotations;
+    private List<ContextChunk> contextChunks;
 
     @Data
     public static class ReportAnnotation {

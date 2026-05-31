@@ -1,6 +1,7 @@
 package com.mianmiantong.dto.paper;
 
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class PolishRequest {
@@ -10,4 +11,5 @@ public class PolishRequest {
     private String topic = "";
     private String notes = "";
     private String model;
+    private List<ContextChunk> contextChunks;
 }

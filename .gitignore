@@ -42,6 +42,19 @@ _deploy*
 
 # Tool configs (local only)
 .claude/
+.agents/
+.codex/
 .playwright-mcp/
 .mcp.json
 .superpowers/
+
+# Local agentmemory state
+data/state_store.db/
+data/stream_store/
+
+# Plans and documentation (local only; keep commits focused on project code)
+.scratch/
+CONTEXT.md
+docs/
+*.md
+mobile-preview-*.png

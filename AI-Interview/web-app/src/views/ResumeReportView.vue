@@ -200,6 +200,12 @@ interface Report {
   optimizedText: string; interviewQuestions: string[]; suggestion: string
   parseStatus?: number; deepStatus?: number
 }
+type AiModel = 'deepseek-v4-flash' | 'deepseek-v4-pro'
+
+function normalizeAiModel(value: unknown): AiModel {
+  const raw = Array.isArray(value) ? value[0] : value
+  return raw === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash'
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -211,11 +217,12 @@ const loadingText = ref('AI 正在分析简历...')
 const report = ref<Report | null>(null)
 const score = ref(0)
 const deepStatus = ref(0)
-const deepModel = ref('deepseek-v4-flash')
+const deepModel = ref<AiModel>(normalizeAiModel(route.query.model))
 const deepElapsed = ref(0)
 const retryRemaining = ref(3)
 let deepTimer: ReturnType<typeof setInterval> | null = null
 let abortController: AbortController | null = null
+let quickAnalyzeStarted = false
 
 const dimArray = computed(() => {
   if (!report.value) return [] as Dim[]
@@ -281,6 +288,22 @@ function isValidReport(d: unknown): d is Report {
   return d != null && typeof d === 'object' && 'resumeId' in (d as any)
 }
 
+async function triggerQuickAnalysis(resumeId: number) {
+  if (quickAnalyzeStarted) return
+  quickAnalyzeStarted = true
+  await fetchQuota()
+  const needed = deepModel.value.includes('pro') ? 2 : 1
+  const qc = checkQuota(needed)
+  if (!qc.ok) {
+    quotaError.value = qc.msg!
+    loading.value = false
+    return
+  }
+  await post(`/api/resume/${resumeId}/analyze?model=${encodeURIComponent(deepModel.value)}`).catch(() => {
+    quickAnalyzeStarted = false
+  })
+}
+
 async function loadFullReport(resumeId: number) {
   try {
     const r = await get<Report>(`/api/resume/${resumeId}/analysis`)
@@ -291,6 +314,9 @@ async function loadFullReport(resumeId: number) {
         deepStatus.value = (r.data as any).deepStatus ?? 0
         loading.value = false
         return true
+      }
+      if (r.data.parseStatus === 1) {
+        await triggerQuickAnalysis(resumeId)
       }
     }
   } catch { }
@@ -326,14 +352,8 @@ onMounted(async () => {
 
   // Phase 2: trigger analysis only if quota allows
   if (r.data?.parseStatus === 1) {
-    await fetchQuota()
-    const qc = checkQuota(1)
-    if (!qc.ok) {
-      quotaError.value = qc.msg!
-      loading.value = false
-      return
-    }
-    await post(`/api/resume/${resumeId}/analyze`).catch(() => { })
+    await triggerQuickAnalysis(resumeId)
+    if (quotaError.value) return
   }
 
   // Phase 3: poll

@@ -25,21 +25,29 @@
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
         </span>
         <div v-if="hasDocument && resultText" class="export-dropdown">
-          <button class="btn btn-outline" @click="showExport = !showExport">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="btn btn-outline" :disabled="isExporting" @click="showExport = !showExport">
+            <svg v-if="!isExporting" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            导出文档
+            <span v-if="isExporting" class="btn-spinner"></span>
+            {{ isExporting ? '转换中...' : '导出文档' }}
           </button>
           <div v-if="showExport" class="export-menu">
-            <div class="export-item" @click="exportDoc('preserve')">
+            <div v-if="canPreserveFormat" class="export-item" @click="exportDoc('preserve')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
               </svg>
               原格式导出<span class="export-badge">推荐</span>
+            </div>
+            <div v-if="canUsePdfToWordExport && quotaInfo.isAdmin" class="export-item" @click="exportDoc('pdf-beta')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              PDF 转 Word 保留导出<span class="export-badge">Beta</span>
             </div>
             <div class="export-item" @click="exportDoc('standard')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
@@ -73,6 +81,11 @@
           <polyline points="2 3 5 6 8 3" />
         </svg>
       </button>
+      <button class="btn btn-outline btn-kb" @click="showKbPanel = true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        知识库
+        <span v-if="kbPapers.length" class="kb-badge">{{ kbPapers.length }}</span>
+      </button>
       <button class="btn btn-outline btn-upload" @click="triggerUpload">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -92,6 +105,8 @@
         </svg>
         {{ isStreaming ? '降重中...' : reportAnnotations.length > 0 ? '报告引导降重' : '开始降重' }}
       </button>
+      <button v-if="lastRetrievedCount > 0" class="kb-hint kb-hint--button" @click="showKbHitDetails = true">命中 {{ lastRetrievedCount }} 个片段 / 来自 {{ lastRetrievedPaperCount }} 篇论文</button>
+      <span v-else-if="kbSettings.autoRetrieve && kbPapers.length > 0 && !isStreaming" class="kb-hint kb-hint--idle">知识库就绪（{{ kbPapers.length }} 篇）</span>
       <span v-if="reportAnnotations.length > 0 && !isStreaming" class="report-guide-badge" title="已导入检测报告，AI将优先改写报告标注的高风险片段">AI将优先处理 {{ reportAnnotations.length }} 处报告标注</span>
     </div>
 
@@ -300,15 +315,45 @@
     </template>
 
     <p v-if="error" class="error-toast" @click="error = ''">{{ error }}</p>
+    <p v-if="warnToast" class="warn-toast" @click="warnToast = ''">{{ warnToast }}</p>
+
+    <PaperKbPanel
+      :visible="showKbPanel"
+      :papers="kbPapers"
+      :is-loading="kbLoading"
+      :importing-file="kbImporting"
+      :settings="kbSettings"
+      :error="kbError"
+      @close="showKbPanel = false"
+      @import="handleKbImport"
+      @delete="handleKbDelete"
+      @clear-all="handleKbClearAll"
+      @backup="handleKbBackup"
+      @restore="handleKbRestore"
+      @update:settings="kbSettings = $event"
+    />
+    <KbHitDetails
+      :visible="showKbHitDetails"
+      :chunks="lastRetrievedChunks"
+      :optimized-text="resultText"
+      @close="showKbHitDetails = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuota } from '@/composables/useQuota'
+import { useQuota, type QuotaInfo } from '@/composables/useQuota'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePaperStore } from '@/composables/usePaperStore'
+import { usePaperKbPanel } from '@/composables/usePaperKbPanel'
+import { readJsonResponse } from '@/utils/httpResponse'
+import { authFetch } from '@/utils/authFetch'
+import { isDocxFile, isPdfFile } from '@/utils/documentFile'
+import { preserveOriginalSpacing } from '@/utils/spacingGuard'
+import PaperKbPanel from '@/components/PaperKbPanel.vue'
+import KbHitDetails from '@/components/KbHitDetails.vue'
 
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
@@ -318,22 +363,39 @@ const paperStore = usePaperStore()
 
 const aiModel = ref('deepseek-v4-flash')
 const reduceMode = ref('medium')
-const quotaInfo = ref<{ unlimited: boolean; dailyQuota: number; quotaUsed: number; quotaRemaining: number }>({ unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
+const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
 const notes = ref('')
 const showAdvanced = ref(false)
 const showExport = ref(false)
+const isExporting = ref(false)
 const isStreaming = ref(false)
 const isScanning = ref(false)
 const scanDone = ref(false)
 const hasDocument = ref(false)
 const error = ref('')
+const warnToast = ref('')
+let warnTimer: ReturnType<typeof setTimeout> | null = null
+function showWarn(msg: string) { warnToast.value = msg; if (warnTimer) clearTimeout(warnTimer); warnTimer = setTimeout(() => { warnToast.value = '' }, 5000) }
 const storedFile = ref<File | null>(null)
+const canPreserveFormat = computed(() => isDocxFile(storedFile.value))
+const canUsePdfToWordExport = computed(() => isPdfFile(storedFile.value))
 const sourceText = ref('')
 const sourceRef = ref('')
 const resultText = ref('')
 const paragraphData = ref<any[]>([])
 const reducedParagraphs = ref<Map<number, string>>(new Map())
 let abortController: AbortController | null = null
+
+// === Knowledge Base ===
+const {
+  papers: kbPapers, isLoading: kbLoading, importingFile: kbImporting,
+  showKbPanel, settings: kbSettings, error: kbError,
+  lastRetrievedCount, lastRetrievedPaperCount, lastRetrievedChunks,
+  handleImport: handleKbImport, handleDelete: handleKbDelete,
+  handleClearAll: handleKbClearAll, handleBackup: handleKbBackup,
+  handleRestore: handleKbRestore, retrieveRaw: kbRetrieveRaw,
+} = usePaperKbPanel('plagiarism_reduce')
+const showKbHitDetails = ref(false)
 
 // Scan results
 const repeatedPhrases = ref<[string, number][]>([])
@@ -488,12 +550,12 @@ function triggerReportUpload() { if (hasDocument.value) reportFileInput.value?.c
 
 async function handleReportUpload(e: Event) {
   const reportFile = (e.target as HTMLInputElement).files?.[0]; if (!reportFile) return
-  const token = localStorage.getItem('token') || ''; const fd = new FormData(); fd.append('file', reportFile)
+  const fd = new FormData(); fd.append('file', reportFile)
   if (sourceText.value) fd.append('sourceText', sourceText.value)
   reportLoading.value = true
   try {
-    const res = await fetch('/api/paper/report-analyze', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
-    const data = await res.json(); if (!res.ok) throw new Error(data.error || '解析失败')
+    const res = await authFetch('/api/paper/report-analyze', { method: 'POST', body: fd })
+    const data = await readJsonResponse(res, '报告解析失败'); if (!res.ok) throw new Error(data.error || '解析失败')
     reportAnnotations.value = data.annotations || []
     if (reportAnnotations.value.length === 0) {
       const isPdf = reportFile.name.toLowerCase().endsWith('.pdf')
@@ -543,14 +605,15 @@ function usePastedText() {
 
 async function handleFileUpload(e: Event) {
   const uploadedFile = (e.target as HTMLInputElement).files?.[0]; if (!uploadedFile) return
+  if (uploadedFile.name.toLowerCase().endsWith('.pdf')) showWarn('PDF格式可能导致导出效果不佳，建议上传Word文档(.docx)以保证最佳导出效果')
   storedFile.value = uploadedFile
     ; (e.target as HTMLInputElement).value = ''
   scanDone.value = false; resultText.value = ''
   reportUploaded.value = false; reportAnnotations.value = []; reportRiskParagraphs.value = []
-  const token = localStorage.getItem('token') || ''; const fd = new FormData(); fd.append('file', uploadedFile)
+  const fd = new FormData(); fd.append('file', uploadedFile)
   try {
-    const res = await fetch('/api/paper/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
-    const data = await res.json(); if (!res.ok) throw new Error(data.error || '上传失败')
+    const res = await authFetch('/api/paper/upload', { method: 'POST', body: fd })
+    const data = await readJsonResponse(res, '文件上传失败'); if (!res.ok) throw new Error(data.error || '上传失败')
     if (!data.fullText || data.fullText.trim().length < 10) {
       error.value = '文档解析失败：未提取到有效文本内容。请检查文档是否为扫描版图片，或尝试另存为标准 .docx 格式。'
       return
@@ -567,8 +630,7 @@ async function handleFileUpload(e: Event) {
 async function runScan(text: string) {
   isScanning.value = true
   try {
-    const token = localStorage.getItem('token') || ''
-    const res = await fetch('/api/plagiarism-reduce/scan', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ text, sourceText: sourceRef.value }) })
+    const res = await authFetch('/api/plagiarism-reduce/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, sourceText: sourceRef.value }) })
     const data = await res.json()
     const rep = data.repetition || {}
     repeatedPhrases.value = (rep.repeatedPhrases || []).map((e: any) => [String(e.key || e[0] || ''), Number(e.value || e[1] || 1)])
@@ -612,10 +674,14 @@ async function startReduce() {
   const annotationPayload = reportAnnotations.value.length > 0
     ? reportAnnotations.value.map((a: any) => ({ text: a.matchedSourceText || a.text, riskLevel: a.riskLevel || 'medium' }))
     : []
+  const contextChunks = await kbRetrieveRaw(taggedText, {
+    sourceText: sourceRef.value,
+    notes: notes.value,
+    annotations: annotationPayload.map((a: any) => `${a.text} ${a.riskLevel || ''}`),
+  })
   resultText.value = ''; error.value = ''; isStreaming.value = true; abortController = new AbortController()
   try {
-    const token = localStorage.getItem('token') || ''
-    const res = await fetch('/api/plagiarism-reduce/run', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ text: taggedText, sourceText: sourceRef.value, mode: reduceMode.value, model: aiModel.value, annotations: annotationPayload }), signal: abortController.signal })
+    const res = await authFetch('/api/plagiarism-reduce/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: taggedText, sourceText: sourceRef.value, mode: reduceMode.value, model: aiModel.value, annotations: annotationPayload, contextChunks }), signal: abortController.signal })
     if (!res.ok) {
       if (res.status === 429) { const d = await res.json().catch(() => ({ error: '配额已用完' })); throw new Error(d.error || '今日免费次数已用完') }
       if (res.status >= 500) throw new Error('服务异常，请稍后重试')
@@ -631,7 +697,7 @@ async function startReduce() {
         if (line.startsWith('data:')) { const d = line.slice(5).trim(); if (d === 'finish' || d === '[DONE]') break; if (d.startsWith('{') || d.startsWith('"')) continue; raw += d; resultText.value = raw }
       }
     }
-    if (raw && paragraphData.value.length > 0) { reducedParagraphs.value = parseMarked(raw) }
+    if (raw && paragraphData.value.length > 0) { const parsed = parseMarked(raw); reducedParagraphs.value = parsed; resultText.value = serializeMarkedParagraphs(parsed) }
     fetchQuota().then(q => { if (q) quotaInfo.value = q })
   } catch (e: unknown) {
     if (e instanceof DOMException && e.name === 'AbortError') return
@@ -645,9 +711,18 @@ async function startReduce() {
 
 function parseMarked(resp: string): Map<number, string> {
   const r = new Map<number, string>(); const re = /\[P(\d+)\]\s*([\s\S]*?)(?=\[P\d+\]|$)/g; let m
-  while ((m = re.exec(resp)) !== null) r.set(parseInt(m[1]), m[2].trim())
-  if (r.size === 0 && resp.trim()) { const parts = resp.split(/\n{2,}/).filter(p => p.trim()); const paras = paragraphData.value; if (paras.length > 0 && parts.length > 0) { for (let i = 0; i < Math.min(paras.length, parts.length); i++) r.set(paras[i].index, parts[i].trim()) } else r.set(0, resp.trim()) }
+  while ((m = re.exec(resp)) !== null) { const index = parseInt(m[1]); r.set(index, preserveParagraphSpacing(index, m[2].trim())) }
+  if (r.size === 0 && resp.trim()) { const parts = resp.split(/\n{2,}/).filter(p => p.trim()); const paras = paragraphData.value; if (paras.length > 0 && parts.length > 0) { for (let i = 0; i < Math.min(paras.length, parts.length); i++) r.set(paras[i].index, preserveParagraphSpacing(paras[i].index, parts[i].trim())) } else r.set(0, resp.trim()) }
   return r
+}
+
+function preserveParagraphSpacing(index: number, text: string): string {
+  const original = paragraphData.value.find((p: any) => p.index === index)?.text ?? ''
+  return preserveOriginalSpacing(original, text)
+}
+
+function serializeMarkedParagraphs(paragraphs: Map<number, string>): string {
+  return paragraphData.value.map((p: any) => `[P${p.index}] ${paragraphs.get(p.index) ?? p.text ?? ''}`).join('\n\n')
 }
 
 function copyResult() { if (resultText.value) { navigator.clipboard.writeText(resultText.value).catch(() => {}) } }
@@ -655,22 +730,51 @@ function onParaEdit(e: FocusEvent, idx: number) { const t = (e.target as HTMLEle
 function onParaKey(e: KeyboardEvent) { if (e.key === 'Tab') { e.preventDefault(); const n = (e.target as HTMLElement).nextElementSibling as HTMLElement | null; if (n?.contentEditable === 'true') n.focus() } }
 
 async function exportDoc(mode: string) {
-  showExport.value = false; const token = localStorage.getItem('token') || ''
-  const paras = paragraphData.value.map((p: any) => ({ index: p.index, text: reducedParagraphs.value.get(p.index) ?? p.text ?? '' }))
-  if (mode === 'preserve' && storedFile.value) {
+  showExport.value = false
+  if (mode === 'preserve' && !canPreserveFormat.value) {
+    error.value = 'PDF 暂不支持原格式导出，已改用标准 Word 导出。原格式和图片保留目前仅支持 DOCX。'
+    mode = 'standard'
+  }
+  const allParas = paragraphData.value.map((p: any) => ({ index: p.index, text: reducedParagraphs.value.get(p.index) ?? p.text ?? '', originalText: p.text ?? '' }))
+  const changedParas = allParas.filter((p: any) => (reducedParagraphs.value.get(p.index) ?? '').trim())
+  if (mode === 'pdf-beta' && storedFile.value && canUsePdfToWordExport.value) {
+    isExporting.value = true
     const fd = new FormData()
     fd.append('file', storedFile.value)
-    fd.append('mappings', JSON.stringify({ fileName: 'plagiarism-reduced', paragraphs: paras }))
+    fd.append('mappings', JSON.stringify({ fileName: 'plagiarism-reduced', paragraphs: allParas }))
     try {
-      const res = await fetch('/api/paper-export/preserve-format', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
-      if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'plagiarism-reduced.docx'; a.click(); URL.revokeObjectURL(url) }
-    } catch (e) { console.error('Export failed:', e) }
-  } else {
-    try {
-      const res = await fetch('/api/paper-export/standard', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: 'plagiarism-reduced', paragraphs: paras }) })
-      if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'plagiarism-reduced.docx'; a.click(); URL.revokeObjectURL(url) }
-    } catch (e) { console.error('Export failed:', e) }
+      const res = await authFetch('/api/paper-export/pdf-to-docx-preserve-format', { method: 'POST', body: fd })
+      if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'plagiarism-reduced.docx'; a.click(); URL.revokeObjectURL(url); return }
+      const errData = await res.json().catch(() => null)
+      error.value = (errData?.detail || errData?.error || 'PDF 转 Word 保留导出失败') + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } catch (e: any) {
+      error.value = 'PDF 转 Word 导出失败: ' + (e.message || String(e)) + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } finally {
+      isExporting.value = false
+    }
   }
+  if (mode === 'preserve' && storedFile.value && canPreserveFormat.value) {
+    const fd = new FormData()
+    fd.append('file', storedFile.value)
+    fd.append('mappings', JSON.stringify({ fileName: 'plagiarism-reduced', paragraphs: changedParas }))
+    try {
+      const res = await authFetch('/api/paper-export/preserve-format', { method: 'POST', body: fd })
+      if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'plagiarism-reduced.docx'; a.click(); URL.revokeObjectURL(url); return }
+      const errData = await res.json().catch(() => null)
+      error.value = (errData?.detail || errData?.error || '格式保留导出失败') + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } catch (e: any) {
+      error.value = '导出失败: ' + (e.message || String(e)) + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    }
+  }
+  try {
+    const res = await authFetch('/api/paper-export/standard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName: 'plagiarism-reduced', paragraphs: allParas }) })
+    if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'plagiarism-reduced.docx'; a.click(); URL.revokeObjectURL(url); return }
+    error.value = '标准导出也失败了，请重试'
+  } catch (e: any) { error.value = '导出失败: ' + (e.message || String(e)) }
 }
 </script>
 
@@ -824,6 +928,14 @@ async function exportDoc(mode: string) {
   border-color: var(--accent);
 }
 
+.btn-kb { position: relative; font-weight: 600; color: var(--accent); border-color: rgba(217,117,10,0.25); }
+.btn-kb:hover { background: rgba(217,117,10,0.06); border-color: var(--accent); color: var(--accent-hover); }
+.kb-badge { font-size: 10px; min-width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; border-radius: 100px; padding: 0 4px; margin-left: 4px; }
+.kb-hint { font-size: 11px; color: var(--accent); white-space: nowrap; }
+.kb-hint--button { border: 0; background: transparent; padding: 0; cursor: pointer; font-family: inherit; }
+.kb-hint--button:hover { text-decoration: underline; }
+.kb-hint--idle { color: var(--text-light); }
+
 .export-dropdown {
   position: relative;
 }
@@ -892,6 +1004,15 @@ async function exportDoc(mode: string) {
 @keyframes spin {
   from { transform: rotate(0deg) }
   to { transform: rotate(360deg) }
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-medium);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .report-guide-badge {
@@ -1566,6 +1687,19 @@ async function exportDoc(mode: string) {
   left: 50%;
   transform: translateX(-50%);
   background: var(--color-danger);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  z-index: 200;
+}
+.warn-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
   color: #fff;
   padding: 10px 24px;
   border-radius: 10px;

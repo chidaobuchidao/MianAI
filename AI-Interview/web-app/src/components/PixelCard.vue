@@ -36,7 +36,6 @@ let pixels: Pixel[] = []
 let rafId = 0
 let timePrev = 0
 let observer: ResizeObserver | null = null
-let hovering = false
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 function getEffectiveSpeed(val: number): number {
@@ -146,8 +145,8 @@ function loop(fn: 'appear' | 'disappear') {
   rafId = requestAnimationFrame(frame)
 }
 
-function onEnter() { hovering = true; loop('appear') }
-function onLeave() { hovering = false; loop('disappear') }
+function onEnter() { loop('appear') }
+function onLeave() { loop('disappear') }
 
 onMounted(async () => {
   await nextTick()

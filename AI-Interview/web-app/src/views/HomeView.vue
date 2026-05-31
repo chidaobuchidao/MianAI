@@ -287,7 +287,7 @@ onMounted(async () => {
   } catch { /* ignore */ }
   // 公告：每次登录或切换用户后展示一次
   const token = localStorage.getItem('token')
-  const dismissedKey = 'annDismissed_' + (token ? token.substring(0, 20) : '') + '_' + (userStore.userId?.value || 0)
+  const dismissedKey = 'annDismissed_' + (token ? token.substring(0, 20) : '') + '_' + (userStore.userId || 0)
   if (sessionStorage.getItem(dismissedKey)) {
     annDismissed.value = true
   }
@@ -304,7 +304,7 @@ function dismissAnn() {
   showAnn.value = false
   annDismissed.value = true
   const token = localStorage.getItem('token')
-  const dismissedKey = 'annDismissed_' + (token ? token.substring(0, 20) : '') + '_' + (userStore.userId?.value || 0)
+  const dismissedKey = 'annDismissed_' + (token ? token.substring(0, 20) : '') + '_' + (userStore.userId || 0)
   sessionStorage.setItem(dismissedKey, '1')
 }
 

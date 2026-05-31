@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "shadcn": "^4.7.0"
+  },
+  "dependencies": {
+    "docx": "^9.7.0"
   }
 }

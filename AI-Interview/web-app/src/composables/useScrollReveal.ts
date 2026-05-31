@@ -36,7 +36,7 @@ export function useScrollReveal(
     once = true
   } = options
 
-  let st: ScrollTrigger | null = null
+  let animation: ReturnType<typeof gsap.fromTo> | null = null
 
   onMounted(() => {
     const el = target.value
@@ -46,7 +46,7 @@ export function useScrollReveal(
       ? Array.from(el.children)
       : el
 
-    gsap.fromTo(
+    animation = gsap.fromTo(
       children,
       { y, x, opacity, scale },
       {
@@ -70,7 +70,7 @@ export function useScrollReveal(
   })
 
   onUnmounted(() => {
-    st?.kill()
+    animation?.kill()
   })
 
   return { isRevealed }

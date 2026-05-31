@@ -1,7 +1,9 @@
 package com.mianmiantong.service.paper;
 
 import com.mianmiantong.dto.paper.PolishRequest;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.ai.AiService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import java.util.regex.Pattern;
 public class PolishService {
 
     private final AiService aiService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PolishService(AiService aiService) {
         this.aiService = aiService;
@@ -28,6 +31,7 @@ public class PolishService {
     /** SSE 流式润色 */
     public SseEmitter runPolish(PolishRequest req) {
         SseEmitter emitter = new SseEmitter(120_000L);
+        String selectedModel = AiModelSelector.normalize(req.getModel());
 
         String systemPrompt = getSystemPrompt("prompts/polish_run_task.txt");
         String userPrompt = renderPrompt("prompts/polish_run_task.txt", Map.of(
@@ -49,8 +53,8 @@ public class PolishService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, req.getModel(), token -> {
-                    safeSend(emitter, "token", token);
+                aiService.streamChat(systemPrompt, messages, null, selectedModel, token -> {
+                    safeSendJson(emitter, "token", token);
                 });
 
                 emitter.send(SseEmitter.event().name("finish")
@@ -148,6 +152,14 @@ public class PolishService {
         try {
             emitter.send(SseEmitter.event().name(name).data(data));
         } catch (IOException ignored) {
+            // SSE connection already closed by client
+        }
+    }
+
+    private void safeSendJson(SseEmitter emitter, String name, String data) {
+        try {
+            emitter.send(SseEmitter.event().name(name).data(objectMapper.writeValueAsString(data)));
+        } catch (Exception ignored) {
             // SSE connection already closed by client
         }
     }

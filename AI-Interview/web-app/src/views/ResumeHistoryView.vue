@@ -75,11 +75,6 @@ function getDisplayName(item: ResumeItem): string {
   return item.position || item.fileName || '未命名'
 }
 
-function getDisplayScore(item: ResumeItem): string {
-  if (item.overallScore != null) return `${item.overallScore} 分`
-  return ''
-}
-
 let cachedList: ResumeItem[] | null = null
 
 const list = ref<ResumeItem[]>(cachedList || [])

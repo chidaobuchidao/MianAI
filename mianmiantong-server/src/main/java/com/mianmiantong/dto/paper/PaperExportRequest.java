@@ -15,6 +15,9 @@ public class PaperExportRequest {
     @Data
     public static class ParagraphMapping {
         private int index;
+        /** 优化后的文本（替换用） */
         private String text;
+        /** 原始文本（匹配用，PDF→Word 流程中用于精确匹配转换后的 DOCX 段落） */
+        private String originalText;
     }
 }

@@ -2,13 +2,16 @@ import { ref } from 'vue'
 import { get } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 
-interface QuotaInfo {
+export interface QuotaInfo {
   hasApiKey: boolean
   isAdmin: boolean
+  unlimited: boolean
   dailyQuota: number
   quotaUsed: number
   quotaRemaining: number
 }
+
+type RawQuotaInfo = Omit<QuotaInfo, 'unlimited'> & { unlimited?: boolean }
 
 const cached = ref<QuotaInfo | null>(null)
 let lastFetch = 0
@@ -16,16 +19,17 @@ let lastFetch = 0
 export function useQuota() {
   async function fetchQuota(): Promise<QuotaInfo> {
     if (cached.value && Date.now() - lastFetch < 30_000) return cached.value
-    const res = await get<QuotaInfo>('/api/user/quota')
+    const res = await get<RawQuotaInfo>('/api/user/quota')
     if (res.data) {
-      cached.value = res.data
+      const quota = normalizeQuota(res.data)
+      cached.value = quota
       lastFetch = Date.now()
       // Keep userStore.isAdmin in sync across all quota consumers
       const userStore = useUserStore()
-      userStore.setAdmin(res.data.isAdmin === true)
-      return res.data
+      userStore.setAdmin(quota.isAdmin === true)
+      return quota
     }
-    return { hasApiKey: false, isAdmin: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 }
+    return normalizeQuota({ hasApiKey: false, isAdmin: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
   }
 
   /** Returns remaining count, or -1 if admin/has own key (unlimited) */
@@ -44,4 +48,11 @@ export function useQuota() {
   }
 
   return { fetchQuota, checkQuota, cached }
+}
+
+function normalizeQuota(quota: RawQuotaInfo): QuotaInfo {
+  return {
+    ...quota,
+    unlimited: quota.unlimited ?? (quota.isAdmin === true || quota.hasApiKey === true),
+  }
 }

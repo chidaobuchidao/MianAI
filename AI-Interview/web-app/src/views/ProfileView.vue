@@ -126,6 +126,7 @@ const userStore = useUserStore()
 
 const showAiKey = ref(false)
 const aiKeyConfigured = ref(false)
+const aiProvider = ref('DeepSeek')
 const aiTab = ref<'deepseek' | 'qwen'>('deepseek')
 const apiKey = ref('')
 const quota = ref<{ hasApiKey: boolean; isAdmin: boolean; dailyQuota: number; quotaUsed: number; quotaRemaining: number } | null>(null)
@@ -144,6 +145,7 @@ async function fetchProfileData() {
     if (aRes.data) {
       aiKeyConfigured.value = true
       aiTab.value = (aRes.data.provider === 'qwen' ? 'qwen' : 'deepseek')
+      aiProvider.value = aiTab.value === 'qwen' ? '通义千问' : 'DeepSeek'
     }
     if (qRes.data) {
       quota.value = qRes.data
@@ -164,6 +166,7 @@ async function saveAiKey() {
       model: isDeepseek ? 'deepseek-chat' : 'qwen-turbo'
     })
     aiKeyConfigured.value = true
+    aiProvider.value = aiTab.value === 'qwen' ? '通义千问' : 'DeepSeek'
     showAiKey.value = false
   } catch { alert('保存失败') }
 }

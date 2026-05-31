@@ -4,6 +4,7 @@ import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.common.JwtUtil;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.entity.resume.Resume;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.document.HtmlPreviewService;
 import com.mianmiantong.service.document.TemplatePreservingExportService;
 import com.mianmiantong.service.document.WordExportService;
@@ -21,8 +22,10 @@ import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @RestController
@@ -69,10 +72,11 @@ public class ResumeController {
 
     /** Phase 1: 快速评分（异步后台执行，前端轮询 GET /analysis） */
     private void consumeResumeQuota(String model) {
-        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), model);
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), AiModelSelector.normalize(model));
     }
     @PostMapping("/{resumeId}/analyze")
-    public Result<?> analyze(@PathVariable Long resumeId) {
+    public Result<?> analyze(@PathVariable Long resumeId,
+                             @RequestParam(value = "model", required = false) String model) {
         Resume resume = resumeService.getById(resumeId);
         if (resume.getParseStatus() == -1) {
             return Result.fail("简历解析失败，请重新上传。当前状态：解析失败");
@@ -83,8 +87,9 @@ public class ResumeController {
         if (resume.getParseStatus() != 1) {
             return Result.fail("简历状态异常(" + resume.getParseStatus() + ")，请联系管理员");
         }
-        analysisService.analyzeQuickAsync(resumeId);
-        consumeResumeQuota(null); // 提交成功后才消耗
+        String selectedModel = AiModelSelector.normalize(model);
+        analysisService.analyzeQuickAsync(resumeId, selectedModel);
+        consumeResumeQuota(selectedModel); // 提交成功后才消耗
         return Result.ok(Map.of("message", "分析已开始"));
     }
 
@@ -92,16 +97,18 @@ public class ResumeController {
     @PostMapping("/{resumeId}/analyze-deep")
     public SseEmitter analyzeDeep(@PathVariable Long resumeId,
                                   @RequestParam(value = "model", required = false) String model) {
-        consumeResumeQuota(model);
-        return analysisService.analyzeDeepStream(resumeId, model);
+        String selectedModel = AiModelSelector.normalize(model);
+        consumeResumeQuota(selectedModel);
+        return analysisService.analyzeDeepStream(resumeId, selectedModel);
     }
 
     /** 检查重试状态并触发重试 */
     @PostMapping("/{resumeId}/retry-deep")
     public SseEmitter retryDeep(@PathVariable Long resumeId,
                                 @RequestParam(value = "model", required = false) String model) {
-        consumeResumeQuota(model);
-        return analysisService.analyzeDeepStream(resumeId, model);
+        String selectedModel = AiModelSelector.normalize(model);
+        consumeResumeQuota(selectedModel);
+        return analysisService.analyzeDeepStream(resumeId, selectedModel);
     }
 
     /** 查询是否可重试 */
@@ -154,10 +161,9 @@ public class ResumeController {
         }
     }
 
-    /** 保留原模板格式导出优化简历。使用语义匹配定位段落，匹配失败自动回退标准导出。 */
+    /** 保留原模板格式导出优化简历。匹配失败自动回退标准导出。 */
     @GetMapping("/{resumeId}/export-preserve-format")
     public void exportPreserveFormat(@PathVariable Long resumeId, HttpServletResponse response) {
-        Resume resume = resumeService.getById(resumeId);
         var report = analysisService.getReport(resumeId);
         String optimizedText = (String) report.get("optimizedText");
         if (optimizedText == null || optimizedText.isBlank()) {
@@ -165,32 +171,7 @@ public class ResumeController {
         }
         String fileName = String.valueOf(report.getOrDefault("fileName", "简历"));
 
-        byte[] docx;
-        byte[] fileData = resume.getFileData();
-        if (fileData != null && fileData.length > 0 && "docx".equalsIgnoreCase(resume.getFileType())) {
-            try {
-                List<ParagraphProfile> profiles = templateExportService.parseParagraphs(fileData);
-
-                // 获取 AI 返回的 highlights（含 before/after 对照文本）
-                Object highlightsObj = report.get("highlights");
-                List<Map<String, Object>> highlights = castToHighlightList(highlightsObj);
-
-                // 语义匹配：用 before 文本在 DOCX 中模糊定位段落（仅 highlights，不碰未标记段落）
-                Map<Integer, String> mappings = templateExportService.buildMappingsFromHighlights(profiles, highlights);
-
-                if (mappings.isEmpty()) {
-                    log.warn("语义匹配未找到任何对应段落，回退标准导出");
-                    docx = wordExportService.exportMarkdown(optimizedText, fileName);
-                } else {
-                    docx = templateExportService.writeBack(fileData, mappings, true);
-                }
-            } catch (Exception e) {
-                log.warn("保留格式导出失败，回退标准导出: {}", e.getMessage());
-                docx = wordExportService.exportMarkdown(optimizedText, fileName);
-            }
-        } else {
-            docx = wordExportService.exportMarkdown(optimizedText, fileName);
-        }
+        byte[] docx = buildFormatPreservedDocx(resumeId, optimizedText, fileName, report);
 
         response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
         response.setHeader("Content-Disposition",
@@ -202,6 +183,164 @@ public class ResumeController {
         } catch (Exception e) {
             throw new RuntimeException("导出失败", e);
         }
+    }
+
+    /**
+     * 预览优化简历为 HTML（小程序 web-view 内使用）。
+     * 使用格式保留路径：匹配的段落替换为优化文本，未匹配段落保留原文。
+     */
+    @GetMapping("/{resumeId}/preview-html")
+    public String previewHtml(@PathVariable Long resumeId, @RequestParam("token") String token) {
+        if (!token.startsWith("dev-token-") && !jwtUtil.validateToken(token)) {
+            throw new IllegalArgumentException("无效的访问令牌");
+        }
+
+        var report = analysisService.getReport(resumeId);
+        String optimizedText = (String) report.get("optimizedText");
+        if (optimizedText == null || optimizedText.isBlank()) {
+            throw new IllegalArgumentException("优化简历内容为空，请先完成深度优化");
+        }
+        String fileName = String.valueOf(report.getOrDefault("fileName", "简历"));
+
+        byte[] docx = buildFormatPreservedDocx(resumeId, optimizedText, fileName, report);
+        return htmlPreviewService.convertDocxToHtml(docx);
+    }
+
+    /**
+     * 构建格式保留的 DOCX 字节。
+     * 匹配的段落替换为优化文本，未匹配段落保留原文，确保图片/线条/格式不丢失。
+     * 非DOCX文件回退标准导出。
+     */
+    private byte[] buildFormatPreservedDocx(Long resumeId, String optimizedText, String fileName,
+                                              Map<String, Object> report) {
+        Resume resume = resumeService.getById(resumeId);
+        byte[] fileData = resume.getFileData();
+
+        // 非DOCX文件只能用标准导出
+        if (fileData == null || fileData.length == 0 || !"docx".equalsIgnoreCase(resume.getFileType())) {
+            log.info("原始文件非DOCX或为空，使用标准导出");
+            return wordExportService.exportMarkdown(optimizedText, fileName);
+        }
+
+        try {
+            List<ParagraphProfile> profiles = templateExportService.parseParagraphs(fileData);
+            log.info("格式保留导出: 原文{}段, 优化文本{}字, fileType={}", profiles.size(), optimizedText.length(), resume.getFileType());
+
+            // 打印前3段原文用于调试
+            for (int i = 0; i < Math.min(3, profiles.size()); i++) {
+                ParagraphProfile p = profiles.get(i);
+                log.info("  原文段落[{}]: path={}, text={}", p.index(), p.path(), truncate(p.text(), 60));
+            }
+
+            // 主匹配：highlights.before 片段级替换（只替换段落中的对应部分，保留其余内容）
+            Map<Integer, String[]> snippetMappings = new java.util.LinkedHashMap<>();
+            Object highlightsObj = report.get("highlights");
+            List<Map<String, Object>> highlights = castToHighlightList(highlightsObj);
+            log.info("highlights数据: null={}, size={}", highlightsObj == null, highlights.size());
+
+            if (!highlights.isEmpty()) {
+                for (int i = 0; i < Math.min(3, highlights.size()); i++) {
+                    Map<String, Object> h = highlights.get(i);
+                    log.info("  highlight[{}]: before={}, after={}", i,
+                        truncate((String) h.get("before"), 50), truncate((String) h.get("after"), 50));
+                }
+                snippetMappings = templateExportService.buildSnippetMappingsFromHighlights(profiles, highlights);
+                log.info("highlights片段匹配: {}/{} 条成功", snippetMappings.size(), highlights.size());
+            }
+
+            Map<Integer, String[]> objectiveMappings =
+                templateExportService.buildObjectiveSnippetMappings(profiles, optimizedText);
+            for (var entry : objectiveMappings.entrySet()) {
+                String[] existing = snippetMappings.get(entry.getKey());
+                if (existing == null
+                    || existing.length < 2
+                    || normalizeForComparison(existing[0]).equals(normalizeForComparison(existing[1]))
+                    || !containsObjective(existing)) {
+                    snippetMappings.put(entry.getKey(), entry.getValue());
+                }
+            }
+            if (!objectiveMappings.isEmpty()) {
+                log.info("求职意向片段补丁: {} 段", objectiveMappings.size());
+            }
+
+            // 补漏：对未匹配的段落尝试整段替换
+            Map<Integer, String> fullMappings = new java.util.LinkedHashMap<>();
+            Set<Integer> matchedIndices = snippetMappings.keySet();
+
+            Map<Integer, String> supplementMappings =
+                templateExportService.buildSafeResumeSupplementMappings(profiles, optimizedText, fullMappings);
+            for (var entry : supplementMappings.entrySet()) {
+                if (!matchedIndices.contains(entry.getKey())) {
+                    fullMappings.put(entry.getKey(), entry.getValue());
+                }
+            }
+            if (!supplementMappings.isEmpty()) {
+                log.info("简历导出安全补漏: 新增{}段", supplementMappings.size());
+            }
+
+            if (enableTemplateAutoMatch() && fullMappings.size() < profiles.size() * 0.5) {
+                Map<Integer, String> contentMappings = templateExportService.buildMappingsByContentMatch(profiles, optimizedText);
+                for (var entry : contentMappings.entrySet()) {
+                    if (!matchedIndices.contains(entry.getKey()) && !fullMappings.containsKey(entry.getKey())) {
+                        fullMappings.put(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
+
+            if (enableTemplateAutoMatch() && fullMappings.isEmpty() && snippetMappings.isEmpty()) {
+                Map<Integer, String> sectionMappings = templateExportService.buildMappingsBySectionMatch(profiles, optimizedText);
+                for (var entry : sectionMappings.entrySet()) {
+                    if (!matchedIndices.contains(entry.getKey())) {
+                        fullMappings.put(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
+
+            // 将整段替换的映射也转为片段格式（before=整段原文，等价于整段替换）
+            Map<Integer, ParagraphProfile> profileByIndex = new LinkedHashMap<>();
+            for (ParagraphProfile p : profiles) profileByIndex.put(p.index(), p);
+            for (var entry : fullMappings.entrySet()) {
+                if (!snippetMappings.containsKey(entry.getKey())) {
+                    ParagraphProfile p = profileByIndex.get(entry.getKey());
+                    if (p != null) {
+                        snippetMappings.put(entry.getKey(), new String[]{p.text(), entry.getValue()});
+                    }
+                }
+            }
+
+            if (snippetMappings.isEmpty()) {
+                log.warn("所有匹配策略均失败，回退标准导出 (profiles={}, highlights={})", profiles.size(), highlights.size());
+                return wordExportService.exportMarkdown(optimizedText, fileName);
+            }
+
+            log.info("格式保留写回: {}/{} 段 (片段级+整段)", snippetMappings.size(), profiles.size());
+            return templateExportService.writeBackSnippets(fileData, snippetMappings, false);
+        } catch (Exception e) {
+            log.warn("格式保留导出异常，回退标准导出: {}", e.getMessage());
+            return wordExportService.exportMarkdown(optimizedText, fileName);
+        }
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) return "null";
+        return s.length() <= max ? s : s.substring(0, max) + "...";
+    }
+
+    private static String normalizeForComparison(String text) {
+        if (text == null) return "";
+        return text.replaceAll("[\\s\\p{P}\\p{S}]+", "").toLowerCase().trim();
+    }
+
+    private static boolean containsObjective(String[] snippetPair) {
+        if (snippetPair == null) return false;
+        for (String text : snippetPair) {
+            if (text != null && text.contains("求职意向")) return true;
+        }
+        return false;
+    }
+
+    private boolean enableTemplateAutoMatch() {
+        return false;
     }
 
     /** 将 report 中的 highlights 对象安全转换为 List&lt;Map&gt; */
@@ -217,25 +356,6 @@ public class ResumeController {
             return result;
         }
         return List.of();
-    }
-
-    /** 预览优化简历为 HTML（小程序 web-view 内使用） */
-    @GetMapping("/{resumeId}/preview-html")
-    public String previewHtml(@PathVariable Long resumeId, @RequestParam("token") String token) {
-        if (!token.startsWith("dev-token-") && !jwtUtil.validateToken(token)) {
-            throw new IllegalArgumentException("无效的访问令牌");
-        }
-
-        var report = analysisService.getReport(resumeId);
-        String optimizedText = (String) report.get("optimizedText");
-        if (optimizedText == null || optimizedText.isBlank()) {
-            throw new IllegalArgumentException("优化简历内容为空，请先完成深度优化");
-        }
-
-        // 直接从优化后的 Markdown 生成 HTML 预览
-        String fileName = String.valueOf(report.getOrDefault("fileName", "简历"));
-        byte[] docx = wordExportService.exportMarkdown(optimizedText, fileName);
-        return htmlPreviewService.convertDocxToHtml(docx);
     }
 
     /** 重试文档解析 */

@@ -4,6 +4,7 @@ import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.entity.user.User;
 import com.mianmiantong.entity.user.UserAiConfig;
 import com.mianmiantong.mapper.user.UserMapper;
+import com.mianmiantong.service.ai.AiModelSelector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,7 +55,7 @@ public class QuotaService {
             throw new QuotaExhaustedException("今日免费次数已用完（" + daily + "次/天），请配置 AI API Key 后无限使用");
         }
 
-        int steps = (model != null && model.toLowerCase().contains("pro")) ? 2 : 1;
+        int steps = AiModelSelector.PRO.equals(AiModelSelector.normalize(model)) ? 2 : 1;
         userMapper.incrementQuota(userId, steps);
     }
 

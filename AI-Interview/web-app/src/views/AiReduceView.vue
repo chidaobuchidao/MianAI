@@ -21,14 +21,19 @@
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
         </span>
         <div v-if="hasDocument && resultText" class="export-dropdown">
-          <button class="btn btn-outline" @click="showExport = !showExport">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            导出文档
+          <button class="btn btn-outline" :disabled="isExporting" @click="showExport = !showExport">
+            <svg v-if="!isExporting" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span v-if="isExporting" class="btn-spinner"></span>
+            {{ isExporting ? '转换中...' : '导出文档' }}
           </button>
           <div v-if="showExport" class="export-menu">
-            <div class="export-item" @click="exportDoc('preserve')">
+            <div v-if="canPreserveFormat" class="export-item" @click="exportDoc('preserve')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               原格式导出<span class="export-badge">推荐</span>
+            </div>
+            <div v-if="canUsePdfToWordExport && quotaInfo.isAdmin" class="export-item" @click="exportDoc('pdf-beta')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              PDF 转 Word 保留导出<span class="export-badge">Beta</span>
             </div>
             <div class="export-item" @click="exportDoc('standard')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -54,6 +59,11 @@
         高级选项
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" :style="{ transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0)' }"><polyline points="2 3 5 6 8 3"/></svg>
       </button>
+      <button class="btn btn-outline btn-kb" @click="showKbPanel = true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        知识库
+        <span v-if="kbPapers.length" class="kb-badge">{{ kbPapers.length }}</span>
+      </button>
       <button class="btn btn-outline btn-upload" @click="triggerUpload">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         上传文档
@@ -67,6 +77,8 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         {{ isStreaming ? '改写中...' : scanDone && activeFlaggedCount > 0 ? `标注驱动净化 (${activeFlaggedCount}处)` : '一键净化全文' }}
       </button>
+      <button v-if="lastRetrievedCount > 0" class="kb-hint kb-hint--button" @click="showKbHitDetails = true">命中 {{ lastRetrievedCount }} 个片段 / 来自 {{ lastRetrievedPaperCount }} 篇论文</button>
+      <span v-else-if="kbSettings.autoRetrieve && kbPapers.length > 0 && !isStreaming" class="kb-hint kb-hint--idle">知识库就绪（{{ kbPapers.length }} 篇）</span>
     </div>
 
     <!-- Advanced Options -->
@@ -165,8 +177,8 @@
           </div>
           <template v-else-if="resultText && formatResultParagraphs.length">
             <div v-for="p in formatResultParagraphs" :key="'rr-'+p.index">
-              <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.fontSize + 'px', fontFamily: p.fontFamily, fontWeight: '700' }">{{ p.text }}</div>
-              <div v-else class="fp-body" :style="{ fontFamily: p.fontFamily, fontSize: p.fontSize + 'pt', fontWeight: p.bold ? '700' : '400', fontStyle: p.italic ? 'italic' : 'normal', textAlign: p.alignment || 'left' }">{{ p.text }}</div>
+              <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p)">{{ p.text }}</div>
+              <div v-else class="fp-body" :style="bodyStyle(p)">{{ p.text }}</div>
             </div>
           </template>
           <template v-else-if="resultText">
@@ -325,8 +337,8 @@
         </div>
         <template v-else-if="resultText && formatResultParagraphs.length">
           <div v-for="p in formatResultParagraphs" :key="'mr-'+p.index">
-            <div v-if="p.isHeading" class="fp-heading" :style="{ fontSize: p.fontSize + 'px', fontFamily: p.fontFamily, fontWeight: '700' }">{{ p.text }}</div>
-            <div v-else class="fp-body" :style="{ fontFamily: p.fontFamily, fontSize: p.fontSize + 'pt', fontWeight: p.bold ? '700' : '400', fontStyle: p.italic ? 'italic' : 'normal', textAlign: p.alignment || 'left' }">{{ p.text }}</div>
+            <div v-if="p.isHeading" class="fp-heading" :style="headingStyle(p)">{{ p.text }}</div>
+            <div v-else class="fp-body" :style="bodyStyle(p)">{{ p.text }}</div>
           </div>
         </template>
         <template v-else-if="resultText">
@@ -461,15 +473,45 @@
     </div>
 
     <p v-if="error" class="error-toast" @click="error = ''">{{ error }}</p>
+    <p v-if="warnToast" class="warn-toast" @click="warnToast = ''">{{ warnToast }}</p>
+
+    <PaperKbPanel
+      :visible="showKbPanel"
+      :papers="kbPapers"
+      :is-loading="kbLoading"
+      :importing-file="kbImporting"
+      :settings="kbSettings"
+      :error="kbError"
+      @close="showKbPanel = false"
+      @import="handleKbImport"
+      @delete="handleKbDelete"
+      @clear-all="handleKbClearAll"
+      @backup="handleKbBackup"
+      @restore="handleKbRestore"
+      @update:settings="kbSettings = $event"
+    />
+    <KbHitDetails
+      :visible="showKbHitDetails"
+      :chunks="lastRetrievedChunks"
+      :optimized-text="resultText"
+      @close="showKbHitDetails = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, type StyleValue } from 'vue'
+import { usePaperKbPanel } from '@/composables/usePaperKbPanel'
+import PaperKbPanel from '@/components/PaperKbPanel.vue'
+import KbHitDetails from '@/components/KbHitDetails.vue'
 import { useRouter } from 'vue-router'
-import { useQuota } from '@/composables/useQuota'
+import { useQuota, type QuotaInfo } from '@/composables/useQuota'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePaperStore } from '@/composables/usePaperStore'
+import { readJsonResponse } from '@/utils/httpResponse'
+import { authFetch } from '@/utils/authFetch'
+import { isDocxFile, isPdfFile } from '@/utils/documentFile'
+import { preserveOriginalSpacing } from '@/utils/spacingGuard'
 
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
@@ -479,17 +521,23 @@ const paperStore = usePaperStore()
 
 const aiModel = ref('deepseek-v4-flash')
 const rewriteMode = ref('light')
-const quotaInfo = ref<{ unlimited: boolean; dailyQuota: number; quotaUsed: number; quotaRemaining: number }>({ unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
+const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
 const topic = ref('')
 const notes = ref('')
 const showAdvanced = ref(false)
 const showExport = ref(false)
+const isExporting = ref(false)
 const isStreaming = ref(false)
 const isScanning = ref(false)
 const scanDone = ref(false)
 const hasDocument = ref(false)
 const error = ref('')
+const warnToast = ref('')
+let warnTimer: ReturnType<typeof setTimeout> | null = null
+function showWarn(msg: string) { warnToast.value = msg; if (warnTimer) clearTimeout(warnTimer); warnTimer = setTimeout(() => { warnToast.value = '' }, 5000) }
 const storedFile = ref<File | null>(null)
+const canPreserveFormat = computed(() => isDocxFile(storedFile.value))
+const canUsePdfToWordExport = computed(() => isPdfFile(storedFile.value))
 const sourceText = ref('')
 const resultText = ref('')
 const paragraphData = ref<any[]>([])
@@ -497,6 +545,43 @@ const rewrittenParagraphs = ref<Map<number, string>>(new Map())
 const scanScore = ref(0)
 const scanResult = ref<any>({ riskLevel: '低风险', criticalCount: 0, highCount: 0, mediumCount: 0, styleCount: 0, entropy: 0, flaggedSentences: [], aiSignals: [], humanSignals: [] })
 let abortController: AbortController | null = null
+
+type TextAlignValue = 'left' | 'right' | 'center' | 'justify' | 'start' | 'end'
+
+function headingStyle(paragraph: any): StyleValue {
+  return {
+    fontSize: `${paragraph?.fontSize ?? 14}px`,
+    fontFamily: paragraph?.fontFamily,
+    fontWeight: '700',
+  }
+}
+
+function bodyStyle(paragraph: any): StyleValue {
+  return {
+    fontFamily: paragraph?.fontFamily,
+    fontSize: `${paragraph?.fontSize ?? 12}pt`,
+    fontWeight: paragraph?.bold ? '700' : '400',
+    fontStyle: paragraph?.italic ? 'italic' : 'normal',
+    textAlign: normalizeTextAlign(paragraph?.alignment),
+  }
+}
+
+function normalizeTextAlign(value: unknown): TextAlignValue {
+  return value === 'right' || value === 'center' || value === 'justify' || value === 'start' || value === 'end'
+    ? value
+    : 'left'
+}
+
+// === Knowledge Base ===
+const {
+  papers: kbPapers, isLoading: kbLoading, importingFile: kbImporting,
+  showKbPanel, settings: kbSettings, error: kbError,
+  lastRetrievedCount, lastRetrievedPaperCount, lastRetrievedChunks,
+  handleImport: handleKbImport, handleDelete: handleKbDelete,
+  handleClearAll: handleKbClearAll, handleBackup: handleKbBackup,
+  handleRestore: handleKbRestore, retrieveRaw: kbRetrieveRaw,
+} = usePaperKbPanel('ai_reduce')
+const showKbHitDetails = ref(false)
 
 // Insight panel state
 interface HighlightPart { type: string; text: string; id?: string; risk?: string; reason?: string; suggestion?: string }
@@ -642,12 +727,12 @@ function triggerReportUpload() { if (hasDocument.value) reportFileInput.value?.c
 
 async function handleReportUpload(e: Event) {
   const reportFile = (e.target as HTMLInputElement).files?.[0]; if (!reportFile) return
-  const token = localStorage.getItem('token') || ''; const fd = new FormData(); fd.append('file', reportFile)
+  const fd = new FormData(); fd.append('file', reportFile)
   if (sourceText.value) fd.append('sourceText', sourceText.value)
   reportLoading.value = true
   try {
-    const res = await fetch('/api/paper/report-analyze', { method:'POST', headers:{Authorization:`Bearer ${token}`}, body:fd })
-    const data = await res.json(); if (!res.ok) throw new Error(data.error||'解析失败')
+    const res = await authFetch('/api/paper/report-analyze', { method:'POST', body:fd })
+    const data = await readJsonResponse(res, '报告解析失败'); if (!res.ok) throw new Error(data.error||'解析失败')
     reportAnnotations.value = data.annotations || []
     if (reportAnnotations.value.length === 0) {
       const isPdf = reportFile.name.toLowerCase().endsWith('.pdf')
@@ -683,14 +768,15 @@ async function handleFileUpload(e: Event) {
   const target = e.target as HTMLInputElement
   if (!target || !target.files || target.files.length === 0) return
   const uploadedFile = target.files[0]
+  if (uploadedFile.name.toLowerCase().endsWith('.pdf')) showWarn('PDF格式可能导致导出效果不佳，建议上传Word文档(.docx)以保证最佳导出效果')
   storedFile.value = uploadedFile
   target.value = ''
   resetInsight(); showResult.value = false; scanDone.value = false
   segmentedText.value = []; reportUploaded.value = false; reportAnnotations.value = []
-  const token = localStorage.getItem('token') || ''; const fd = new FormData(); fd.append('file', uploadedFile)
+  const fd = new FormData(); fd.append('file', uploadedFile)
   try {
-    const res = await fetch('/api/paper/upload', { method:'POST', headers:{Authorization:`Bearer ${token}`}, body:fd })
-    const data = await res.json(); if (!res.ok) throw new Error(data.error||'上传失败')
+    const res = await authFetch('/api/paper/upload', { method:'POST', body:fd })
+    const data = await readJsonResponse(res, '文件上传失败'); if (!res.ok) throw new Error(data.error||'上传失败')
     if (!data.fullText || data.fullText.trim().length < 10) {
       error.value = '文档解析失败：未提取到有效文本内容。请检查文档是否为扫描版图片，或尝试另存为标准 .docx 格式。'
       return
@@ -707,8 +793,7 @@ async function handleFileUpload(e: Event) {
 async function runScan(text: string) {
   isScanning.value = true
   try {
-    const token = localStorage.getItem('token')||''
-    const res = await fetch('/api/ai-reduce/scan', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({text}) })
+    const res = await authFetch('/api/ai-reduce/scan', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text}) })
     const data = await res.json()
     if (data.result) { scanResult.value = data.result; scanScore.value = data.result.score||0 }
     scanDone.value = true
@@ -719,8 +804,6 @@ async function runScan(text: string) {
 async function rescan() { if (sourceText.value) { scanDone.value = false; activeInsight.value = null; await runScan(sourceText.value) } }
 
 // Build segmented text with highlighted spans
-function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
-
 function buildSegments() {
   const text = sourceText.value
   const flagged = scanResult.value.flaggedSentences || []
@@ -849,11 +932,10 @@ async function sendToAiRewrite() {
   sentenceStreaming.value = true; sentenceRewriteResult.value = ''
   sentenceAbort = new AbortController()
   try {
-    const token = localStorage.getItem('token') || ''
     const prompt = `改写以下学术文本片段，去除AI写作痕迹和模板化表达，使表达更自然更像人类学者写作。保持原意、数据和术语不变。只输出改写后的文本，不要任何解释。\n\n原文："${insight.text}"\n\n改写：`
-    const res = await fetch('/api/polish/run', {
+    const res = await authFetch('/api/polish/run', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: prompt, taskType: '自定义段落', polishType: 'full', topic: '', notes: '这是单句去AI化改写，保持原意和术语不变，让表达更像人类学者自然写作' }),
       signal: sentenceAbort.signal,
     })
@@ -902,9 +984,13 @@ async function startRewrite() {
   const taggedText = paragraphData.value.length>0 ? paragraphData.value.map((p:any)=>`[P${p.index}] ${p.text||''}`).join('\n\n') : `[P0] ${sourceText.value}`
   resultText.value = ''; error.value = ''; isStreaming.value = true; abortController = new AbortController()
   try {
-    const token = localStorage.getItem('token')||''
     const flagged = (scanResult.value.flaggedSentences || []).map((fs: any) => ({ text: fs.text, reason: fs.reason, suggestion: fs.suggestion }))
-    const res = await fetch('/api/ai-reduce/rewrite', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({text:taggedText, mode:rewriteMode.value, model:aiModel.value, flaggedSentences: flagged}), signal:abortController.signal })
+    const contextChunks = await kbRetrieveRaw(taggedText, {
+      focusText: topic.value,
+      notes: notes.value,
+      annotations: flagged.map((fs: any) => `${fs.text} ${fs.reason || ''} ${fs.suggestion || ''}`),
+    })
+    const res = await authFetch('/api/ai-reduce/rewrite', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:taggedText, mode:rewriteMode.value, model:aiModel.value, flaggedSentences: flagged, contextChunks}), signal:abortController.signal })
     if (!res.ok) {
       if (res.status === 429) { const d = await res.json().catch(() => ({ error: '配额已用完' })); throw new Error(d.error || '今日免费次数已用完') }
       throw new Error(`请求失败: ${res.status}`)
@@ -920,7 +1006,7 @@ async function startRewrite() {
         if (line.startsWith('data:')) { const d=line.slice(5).trim(); if (d==='finish'||d==='[DONE]') break; if (d.startsWith('{')||d.startsWith('"')) continue; raw+=d; resultText.value=raw }
       }
     }
-    if (raw && paragraphData.value.length>0) { rewrittenParagraphs.value = parseMarked(raw) }
+    if (raw && paragraphData.value.length>0) { const parsed = parseMarked(raw); rewrittenParagraphs.value = parsed; resultText.value = serializeMarkedParagraphs(parsed) }
     showResult.value = true
     fetchQuota().then(q => { if (q) quotaInfo.value = q })
   } catch(e:unknown) { if (e instanceof DOMException && e.name==='AbortError') return; error.value = '请求失败: '+(e instanceof Error?e.message:String(e)) }
@@ -929,30 +1015,68 @@ async function startRewrite() {
 
 function parseMarked(resp: string): Map<number,string> {
   const r = new Map<number,string>(); const re = /\[P(\d+)\]\s*([\s\S]*?)(?=\[P\d+\]|$)/g; let m
-  while ((m=re.exec(resp))!==null) r.set(parseInt(m[1]), m[2].trim())
-  if (r.size===0&&resp.trim()) { const parts=resp.split(/\n{2,}/).filter(p=>p.trim()); const paras=paragraphData.value; if (paras.length>0&&parts.length>0) { for (let i=0;i<Math.min(paras.length,parts.length);i++) r.set(paras[i].index,parts[i].trim()) } else r.set(0,resp.trim()) }
+  while ((m=re.exec(resp))!==null) { const index = parseInt(m[1]); r.set(index, preserveParagraphSpacing(index, m[2].trim())) }
+  if (r.size===0&&resp.trim()) { const parts=resp.split(/\n{2,}/).filter(p=>p.trim()); const paras=paragraphData.value; if (paras.length>0&&parts.length>0) { for (let i=0;i<Math.min(paras.length,parts.length);i++) r.set(paras[i].index,preserveParagraphSpacing(paras[i].index, parts[i].trim())) } else r.set(0,resp.trim()) }
   return r
 }
 
+function preserveParagraphSpacing(index: number, text: string): string {
+  const original = paragraphData.value.find((p: any) => p.index === index)?.text ?? ''
+  return preserveOriginalSpacing(original, text)
+}
+
+function serializeMarkedParagraphs(paragraphs: Map<number, string>): string {
+  return paragraphData.value.map((p: any) => `[P${p.index}] ${paragraphs.get(p.index) ?? p.text ?? ''}`).join('\n\n')
+}
+
 async function exportDoc(mode: string) {
-  showExport.value=false; const token=localStorage.getItem('token')||''
-  const paras=paragraphData.value.map((p:any)=>({index:p.index,text:rewrittenParagraphs.value.get(p.index)??p.text??''}))
-  if (mode === 'preserve' && storedFile.value) {
+  showExport.value=false
+  if (mode === 'preserve' && !canPreserveFormat.value) {
+    error.value = 'PDF 暂不支持原格式导出，已改用标准 Word 导出。原格式和图片保留目前仅支持 DOCX。'
+    mode = 'standard'
+  }
+  const allParas=paragraphData.value.map((p:any)=>({index:p.index,text:rewrittenParagraphs.value.get(p.index)??p.text??'',originalText:p.text??''}))
+  const changedParas=allParas.filter((p:any)=>(rewrittenParagraphs.value.get(p.index)??'').trim())
+  if (mode === 'pdf-beta' && storedFile.value && canUsePdfToWordExport.value) {
+    isExporting.value = true
+    const fd = new FormData()
+    fd.append('file', storedFile.value)
+    fd.append('mappings', JSON.stringify({ fileName: 'ai-reduced', paragraphs: allParas }))
+    try {
+      const res = await authFetch('/api/paper-export/pdf-to-docx-preserve-format', { method:'POST', body:fd })
+      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai-reduced.docx'; a.click(); URL.revokeObjectURL(url); return }
+      const errData = await res.json().catch(() => null)
+      error.value = (errData?.detail || errData?.error || 'PDF 转 Word 保留导出失败') + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } catch(e: any) {
+      error.value = 'PDF 转 Word 导出失败: ' + (e.message || String(e)) + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } finally {
+      isExporting.value = false
+    }
+  }
+  if (mode === 'preserve' && storedFile.value && canPreserveFormat.value) {
     // 格式保留导出：将原始文件 + 段落映射一起提交，服务器处理后立即丢弃
     const fd = new FormData()
     fd.append('file', storedFile.value)
-    fd.append('mappings', JSON.stringify({ fileName: 'ai-reduced', paragraphs: paras }))
+    fd.append('mappings', JSON.stringify({ fileName: 'ai-reduced', paragraphs: changedParas }))
     try {
-      const res = await fetch('/api/paper-export/preserve-format', { method:'POST', headers:{Authorization:`Bearer ${token}`}, body:fd })
-      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai-reduced.docx'; a.click(); URL.revokeObjectURL(url) }
-    } catch(e) { console.error('Export failed:',e) }
-  } else {
-    // 标准导出或没有原始文件：纯文本生成
-    try {
-      const res = await fetch('/api/paper-export/standard', { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify({ fileName:'ai-reduced', paragraphs:paras }) })
-      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai-reduced.docx'; a.click(); URL.revokeObjectURL(url) }
-    } catch(e) { console.error('Export failed:',e) }
+      const res = await authFetch('/api/paper-export/preserve-format', { method:'POST', body:fd })
+      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai-reduced.docx'; a.click(); URL.revokeObjectURL(url); return }
+      const errData = await res.json().catch(() => null)
+      error.value = (errData?.detail || errData?.error || '格式保留导出失败') + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    } catch(e: any) {
+      error.value = '导出失败: ' + (e.message || String(e)) + '。是否改用标准导出？'
+      if (!confirm(error.value)) { error.value = ''; return }
+    }
   }
+  // 标准导出或格式保留导出失败后用户确认
+  try {
+    const res = await authFetch('/api/paper-export/standard', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fileName:'ai-reduced', paragraphs:allParas }) })
+    if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai-reduced.docx'; a.click(); URL.revokeObjectURL(url); return }
+    error.value = '标准导出也失败了，请重试'
+  } catch(e: any) { error.value = '导出失败: ' + (e.message || String(e)) }
 }
 </script>
 
@@ -988,6 +1112,13 @@ async function exportDoc(mode: string) {
 .btn-upload:hover { background:rgba(217,117,10,0.06); border-color:var(--accent); color:var(--accent-hover); }
 .btn-switch { font-size:11px; padding:5px 12px; color:var(--text-muted); margin-left:8px; }
 .btn-switch:hover { color:var(--accent); border-color:var(--accent); }
+.btn-kb { position:relative; font-weight:600; color:var(--accent); border-color:rgba(217,117,10,0.25); }
+.btn-kb:hover { background:rgba(217,117,10,0.06); border-color:var(--accent); color:var(--accent-hover); }
+.kb-badge { font-size:10px; min-width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; border-radius:100px; padding:0 4px; margin-left:4px; }
+.kb-hint { font-size:11px; color:var(--accent); white-space:nowrap; }
+.kb-hint--button { border:0; background:transparent; padding:0; cursor:pointer; font-family:inherit; }
+.kb-hint--button:hover { text-decoration:underline; }
+.kb-hint--idle { color:var(--text-light); }
 .export-dropdown { position:relative; }
 .export-menu { position:absolute; top:calc(100% + 6px); right:0; background:var(--bg-paper); border:1px solid var(--border-medium); border-radius:12px; box-shadow:var(--shadow-md); min-width:200px; z-index:100; overflow:hidden; }
 .export-item { padding:10px 14px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border-light); transition:background 0.15s; }
@@ -1034,6 +1165,7 @@ async function exportDoc(mode: string) {
 .step-spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border-light); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; }
 @keyframes spin { to{transform:rotate(360deg)} }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.btn-spinner { width:14px; height:14px; border:2px solid var(--border-medium); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; }
 
 /* Workspace: Bento */
 .workspace { flex:1; min-height:0; display:grid; background:var(--bg-canvas); overflow:hidden; }
@@ -1152,6 +1284,7 @@ async function exportDoc(mode: string) {
 
 .spin-icon{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .error-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--color-danger); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; cursor:pointer; z-index:200; }
+.warn-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; cursor:pointer; z-index:200; }
 @media (max-width: 767px) {
   .app-header { padding:10px 14px; flex-wrap:wrap; gap:8px; }
   .app-brand { gap:6px; }

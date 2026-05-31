@@ -25,94 +25,26 @@ import java.util.stream.Collectors;
 @Service
 public class TemplatePreservingExportService {
 
-    /** 表格/页眉页脚段落索引起始偏移，避免与正文 DOCX 位置冲突 */
-    private static final int TABLE_INDEX_OFFSET = 1_000_000;
+    // ======================== 段落定位与导出 ========================
 
-    /** 从原始 DOCX 解析所有可改写段落的格式快照。
-     *  正文段落使用原始 DOCX 位置作为索引（与 writeBack 对齐），
-     *  表格/页眉页脚使用偏移索引避免冲突。 */
+    private final DocxTextLocator locator = new DocxTextLocator();
+    private final DocxPatchApplier patchApplier = new DocxPatchApplier();
+    private static final Pattern FIELD_LABEL_PATTERN = Pattern.compile(
+        "(^|[\\s;；,，|、])([\\p{IsHan}A-Za-z][\\p{IsHan}A-Za-z0-9/（）()\\- ]{0,12})[：:]");
+    private static final String[] PERSONAL_INFO_LABELS = {
+        "出生年月", "籍贯", "民族", "政治面貌", "学历", "手机", "现居地", "工作年限", "邮箱"
+    };
+    private static final String[] RESUME_SECTION_LABELS = {
+        "求职意向", "教育背景", "教育经历", "在校经历", "工作经历", "项目经历", "实习经历",
+        "个人技能", "专业技能", "自我评价", "个人信息", "基本信息", "联系方式"
+    };
+    private static final String OBJECTIVE_LABEL = "求职意向";
+
+    private record OptimizedCandidate(int index, String text, String normalized, int significantLength) {}
+
+    /** 从原始 DOCX 解析所有可改写段落的格式快照。委托给 {@link DocxTextLocator}。 */
     public List<ParagraphProfile> parseParagraphs(byte[] originalDocx) {
-        List<ParagraphProfile> profiles = new ArrayList<>();
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(originalDocx))) {
-            int tableIdx = TABLE_INDEX_OFFSET;
-            int bodyCount = 0, tableCount = 0, imageSkipped = 0;
-
-            // 1. 正文段落 — 使用原始 DOCX 位置 i 作为索引
-            List<XWPFParagraph> bodyParagraphs = doc.getParagraphs();
-            for (int i = 0; i < bodyParagraphs.size(); i++) {
-                XWPFParagraph para = bodyParagraphs.get(i);
-                if (isImageOnly(para)) { imageSkipped++; continue; }
-                ParagraphProfile profile = tryExtract(i, para, 4);
-                if (profile != null) { profiles.add(profile); bodyCount++; }
-            }
-
-            // 2. 表格内段落 — 使用偏移索引
-            for (XWPFTable table : doc.getTables()) {
-                for (XWPFTableRow row : table.getRows()) {
-                    for (XWPFTableCell cell : row.getTableCells()) {
-                        for (XWPFParagraph para : cell.getParagraphs()) {
-                            if (isImageOnly(para)) continue;
-                            ParagraphProfile profile = tryExtract(tableIdx, para, 2);
-                            if (profile != null) { profiles.add(profile); tableIdx++; tableCount++; }
-                        }
-                    }
-                }
-            }
-
-            // 3. 页眉页脚 — 使用偏移索引
-            for (XWPFHeader header : doc.getHeaderList()) {
-                for (XWPFParagraph para : header.getParagraphs()) {
-                    ParagraphProfile profile = tryExtract(tableIdx, para, 4);
-                    if (profile != null) { profiles.add(profile); tableIdx++; }
-                }
-            }
-            for (XWPFFooter footer : doc.getFooterList()) {
-                for (XWPFParagraph para : footer.getParagraphs()) {
-                    ParagraphProfile profile = tryExtract(tableIdx, para, 4);
-                    if (profile != null) { profiles.add(profile); tableIdx++; }
-                }
-            }
-
-            if (profiles.isEmpty()) {
-                log.warn("DOCX 段落解析为空: bodyParsed={}, tableParsed={}, imageSkipped={}, totalTables={}",
-                    bodyCount, tableCount, imageSkipped, doc.getTables().size());
-            } else {
-                log.info("DOCX 解析成功: total={}, body={}, table={}", profiles.size(), bodyCount, tableCount);
-            }
-        } catch (Exception e) {
-            log.error("Failed to parse paragraphs from DOCX", e);
-            throw new RuntimeException("Failed to parse paragraphs from DOCX", e);
-        }
-        return profiles;
-    }
-
-    /** 判断段落是否只有图片（没有文字内容） */
-    private boolean isImageOnly(XWPFParagraph para) {
-        boolean hasImage = false, hasText = false;
-        for (XWPFRun run : para.getRuns()) {
-            if (run.getText(0) != null && !run.getText(0).isBlank()) hasText = true;
-            if (!run.getEmbeddedPictures().isEmpty()) hasImage = true;
-        }
-        return hasImage && !hasText;
-    }
-
-    private ParagraphProfile tryExtract(int index, XWPFParagraph para, int minLength) {
-        String text = para.getText();
-        if (text == null || text.isBlank()) {
-            StringBuilder sb = new StringBuilder();
-            for (XWPFRun run : para.getRuns()) {
-                String rt = run.getText(0);
-                if (rt != null) sb.append(rt);
-            }
-            text = sb.toString();
-        }
-        if (text == null || text.isBlank()) return null;
-        // 清洗：合并多余空白、移除控制字符
-        text = text.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "").trim();
-        // 去除纯数字/符号段落（页码、分隔线等）
-        String stripped = text.replaceAll("[\\s\\p{P}\\p{S}0-9]", "");
-        if (stripped.length() < minLength) return null;
-        return ParagraphProfile.from(index, para);
+        return locator.locate(originalDocx);
     }
 
     /** 回退全文本提取：当段落解析为空时，提取所有文本（包括表格和短文本） */
@@ -160,118 +92,253 @@ public class TemplatePreservingExportService {
         return text != null ? text.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "").trim() : "";
     }
 
-    /** 将改写后的段落写回原 DOCX，保留所有格式。
-     * @param skipTableMatching true=跳过表格内容匹配（简历场景，避免误改） */
+    /**
+     * 将改写后的段落写回原 DOCX，保留所有格式。
+     * 使用 path-based 定位 + before 校验 + 首 run 整合替换文本。
+     *
+     * @param skipTableMatching true=跳过表格段落（简历场景，避免误改表格模板）
+     */
     public byte[] writeBack(byte[] originalDocx, Map<Integer, String> rewrittenParagraphs,
                             boolean skipTableMatching) {
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(originalDocx));
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-
-            int matched = 0;
-            List<XWPFParagraph> paragraphs = doc.getParagraphs();
-            for (int i = 0; i < paragraphs.size(); i++) {
-                if (!rewrittenParagraphs.containsKey(i)) continue;
-                String newText = rewrittenParagraphs.get(i);
-                replaceParagraphText(paragraphs.get(i), newText);
-                matched++;
-            }
-
-            int total = rewrittenParagraphs.size();
-            if (matched == 0) {
-                throw new RuntimeException("段落匹配完全失败，回退到 Markdown 导出");
-            }
-            log.info("格式保留导出: 改写段落 {}/{} 匹配成功", matched, total);
-
-            // 尝试替换表格内文本（简历场景跳过，因为 parseParagraphs 已将表格段落纳入索引匹配）
-            if (!skipTableMatching) {
-                for (XWPFTable table : doc.getTables()) {
-                    for (XWPFTableRow row : table.getRows()) {
-                        for (XWPFTableCell cell : row.getTableCells()) {
-                            for (XWPFParagraph para : cell.getParagraphs()) {
-                                String cellText = para.getText();
-                                if (cellText == null || cellText.isBlank()) continue;
-                                for (Map.Entry<Integer, String> e : rewrittenParagraphs.entrySet()) {
-                                    String rewrote = e.getValue();
-                                    if (rewrote != null && longestCommonSubstring(cellText, rewrote) > 10) {
-                                        replaceParagraphText(para, rewrote);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            doc.write(out);
-            return out.toByteArray();
-        } catch (Exception e) {
-            log.error("格式保留导出写回失败", e);
-            throw new RuntimeException("格式保留导出失败: " + e.getMessage());
+        // Step 1: 定位所有段落，获取 path + 原文 + 文本框文本映射
+        DocxTextLocator.LocatorResult locatorResult = locator.locateWithTextBoxMap(originalDocx);
+        List<ParagraphProfile> profiles = locatorResult.profiles();
+        Map<String, DocxPath> textBoxTextToPath = locatorResult.textBoxTextToPath();
+        Map<Integer, ParagraphProfile> profileByIndex = new LinkedHashMap<>();
+        for (ParagraphProfile p : profiles) {
+            profileByIndex.put(p.index(), p);
         }
+
+        // Step 2: 构建 patch 列表
+        List<DocxPatch> patches = new ArrayList<>();
+        for (Map.Entry<Integer, String> e : rewrittenParagraphs.entrySet()) {
+            int idx = e.getKey();
+            ParagraphProfile profile = profileByIndex.get(idx);
+            if (profile == null) {
+                log.info("writeBack: 段落[{}] 未在profileByIndex中找到", idx);
+                continue;
+            }
+            DocxPath path = profile.path();
+            if (path == null) {
+                log.info("writeBack: 段落[{}] path为null", idx);
+                continue;
+            }
+
+            // 简历场景跳过表格段落
+            if (skipTableMatching && path.pathString().contains(".table[")) continue;
+
+            patches.add(new DocxPatch(path, profile.text(), e.getValue()));
+            log.info("writeBack patch: path={}, before='{}', after='{}'",
+                path.pathString(),
+                profile.text().length() > 20 ? profile.text().substring(0, 20) + "..." : profile.text(),
+                e.getValue().length() > 20 ? e.getValue().substring(0, 20) + "..." : e.getValue());
+        }
+
+        if (patches.isEmpty()) {
+            throw new RuntimeException("没有可匹配的段落，无法保留格式导出。请确认文档未被修改。");
+        }
+
+        // Step 3: 应用 patches（内部做 before 校验 + 文本框DOM直改）
+        return patchApplier.applyPatches(originalDocx, patches, textBoxTextToPath);
+    }
+
+    /**
+     * 片段级写回：只替换段落中匹配的 before 片段，保留段落其余内容和格式。
+     * 用于简历导出场景，highlights.before 是段落中的一个片段，after 是优化后的片段。
+     *
+     * @param snippetMappings key=段落索引, value=[before片段, after文本]
+     */
+    public byte[] writeBackSnippets(byte[] originalDocx, Map<Integer, String[]> snippetMappings,
+                                    boolean skipTableMatching) {
+        DocxTextLocator.LocatorResult locatorResult = locator.locateWithTextBoxMap(originalDocx);
+        List<ParagraphProfile> profiles = locatorResult.profiles();
+        Map<String, DocxPath> textBoxTextToPath = locatorResult.textBoxTextToPath();
+        Map<Integer, ParagraphProfile> profileByIndex = new LinkedHashMap<>();
+        for (ParagraphProfile p : profiles) {
+            profileByIndex.put(p.index(), p);
+        }
+
+        List<DocxPatch> patches = new ArrayList<>();
+        for (Map.Entry<Integer, String[]> e : snippetMappings.entrySet()) {
+            int idx = e.getKey();
+            String[] pair = e.getValue();
+            if (pair == null || pair.length < 2) continue;
+            String beforeSnippet = pair[0];
+            String afterText = pair[1];
+            if (beforeSnippet == null || beforeSnippet.isBlank() || afterText == null || afterText.isBlank()) continue;
+
+            ParagraphProfile profile = profileByIndex.get(idx);
+            if (profile == null) continue;
+            DocxPath path = profile.path();
+            if (path == null) continue;
+            if (skipTableMatching && path.pathString().contains(".table[")) continue;
+
+            patches.add(new DocxPatch(path, beforeSnippet, afterText));
+            log.info("writeBackSnippets patch: path={}, before='{}', after='{}'",
+                path.pathString(),
+                beforeSnippet.length() > 30 ? beforeSnippet.substring(0, 30) + "..." : beforeSnippet,
+                afterText.length() > 30 ? afterText.substring(0, 30) + "..." : afterText);
+        }
+
+        if (patches.isEmpty()) {
+            throw new RuntimeException("没有可匹配的片段，无法保留格式导出。");
+        }
+
+        return patchApplier.applyPatches(originalDocx, patches, textBoxTextToPath);
     }
 
     /** 完整导出流程：接收前端传来的段落映射，直接写回 */
     public byte[] exportWithPreservedFormat(byte[] originalDocx, PaperExportRequest request) {
-        Map<Integer, String> paraMap = new LinkedHashMap<>();
+        List<ParagraphProfile> profiles = parseParagraphs(originalDocx);
+        Map<Integer, ParagraphProfile> profileByIndex = new LinkedHashMap<>();
+        for (ParagraphProfile profile : profiles) {
+            profileByIndex.put(profile.index(), profile);
+        }
+
+        Map<Integer, String> changedParaMap = new LinkedHashMap<>();
         if (request.getParagraphs() != null) {
             for (PaperExportRequest.ParagraphMapping pm : request.getParagraphs()) {
-                paraMap.put(pm.getIndex(), pm.getText());
+                ParagraphProfile original = profileByIndex.get(pm.getIndex());
+                if (original == null) {
+                    log.info("paper export: skip paragraph[{}], original profile not found", pm.getIndex());
+                    continue;
+                }
+
+                String nextText = pm.getText();
+                if (nextText == null || nextText.isBlank()) {
+                    log.info("paper export: skip paragraph[{}], replacement is empty", pm.getIndex());
+                    continue;
+                }
+
+                if (isSameTextForExport(original.text(), nextText)) {
+                    continue;
+                }
+
+                changedParaMap.put(pm.getIndex(), nextText);
             }
         }
-        return writeBack(originalDocx, paraMap, false);
+
+        log.info("paper preserve-format export: changed paragraphs {}/{}",
+            changedParaMap.size(), request.getParagraphs() != null ? request.getParagraphs().size() : 0);
+        if (changedParaMap.isEmpty()) {
+            return originalDocx;
+        }
+
+        return writeBack(originalDocx, changedParaMap, false);
     }
 
-    /** 保留原段落格式替换文本（字体/大小/粗斜体/颜色/下划线/删除线）。
-     *  段落含图片时跳过，保留原内容不变。写入前自动剥离 Markdown 标记。 */
-    void replaceParagraphText(XWPFParagraph para, String newText) {
-        newText = stripMarkdown(newText);
-        List<XWPFRun> runs = para.getRuns();
-        if (runs.isEmpty()) {
-            para.createRun().setText(newText);
-            return;
+    public byte[] exportConvertedPdfDocx(byte[] convertedDocx, PaperExportRequest request) {
+        if (request.getParagraphs() == null || request.getParagraphs().isEmpty()) {
+            return convertedDocx;
         }
 
-        // 包含图片的段落不修改
-        for (XWPFRun r : runs) {
-            if (!r.getEmbeddedPictures().isEmpty()) return;
+        List<ParagraphProfile> profiles = parseParagraphs(convertedDocx);
+        long rewritableCount = profiles.stream().filter(ParagraphProfile::isRewritable).count();
+        if (rewritableCount == 0) {
+            log.warn("pdf-to-word beta export: no rewritable paragraphs in converted DOCX");
+            return convertedDocx;
         }
 
-        XWPFRun templateRun = null;
-        for (XWPFRun r : runs) {
-            String t = r.getText(0);
-            if (t != null && !t.isEmpty()) { templateRun = r; break; }
-        }
-        if (templateRun == null) templateRun = runs.get(0);
+        // 使用原文精确匹配：用 originalText 匹配转换后的 DOCX 段落，匹配成功后用 text 替换
+        Map<Integer, String> mappings = buildMappingsByOriginalTextMatch(profiles, request.getParagraphs());
 
-        String fontFamily = templateRun.getFontFamily();
-        String eastAsia = templateRun.getFontFamily(XWPFRun.FontCharRange.eastAsia);
-        Double fontSize = templateRun.getFontSizeAsDouble();
-        if (fontSize != null && fontSize <= 0) fontSize = null;
-        boolean bold = templateRun.isBold();
-        boolean italic = templateRun.isItalic();
-        String color = templateRun.getColor();
-        UnderlinePatterns underline = templateRun.getUnderline();
-        boolean strikeThrough = templateRun.isStrikeThrough();
-
-        for (int i = runs.size() - 1; i >= 0; i--) {
-            para.removeRun(i);
+        if (mappings.isEmpty()) {
+            log.warn("pdf-to-word beta export: no paragraphs matched by original text, returning converted DOCX");
+            return convertedDocx;
         }
 
-        String[] lines = newText.split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            XWPFRun newRun = para.createRun();
-            newRun.setText(lines[i]);
-            if (fontFamily != null) newRun.setFontFamily(fontFamily);
-            if (eastAsia != null) newRun.setFontFamily(eastAsia, XWPFRun.FontCharRange.eastAsia);
-            if (fontSize != null) newRun.setFontSize(fontSize);
-            newRun.setBold(bold);
-            newRun.setItalic(italic);
-            if (color != null) newRun.setColor(color);
-            if (underline != null && underline != UnderlinePatterns.NONE) newRun.setUnderline(underline);
-            newRun.setStrikeThrough(strikeThrough);
-            if (i < lines.length - 1) newRun.addBreak();
+        log.info("pdf-to-word beta export: patching {}/{} paragraphs by original text match",
+            mappings.size(), rewritableCount);
+        return writeBack(convertedDocx, mappings, false);
+    }
+
+    private String buildOptimizedText(PaperExportRequest request) {
+        if (request.getParagraphs() == null || request.getParagraphs().isEmpty()) {
+            return "";
         }
+
+        return request.getParagraphs().stream()
+            .map(PaperExportRequest.ParagraphMapping::getText)
+            .filter(text -> text != null && !text.isBlank())
+            .collect(Collectors.joining("\n\n"));
+    }
+
+    /**
+     * 原文精确匹配：用前端传来的 originalText 匹配转换后 DOCX 的段落，
+     * 匹配成功后用优化后的 text 替换。
+     * 因为 originalText 来自原始 PDF，与转换后 DOCX 文字几乎一致，
+     * 所以用高阈值（0.85）精确匹配即可，不需要模糊匹配。
+     */
+    private Map<Integer, String> buildMappingsByOriginalTextMatch(
+            List<ParagraphProfile> profiles,
+            List<PaperExportRequest.ParagraphMapping> paragraphs) {
+
+        Map<Integer, String> mappings = new LinkedHashMap<>();
+        Set<Integer> usedProfileIndices = new HashSet<>();
+
+        for (PaperExportRequest.ParagraphMapping pm : paragraphs) {
+            String originalText = pm.getOriginalText();
+            String optimizedText = pm.getText();
+
+            // 跳过没有原文或优化文本为空的段落
+            if (originalText == null || originalText.isBlank()) continue;
+            if (optimizedText == null || optimizedText.isBlank()) continue;
+
+            // 跳过原文和优化文本相同的段落（未修改）
+            if (isSameTextForExport(originalText, optimizedText)) continue;
+
+            String normOrig = DocxTextUtils.normalize(originalText);
+            if (normOrig.isEmpty()) continue;
+
+            // 在转换后的 DOCX 中查找匹配的段落
+            int bestIdx = -1;
+            double bestScore = 0;
+
+            for (ParagraphProfile profile : profiles) {
+                if (usedProfileIndices.contains(profile.index())) continue;
+                if (!profile.isRewritable()) continue;
+
+                String normConverted = DocxTextUtils.normalize(profile.text());
+                if (normConverted.isEmpty()) continue;
+
+                // 双向子串检测
+                if (normOrig.contains(normConverted) || normConverted.contains(normOrig)) {
+                    bestIdx = profile.index();
+                    bestScore = 1.0;
+                    break;
+                }
+
+                // 高阈值 LCS 相似度
+                double sim = DocxTextUtils.similarity(normOrig, normConverted);
+                if (sim > bestScore) {
+                    bestScore = sim;
+                    bestIdx = profile.index();
+                }
+            }
+
+            // 高阈值：原文和转换后文字应高度一致
+            if (bestIdx >= 0 && bestScore >= 0.85) {
+                mappings.put(bestIdx, optimizedText);
+                usedProfileIndices.add(bestIdx);
+                log.info("  原文匹配: 段落[{}] '{}' => 优化 '{}' (score={})",
+                    bestIdx,
+                    originalText.length() > 30 ? originalText.substring(0, 30) + "..." : originalText,
+                    optimizedText.length() > 30 ? optimizedText.substring(0, 30) + "..." : optimizedText,
+                    String.format("%.2f", bestScore));
+            } else {
+                log.info("  原文未匹配: '{}' (bestScore={}, bestIdx={})",
+                    originalText.length() > 40 ? originalText.substring(0, 40) + "..." : originalText,
+                    String.format("%.2f", bestScore), bestIdx);
+            }
+        }
+
+        return mappings;
+    }
+
+    private boolean isSameTextForExport(String originalText, String nextText) {
+        String original = originalText == null ? "" : originalText.trim();
+        String next = nextText == null ? "" : nextText.trim();
+        return original.equals(next) || DocxTextUtils.normalize(original).equals(DocxTextUtils.normalize(next));
     }
 
     /** 标准导出：纯文本生成 DOCX（回退方案，不保留原格式） */
@@ -299,52 +366,14 @@ public class TemplatePreservingExportService {
         }
     }
 
-    private int longestCommonSubstring(String a, String b) {
-        int m = a.length(), n = b.length(), max = 0;
-        int[] dp = new int[n + 1];
-        for (int i = 1; i <= m; i++) {
-            int prev = 0;
-            for (int j = 1; j <= n; j++) {
-                int temp = dp[j];
-                dp[j] = a.charAt(i - 1) == b.charAt(j - 1) ? prev + 1 : 0;
-                prev = temp;
-                max = Math.max(max, dp[j]);
-            }
-        }
-        return max;
-    }
-
     // ======================== 语义匹配 ========================
 
-    /** 规范化文本用于模糊匹配：去空白、去标点、小写 */
     private String normalizeForMatch(String text) {
-        if (text == null) return "";
-        return text.replaceAll("[\\s\\p{P}\\p{S}]+", "").toLowerCase().trim();
+        return DocxTextUtils.normalize(text);
     }
 
-    /** 最长公共子序列（LCS）长度 */
-    private int longestCommonSubsequence(String a, String b) {
-        int m = a.length(), n = b.length();
-        int[] prev = new int[n + 1];
-        int[] curr = new int[n + 1];
-        for (int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
-                curr[j] = a.charAt(i - 1) == b.charAt(j - 1)
-                        ? prev[j - 1] + 1
-                        : Math.max(prev[j], curr[j - 1]);
-            }
-            int[] tmp = prev;
-            prev = curr;
-            curr = tmp;
-        }
-        return prev[n];
-    }
-
-    /** 计算两段规范化文本的相似度 (0.0 ~ 1.0) */
     private double textSimilarity(String a, String b) {
-        int lcs = longestCommonSubsequence(a, b);
-        int maxLen = Math.max(a.length(), b.length());
-        return maxLen > 0 ? (double) lcs / maxLen : 0;
+        return DocxTextUtils.similarity(a, b);
     }
 
     /**
@@ -379,8 +408,8 @@ public class TemplatePreservingExportService {
 
     /**
      * 使用 AI 返回的 highlights 构建段落映射。
-     * 每个 highlight 的 before 文本用于在 DOCX 中做模糊匹配，
-     * 找到对应段落后映射到 after 文本。
+     * before 是原文精确引用（15-50字），先用精确子串匹配定位段落，
+     * 未命中再回退 LCS 模糊匹配。
      */
     public Map<Integer, String> buildMappingsFromHighlights(
             List<ParagraphProfile> profiles,
@@ -390,51 +419,732 @@ public class TemplatePreservingExportService {
 
         Set<Integer> usedIndices = new HashSet<>();
 
-        for (Map<String, Object> h : highlights) {
+        for (int hi = 0; hi < highlights.size(); hi++) {
+            Map<String, Object> h = highlights.get(hi);
             String before = (String) h.get("before");
             String after = (String) h.get("after");
-            if (before == null || before.isBlank() || after == null || after.isBlank()) continue;
+            if (before == null || before.isBlank() || after == null || after.isBlank()) {
+                log.info("highlight[{}] 跳过: before或after为空", hi);
+                continue;
+            }
 
-            int bestIdx = findBestMatch(before, profiles, 0.35, usedIndices);
-            if (bestIdx >= 0) {
-                mappings.put(bestIdx, after);
-                usedIndices.add(bestIdx);
+            String normBefore = normalizeForMatch(before);
+
+            // Pass 1: exact substring match (normalized). Prefer the shortest
+            // containing paragraph so outer text-box containers do not win over
+            // the real leaf paragraph.
+            int matchedIdx = -1;
+            int shortestContainingLength = Integer.MAX_VALUE;
+            for (ParagraphProfile p : profiles) {
+                if (usedIndices.contains(p.index())) continue;
+                String normText = normalizeForMatch(p.text());
+                if (normText.contains(normBefore) && normText.length() < shortestContainingLength) {
+                    matchedIdx = p.index();
+                    shortestContainingLength = normText.length();
+                }
+            }
+            if (matchedIdx >= 0) {
+                ParagraphProfile matched = null;
+                for (ParagraphProfile p : profiles) {
+                    if (p.index() == matchedIdx) {
+                        matched = p;
+                        break;
+                    }
+                }
+                log.info("  highlight[{}] 精确匹配到段落[{}]: '{}'", hi, matchedIdx,
+                    matched != null && matched.text().length() > 30
+                        ? matched.text().substring(0, 30) + "..."
+                        : matched != null ? matched.text() : "");
+            }
+
+            // Pass 2: LCS fuzzy match
+            if (matchedIdx < 0) {
+                double threshold = normBefore.length() < 10 ? 0.5 : 0.35;
+                matchedIdx = findBestMatch(before, profiles, threshold, usedIndices);
+                if (matchedIdx >= 0) {
+                    log.info("  highlight[{}] 模糊匹配到段落[{}]", hi, matchedIdx);
+                }
+            }
+
+            if (matchedIdx >= 0) {
+                mappings.put(matchedIdx, after);
+                usedIndices.add(matchedIdx);
+            } else {
+                log.info("highlight[{}] 未匹配: before='{}', profiles总数={}", hi,
+                    before.length() > 40 ? before.substring(0, 40) + "..." : before, profiles.size());
             }
         }
 
-        log.info("highlights语义匹配: {}/{} 条匹配成功", mappings.size(), highlights.size());
+        log.info("highlights匹配: {}/{} 条成功", mappings.size(), highlights.size());
         return mappings;
     }
 
     /**
-     * 剥离 Markdown 格式标记，返回纯文本。
-     * 处理：**加粗** *斜体* ##标题 -列表 `代码` [链接](url) ~~删除线~~
+     * 片段级 highlights 匹配：返回每个段落的 [before片段, after片段]，用于 writeBackSnippets。
+     * 与 buildMappingsFromHighlights 不同，这里保留 before 片段，只替换段落中的对应部分。
      */
+    public Map<Integer, String[]> buildSnippetMappingsFromHighlights(
+        List<ParagraphProfile> profiles,
+        List<Map<String, Object>> highlights) {
+        Map<Integer, String[]> mappings = new LinkedHashMap<>();
+        if (highlights == null || highlights.isEmpty()) return mappings;
+
+        Set<Integer> usedIndices = new HashSet<>();
+
+        for (int hi = 0; hi < highlights.size(); hi++) {
+            Map<String, Object> h = highlights.get(hi);
+            String before = (String) h.get("before");
+            String after = (String) h.get("after");
+            if (before == null || before.isBlank() || after == null || after.isBlank()) continue;
+
+            String normBefore = normalizeForMatch(before);
+
+            // Pass 1: exact substring match
+            int matchedIdx = -1;
+            int shortestContainingLength = Integer.MAX_VALUE;
+            for (ParagraphProfile p : profiles) {
+                if (usedIndices.contains(p.index())) continue;
+                String normText = normalizeForMatch(p.text());
+                if (normText.contains(normBefore) && normText.length() < shortestContainingLength) {
+                    matchedIdx = p.index();
+                    shortestContainingLength = normText.length();
+                }
+            }
+
+            // Pass 2: LCS fuzzy match
+            if (matchedIdx < 0) {
+                double threshold = normBefore.length() < 10 ? 0.5 : 0.35;
+                matchedIdx = findBestMatch(before, profiles, threshold, usedIndices);
+            }
+
+            if (matchedIdx >= 0) {
+                if (isUnsafeResumeSnippetReplacement(before, after)) {
+                    log.info("highlight[{}] 跳过: replacement may merge resume textbox layout", hi);
+                    continue;
+                }
+                mappings.put(matchedIdx, new String[]{before, after});
+                usedIndices.add(matchedIdx);
+            }
+        }
+
+        log.info("snippetHighlights匹配: {}/{} 条成功", mappings.size(), highlights.size());
+        return mappings;
+    }
+
+    /**
+     * Build a focused snippet mapping for the objective line.
+     *
+     * <p>Resume templates often place the name, objective, and personal/contact
+     * fields in one textbox. Replacing that whole textbox destroys spacing, so
+     * only patch the "求职意向：..." phrase and leave the surrounding layout intact.</p>
+     */
+    public Map<Integer, String[]> buildObjectiveSnippetMappings(
+            List<ParagraphProfile> profiles,
+            String optimizedText) {
+        Map<Integer, String[]> mappings = new LinkedHashMap<>();
+        if (profiles == null || profiles.isEmpty() || optimizedText == null || optimizedText.isBlank()) {
+            return mappings;
+        }
+
+        String optimizedObjective = extractObjectiveSnippet(optimizedText);
+        if (!isSafeObjectiveSnippet(optimizedObjective)) {
+            return mappings;
+        }
+
+        for (ParagraphProfile profile : profiles) {
+            if (profile == null || !profile.isRewritable()) continue;
+            String originalObjective = extractObjectiveSnippet(profile.text());
+            if (!isSafeObjectiveSnippet(originalObjective)) continue;
+            if (isSameTextForExport(originalObjective, optimizedObjective)) continue;
+
+            mappings.put(profile.index(), new String[]{originalObjective, optimizedObjective});
+            log.info("objective snippet match: paragraph[{}] '{}' => '{}'",
+                profile.index(),
+                truncateForLog(originalObjective, 30),
+                truncateForLog(optimizedObjective, 30));
+            break;
+        }
+
+        return mappings;
+    }
+
+    /**
+     * 内容匹配：将原始 DOCX 段落逐段与 optimizedText 做相似度匹配。
+     * 方向为「原文→优化文本」，包含表格段落。
+     * 使用高阈值（0.65）+ 语言一致性 + 长度比校验，防止误匹配导致内容错乱。
+     *
+     * @return index → 优化文本 的映射，可直接传给 {@link #writeBack}
+     */
+    public Map<Integer, String> buildMappingsByContentMatch(
+            List<ParagraphProfile> profiles, String optimizedText) {
+        Map<Integer, String> mappings = new LinkedHashMap<>();
+        if (optimizedText == null || optimizedText.isBlank()) return mappings;
+
+        // 将 optimizedText 拆段并预处理
+        String plain = DocxTextUtils.stripMarkdown(optimizedText);
+        String[] optParas = plain.split("\\n\\n+");
+        String[] normalizedOpt = new String[optParas.length];
+        int[] optLang = new int[optParas.length]; // 0=mixed, 1=mostly CJK, 2=mostly Latin
+        for (int i = 0; i < optParas.length; i++) {
+            normalizedOpt[i] = DocxTextUtils.normalize(optParas[i]);
+            optLang[i] = detectLanguage(optParas[i]);
+        }
+        boolean[] used = new boolean[optParas.length];
+
+        for (ParagraphProfile profile : profiles) {
+            if (!profile.isRewritable()) continue;
+
+            String normOrig = DocxTextUtils.normalize(profile.text());
+            if (normOrig.isEmpty()) continue;
+
+            int origLang = detectLanguage(profile.text());
+
+            int bestIdx = -1;
+            double bestScore = 0;
+
+            for (int j = 0; j < optParas.length; j++) {
+                if (used[j] || normalizedOpt[j].isEmpty()) continue;
+
+                // 语言一致性检查：CJK 段落不应被 Latin 段落替换，反之亦然
+                if (origLang != 0 && optLang[j] != 0 && origLang != optLang[j]) continue;
+
+                // 双向子串检测（要求子串至少占较长文本的 30% 长度，防止短串误匹配）
+                int minLen = Math.min(normOrig.length(), normalizedOpt[j].length());
+                int maxLen = Math.max(normOrig.length(), normalizedOpt[j].length());
+                boolean lengthRatioOk = maxLen == 0 || (double) minLen / maxLen >= 0.30;
+
+                if (lengthRatioOk) {
+                    boolean origContainsOpt = normOrig.contains(normalizedOpt[j]);
+                    boolean optContainsOrig = normalizedOpt[j].contains(normOrig);
+                    if (origContainsOpt || optContainsOrig) {
+                        bestIdx = j;
+                        bestScore = 1.0;
+                        break;
+                    }
+                }
+
+                // LCS 相似度
+                double sim = DocxTextUtils.similarity(normOrig, normalizedOpt[j]);
+                if (sim > bestScore) {
+                    bestScore = sim;
+                    bestIdx = j;
+                }
+            }
+
+            // 高阈值匹配：0.65 防止跨语言/跨段落误匹配
+            if (bestIdx >= 0 && bestScore >= 0.65) {
+                String matchedText = optParas[bestIdx].trim();
+                mappings.put(profile.index(), matchedText);
+                used[bestIdx] = true;
+                log.info("  匹配: 段落[{}] '{}' <=> 优化[{}] '{}' (score={})",
+                    profile.index(),
+                    profile.text().length() > 30 ? profile.text().substring(0, 30) + "..." : profile.text(),
+                    bestIdx,
+                    matchedText.length() > 30 ? matchedText.substring(0, 30) + "..." : matchedText,
+                    String.format("%.2f", bestScore));
+            }
+        }
+
+        log.info("内容匹配: {}/{} 段匹配成功 (optimizedText {} 段)",
+            mappings.size(), profiles.size(), optParas.length);
+        return mappings;
+    }
+
+    /**
+     * Safe supplement for resume template export.
+     *
+     * <p>Highlights are still the primary source of truth. This method only fills
+     * unmapped paragraphs from single-line optimized text candidates, and rejects
+     * long merged sections so a template textbox is not replaced by an entire
+     * resume section.</p>
+     */
+    public Map<Integer, String> buildSafeResumeSupplementMappings(
+            List<ParagraphProfile> profiles,
+            String optimizedText,
+            Map<Integer, String> existingMappings) {
+
+        Map<Integer, String> mappings = new LinkedHashMap<>();
+        if (profiles == null || profiles.isEmpty() || optimizedText == null || optimizedText.isBlank()) {
+            return mappings;
+        }
+
+        List<OptimizedCandidate> candidates = splitOptimizedCandidates(optimizedText);
+        if (candidates.isEmpty()) return mappings;
+
+        Set<Integer> usedCandidateIndices = new HashSet<>();
+        if (existingMappings != null && !existingMappings.isEmpty()) {
+            markExistingCandidates(candidates, existingMappings, usedCandidateIndices);
+        }
+
+        Set<Integer> existingProfileIndices = existingMappings == null ? Set.of() : existingMappings.keySet();
+
+        for (ParagraphProfile profile : profiles) {
+            if (profile == null || !profile.isRewritable()) continue;
+
+            String original = stripMarkdown(profile.text());
+            String normalizedOriginal = normalizeForMatch(original);
+            if (normalizedOriginal.isBlank()) continue;
+            boolean alreadyMapped = existingProfileIndices.contains(profile.index());
+            String currentMappedText = alreadyMapped ? existingMappings.get(profile.index()) : null;
+
+            OptimizedCandidate best = null;
+            double bestScore = 0;
+            for (OptimizedCandidate candidate : candidates) {
+                if (!alreadyMapped && usedCandidateIndices.contains(candidate.index())) continue;
+                if (alreadyMapped && !canImproveExistingResumeMapping(original, currentMappedText, candidate)) continue;
+                if (!isSafeResumeReplacement(original, normalizedOriginal, candidate)) continue;
+
+                double score = resumeReplacementScore(original, normalizedOriginal, candidate);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = candidate;
+                }
+            }
+
+            if (best != null && bestScore >= safeResumeThreshold(normalizedOriginal.length())) {
+                if (!isSameTextForExport(original, best.text())
+                    && (!alreadyMapped || shouldReplaceExistingResumeMapping(currentMappedText, best.text()))) {
+                    mappings.put(profile.index(), best.text());
+                    usedCandidateIndices.add(best.index());
+                    log.info("resume supplement match: paragraph[{}] '{}' => '{}' (score={})",
+                        profile.index(),
+                        truncateForLog(original, 30),
+                        truncateForLog(best.text(), 30),
+                        String.format("%.2f", bestScore));
+                }
+            }
+        }
+
+        log.info("resume supplement mappings: {} added from {} candidates", mappings.size(), candidates.size());
+        return mappings;
+    }
+
+    private List<OptimizedCandidate> splitOptimizedCandidates(String optimizedText) {
+        String plain = stripMarkdown(optimizedText)
+            .replace("\r\n", "\n")
+            .replace('\r', '\n');
+        String[] lines = plain.split("\\n+");
+        List<OptimizedCandidate> candidates = new ArrayList<>();
+        for (String line : lines) {
+            String cleaned = cleanOptimizedCandidate(line);
+            if (cleaned.isBlank()) continue;
+            String normalized = normalizeForMatch(cleaned);
+            if (normalized.isBlank()) continue;
+            if (looksLikeMergedResumeSection(cleaned)) continue;
+            candidates.add(new OptimizedCandidate(
+                candidates.size(),
+                cleaned,
+                normalized,
+                countSignificantForResume(cleaned)));
+        }
+        return candidates;
+    }
+
+    private String cleanOptimizedCandidate(String line) {
+        if (line == null) return "";
+        return line
+            .replaceAll("^\\s*\\[P\\d+]\\s*", "")
+            .replaceAll("^\\s*#{1,6}\\s*", "")
+            .replaceAll("^\\s*[-*+]\\s*", "")
+            .replaceAll("^\\s*\\d+[.)、]\\s*", "")
+            .replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "")
+            .trim();
+    }
+
+    private String extractObjectiveSnippet(String text) {
+        if (text == null || text.isBlank()) return "";
+        String plain = stripMarkdown(text)
+            .replace("\r\n", "\n")
+            .replace('\r', '\n');
+        for (String line : plain.split("\\n+")) {
+            String cleaned = cleanOptimizedCandidate(line);
+            int objectiveIndex = cleaned.indexOf(OBJECTIVE_LABEL);
+            if (objectiveIndex < 0) continue;
+            String snippet = cleaned.substring(objectiveIndex).trim();
+            snippet = trimAtFollowingResumeLabel(snippet).trim();
+            return snippet;
+        }
+        return "";
+    }
+
+    private String trimAtFollowingResumeLabel(String snippet) {
+        if (snippet == null || snippet.isBlank()) return "";
+        int earliest = snippet.length();
+        for (String label : PERSONAL_INFO_LABELS) {
+            earliest = earliestFollowingLabelIndex(snippet, label, earliest);
+        }
+        for (String label : RESUME_SECTION_LABELS) {
+            if (OBJECTIVE_LABEL.equals(label)) continue;
+            earliest = earliestFollowingLabelIndex(snippet, label, earliest);
+        }
+        return snippet.substring(0, earliest);
+    }
+
+    private int earliestFollowingLabelIndex(String text, String label, int currentEarliest) {
+        if (text == null || label == null || label.isBlank()) return currentEarliest;
+        int idx = text.indexOf(label);
+        return idx > 0 ? Math.min(currentEarliest, idx) : currentEarliest;
+    }
+
+    private boolean isSafeObjectiveSnippet(String snippet) {
+        if (snippet == null || snippet.isBlank()) return false;
+        String normalized = normalizeForMatch(snippet);
+        if (normalized.isBlank() || !normalized.startsWith(normalizeForMatch(OBJECTIVE_LABEL))) {
+            return false;
+        }
+        if (countKnownLabels(normalized, PERSONAL_INFO_LABELS) > 0) {
+            return false;
+        }
+        if (countKnownLabels(normalized, RESUME_SECTION_LABELS) > 1) {
+            return false;
+        }
+        int labelSeparator = firstIndexOfAny(snippet, '：', ':');
+        return labelSeparator > 0
+            && labelSeparator < snippet.length() - 1
+            && countSignificantForResume(snippet.substring(labelSeparator + 1)) >= 2
+            && snippet.length() <= 80;
+    }
+
+    private boolean looksLikeMergedResumeSection(String text) {
+        if (text == null) return false;
+        int sectionSignals = 0;
+        String normalized = text.replaceAll("[\\s\\p{P}\\p{S}]+", "").toLowerCase();
+        String[] markers = {
+            "教育背景", "教育经历", "在校经历", "工作经历", "项目经历", "实习经历",
+            "个人技能", "专业技能", "自我评价", "求职意向",
+            "education", "experience", "skills", "projects", "summary", "objective"
+        };
+        for (String marker : markers) {
+            if (normalized.contains(marker.toLowerCase())) sectionSignals++;
+            if (sectionSignals >= 2) return true;
+        }
+        return text.length() > 120 && sectionSignals >= 1;
+    }
+
+    private void markExistingCandidates(
+            List<OptimizedCandidate> candidates,
+            Map<Integer, String> existingMappings,
+            Set<Integer> usedCandidateIndices) {
+        for (String mappedText : existingMappings.values()) {
+            String normalizedMapped = normalizeForMatch(mappedText);
+            if (normalizedMapped.isBlank()) continue;
+            int bestIdx = -1;
+            double bestScore = 0;
+            for (OptimizedCandidate candidate : candidates) {
+                if (usedCandidateIndices.contains(candidate.index())) continue;
+                double score = normalizedMapped.equals(candidate.normalized())
+                    ? 1.0
+                    : DocxTextUtils.similarity(normalizedMapped, candidate.normalized());
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestIdx = candidate.index();
+                }
+            }
+            if (bestIdx >= 0 && bestScore >= 0.80) {
+                usedCandidateIndices.add(bestIdx);
+            }
+        }
+    }
+
+    private boolean isSafeResumeReplacement(
+            String original,
+            String normalizedOriginal,
+            OptimizedCandidate candidate) {
+        int originalLength = Math.max(1, countSignificantForResume(original));
+        int candidateLength = Math.max(1, candidate.significantLength());
+        double ratio = (double) Math.min(originalLength, candidateLength) / Math.max(originalLength, candidateLength);
+
+        if (isUnsafeResumeSnippetReplacement(original, candidate.text())) {
+            return false;
+        }
+
+        if (hasSameFieldLabel(original, candidate.text())) {
+            if (addsExtraFieldLabels(original, candidate.text())) {
+                return false;
+            }
+            return candidateLength <= Math.max(80, originalLength * 3);
+        }
+
+        if (looksLikeDateRangeLine(original) || looksLikeDateRangeLine(candidate.text())) {
+            return false;
+        }
+
+        if (normalizedOriginal.length() <= 8) {
+            return ratio >= 0.55 && candidateLength <= originalLength * 2;
+        }
+
+        return ratio >= 0.35
+            && candidateLength <= Math.max(40, originalLength * 3)
+            && hasMeaningfulOverlap(normalizedOriginal, candidate.normalized());
+    }
+
+    private boolean looksLikeDateRangeLine(String text) {
+        if (text == null) return false;
+        String trimmed = text.trim().toLowerCase();
+        if (trimmed.isBlank()) return false;
+        return trimmed.matches("^(20xx|19xx|\\d{4}|xx|xxxx)[.\\-/\\s\\u2013\\u2014]*(.*)$");
+    }
+
+    private boolean canImproveExistingResumeMapping(
+            String original,
+            String currentMappedText,
+            OptimizedCandidate candidate) {
+        if (currentMappedText == null || currentMappedText.isBlank()) return true;
+        if (!hasSameFieldLabel(original, candidate.text())) return false;
+        String currentLabel = fieldLabel(currentMappedText);
+        String candidateLabel = fieldLabel(candidate.text());
+        return currentLabel.isBlank() || currentLabel.equals(candidateLabel);
+    }
+
+    private boolean shouldReplaceExistingResumeMapping(String currentMappedText, String candidateText) {
+        if (currentMappedText == null || currentMappedText.isBlank()) return true;
+        String normalizedCurrent = normalizeForMatch(currentMappedText);
+        String normalizedCandidate = normalizeForMatch(candidateText);
+        if (normalizedCurrent.equals(normalizedCandidate)) return false;
+        if (normalizedCandidate.contains(normalizedCurrent) && normalizedCandidate.length() > normalizedCurrent.length()) {
+            return true;
+        }
+        if (hasSameFieldLabel(currentMappedText, candidateText)
+            && normalizedCandidate.length() > normalizedCurrent.length() * 1.15) {
+            return true;
+        }
+        return false;
+    }
+
+    private double resumeReplacementScore(
+            String original,
+            String normalizedOriginal,
+            OptimizedCandidate candidate) {
+        if (hasSameFieldLabel(original, candidate.text())) {
+            return 0.95;
+        }
+        if (normalizedOriginal.contains(candidate.normalized()) || candidate.normalized().contains(normalizedOriginal)) {
+            return 0.90;
+        }
+        double similarity = DocxTextUtils.similarity(normalizedOriginal, candidate.normalized());
+        return hasMeaningfulOverlap(normalizedOriginal, candidate.normalized())
+            ? Math.max(similarity, 0.50)
+            : similarity;
+    }
+
+    private double safeResumeThreshold(int normalizedOriginalLength) {
+        if (normalizedOriginalLength <= 8) return 0.70;
+        if (normalizedOriginalLength <= 20) return 0.55;
+        return 0.32;
+    }
+
+    private boolean hasSameFieldLabel(String original, String candidate) {
+        String originalLabel = fieldLabel(original);
+        if (originalLabel.isBlank()) return false;
+        return originalLabel.equals(fieldLabel(candidate));
+    }
+
+    private boolean addsExtraFieldLabels(String original, String candidate) {
+        int originalLabels = countFieldLabels(original);
+        int candidateLabels = countFieldLabels(candidate);
+        return originalLabels > 0 && candidateLabels > originalLabels;
+    }
+
+    private boolean isUnsafeResumeSnippetReplacement(String original, String candidate) {
+        if (original == null || candidate == null) return false;
+        String normalizedOriginal = normalizeForMatch(original);
+        String normalizedCandidate = normalizeForMatch(candidate);
+        if (normalizedOriginal.isBlank() || normalizedCandidate.isBlank()) return false;
+
+        int originalPersonalLabels = countKnownLabels(normalizedOriginal, PERSONAL_INFO_LABELS);
+        int candidatePersonalLabels = countKnownLabels(normalizedCandidate, PERSONAL_INFO_LABELS);
+        if (originalPersonalLabels >= 2 && candidatePersonalLabels >= 2) {
+            return true;
+        }
+        if (originalPersonalLabels > 0 && candidatePersonalLabels > originalPersonalLabels) {
+            return true;
+        }
+
+        int originalSectionLabels = countKnownLabels(normalizedOriginal, RESUME_SECTION_LABELS);
+        int candidateSectionLabels = countKnownLabels(normalizedCandidate, RESUME_SECTION_LABELS);
+        if (candidateSectionLabels > originalSectionLabels) {
+            return true;
+        }
+
+        int originalFieldLabels = countFieldLabels(original);
+        int candidateFieldLabels = countFieldLabels(candidate);
+        return originalFieldLabels > 0 && candidateFieldLabels > originalFieldLabels;
+    }
+
+    private int countKnownLabels(String normalizedText, String[] labels) {
+        int count = 0;
+        for (String label : labels) {
+            String normalizedLabel = normalizeForMatch(label);
+            if (!normalizedLabel.isBlank() && normalizedText.contains(normalizedLabel)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countFieldLabels(String text) {
+        if (text == null || text.isBlank()) return 0;
+        int count = 0;
+        Matcher matcher = FIELD_LABEL_PATTERN.matcher(text);
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
+    }
+
+    private String fieldLabel(String text) {
+        if (text == null) return "";
+        int idx = firstIndexOfAny(text, '：', ':');
+        if (idx <= 0 || idx > 12) return "";
+        return normalizeForMatch(text.substring(0, idx));
+    }
+
+    private int firstIndexOfAny(String text, char first, char second) {
+        int a = text.indexOf(first);
+        int b = text.indexOf(second);
+        if (a < 0) return b;
+        if (b < 0) return a;
+        return Math.min(a, b);
+    }
+
+    private boolean hasMeaningfulOverlap(String normalizedOriginal, String normalizedCandidate) {
+        if (normalizedOriginal.length() < 4 || normalizedCandidate.length() < 4) return false;
+        int[] windows = {8, 6, 4};
+        for (int window : windows) {
+            if (normalizedOriginal.length() < window) continue;
+            for (int start = 0; start + window <= normalizedOriginal.length(); start++) {
+                if (normalizedCandidate.contains(normalizedOriginal.substring(start, start + window))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private int countSignificantForResume(String text) {
+        if (text == null) return 0;
+        return normalizeForMatch(text).length();
+    }
+
+    private String truncateForLog(String text, int max) {
+        if (text == null) return "";
+        return text.length() > max ? text.substring(0, max) + "..." : text;
+    }
+
+    /**
+     * 检测文本的主要语言。
+     * @return 0=mixed/unknown, 1=mostly CJK, 2=mostly Latin
+     */
+    private static int detectLanguage(String text) {
+        if (text == null || text.isBlank()) return 0;
+        int cjk = 0, latin = 0;
+        for (char c : text.toCharArray()) {
+            if (Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN
+                || (c >= '一' && c <= '鿿')) {
+                cjk++;
+            } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+                latin++;
+            }
+        }
+        int total = cjk + latin;
+        if (total == 0) return 0;
+        double cjkRatio = (double) cjk / total;
+        if (cjkRatio > 0.60) return 1;  // mostly CJK
+        if (cjkRatio < 0.30) return 2;  // mostly Latin
+        return 0; // mixed
+    }
+
+    /**
+     * 段落匹配失败时的兜底：按章节标题匹配。
+     * 在原文和优化文本中找相同的章节标题（如"工作经历"、"教育背景"），
+     * 将优化文本中该章节的内容整体写入原文对应章节的第一个段落。
+     */
+    public Map<Integer, String> buildMappingsBySectionMatch(
+            List<ParagraphProfile> profiles, String optimizedText) {
+        Map<Integer, String> mappings = new LinkedHashMap<>();
+        if (optimizedText == null || optimizedText.isBlank()) return mappings;
+
+        String plain = stripMarkdown(optimizedText);
+        String[] optLines = plain.split("\\n");
+
+        // 常见简历章节标题关键词
+        String[] sectionKeywords = {
+            "教育背景", "教育经历", "学历", "教育",
+            "工作经历", "工作经验", "项目经历", "项目经验", "实习经历",
+            "技能", "专业技能", "技能特长", "技术栈",
+            "自我评价", "自我介绍", "个人简介", "个人总结",
+            "求职意向", "求职目标", "职业目标",
+            "获奖", "荣誉", "证书", "资格",
+            "基本信息", "个人信息", "联系方式",
+            "EDUCATION", "EXPERIENCE", "SKILLS", "PROJECTS",
+            "SUMMARY", "OBJECTIVE", "CERTIFICATIONS"
+        };
+
+        // 找到原文中的章节标题段落
+        List<int[]> origSections = new ArrayList<>(); // [profileIndex, sectionStart]
+        for (int i = 0; i < profiles.size(); i++) {
+            String text = profiles.get(i).text();
+            if (text == null) continue;
+            String norm = text.replaceAll("[\\s\\p{P}\\p{S}]+", "").toLowerCase();
+            for (String kw : sectionKeywords) {
+                if (norm.contains(kw.toLowerCase().replaceAll("[\\s\\p{P}]", ""))) {
+                    origSections.add(new int[]{i, profiles.get(i).index()});
+                    break;
+                }
+            }
+        }
+
+        // 找到优化文本中的章节标题行
+        List<int[]> optSections = new ArrayList<>(); // [lineIndex, keywordIndex]
+        for (int i = 0; i < optLines.length; i++) {
+            String lineNorm = optLines[i].replaceAll("[\\s\\p{P}\\p{S}]+", "").toLowerCase();
+            for (int ki = 0; ki < sectionKeywords.length; ki++) {
+                if (lineNorm.contains(sectionKeywords[ki].toLowerCase().replaceAll("[\\s\\p{P}]", ""))) {
+                    optSections.add(new int[]{i, ki});
+                    break;
+                }
+            }
+        }
+
+        // 按章节标题匹配
+        Set<Integer> usedKeywords = new HashSet<>();
+        for (int[] orig : origSections) {
+            String origText = profiles.get(orig[0]).text();
+            String origNorm = origText.replaceAll("[\\s\\p{P}\\p{S}]+", "").toLowerCase();
+
+            for (int[] opt : optSections) {
+                if (usedKeywords.contains(opt[1])) continue;
+                String kw = sectionKeywords[opt[1]].toLowerCase().replaceAll("[\\s\\p{P}]", "");
+                if (origNorm.contains(kw)) {
+                    // 找到匹配的章节，提取优化文本中该章节的内容
+                    int startLine = opt[0];
+                    int endLine = optLines.length;
+                    for (int[] next : optSections) {
+                        if (next[0] > startLine) { endLine = next[0]; break; }
+                    }
+                    StringBuilder sectionContent = new StringBuilder();
+                    for (int li = startLine; li < endLine; li++) {
+                        if (!optLines[li].isBlank()) {
+                            if (sectionContent.length() > 0) sectionContent.append("\n");
+                            sectionContent.append(optLines[li].trim());
+                        }
+                    }
+                    if (sectionContent.length() > 10) {
+                        mappings.put(orig[1], sectionContent.toString());
+                        usedKeywords.add(opt[1]);
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!mappings.isEmpty()) {
+            log.info("章节匹配: {} 个章节匹配成功", mappings.size());
+        }
+        return mappings;
+    }
+
     static String stripMarkdown(String text) {
-        if (text == null || text.isEmpty()) return text;
-
-        String result = text;
-        // 粗体 **text** 或 __text__
-        result = result.replaceAll("\\*\\*(.+?)\\*\\*", "$1");
-        result = result.replaceAll("__(.+?)__", "$1");
-        // 斜体 *text* 或 _text_（注意避免破坏粗体已处理的）
-        result = result.replaceAll("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", "$1");
-        result = result.replaceAll("(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", "$1");
-        // 删除线 ~~text~~
-        result = result.replaceAll("~~(.+?)~~", "$1");
-        // 行内代码 `text`
-        result = result.replaceAll("`(.+?)`", "$1");
-        // 链接 [text](url)
-        result = result.replaceAll("\\[(.+?)\\]\\([^)]*\\)", "$1");
-        // 标题标记（行首）
-        result = result.replaceAll("(?m)^#{1,6}\\s+", "");
-        // 无序列表标记（行首）
-        result = result.replaceAll("(?m)^[-*+]\\s+", "");
-        // 引用标记（行首）
-        result = result.replaceAll("(?m)^>\\s+", "");
-        // 有序列表（行首）
-        result = result.replaceAll("(?m)^\\d+\\.\\s+", "");
-
-        return result.trim();
+        return DocxTextUtils.stripMarkdown(text);
     }
 }

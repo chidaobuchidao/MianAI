@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
 
 interface Props {
@@ -35,8 +35,8 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const containerRef = ref<HTMLElement>()
-let renderer: THREE.WebGLRenderer | null = null
-let material: THREE.ShaderMaterial | null = null
+let renderer: any | null = null
+let material: any | null = null
 let rafId = 0
 
 const vert = `
@@ -174,7 +174,7 @@ void main() {
 }
 `
 
-function srgb(hex: string): THREE.Color {
+function srgb(hex: string): any {
   const c = new THREE.Color(hex)
   return c.convertSRGBToLinear()
 }

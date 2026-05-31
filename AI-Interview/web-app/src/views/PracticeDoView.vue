@@ -26,11 +26,11 @@
             class="option"
             v-for="(opt, i) in parseOptions(question.options)"
             :key="i"
-            :class="{ 'option--selected': selected === i }"
+            :class="{ 'option--selected': selected === Number(i) }"
             :disabled="answered"
-            @click="selected = i"
+            @click="selected = Number(i)"
           >
-            <span class="option__letter">{{ letters[i] }}</span>
+            <span class="option__letter">{{ letters[Number(i)] }}</span>
             <span class="option__text">{{ opt.content || opt }}</span>
           </button>
         </div>
@@ -94,6 +94,7 @@ interface Question {
   id: number; type: number; title: string; options: string; answer: string; analysis: string;
 }
 interface AnswerResult { isCorrect: boolean; correctAnswer: string; analysis: string }
+interface OptionItem { content: string }
 
 const route = useRoute()
 const letters = ['A', 'B', 'C', 'D']
@@ -116,7 +117,15 @@ const hasAnswer = computed(() => {
 })
 const scorePercent = computed(() => total.value ? Math.round(correctCount.value / total.value * 100) : 0)
 
-function parseOptions(o: string) { if (!o) return []; try { return JSON.parse(o) } catch { return [] } }
+function parseOptions(o: string): OptionItem[] {
+  if (!o) return []
+  try {
+    const parsed = JSON.parse(o) as Array<string | { content?: string }>
+    return parsed.map(item => typeof item === 'string' ? { content: item } : { content: item.content || '' })
+  } catch {
+    return []
+  }
+}
 function typeLabel(t: number) { return ['', '单选题', '多选题', '判断题', '填空题'][t] || '' }
 
 function getAnswerString(): string {

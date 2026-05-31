@@ -1,6 +1,7 @@
 package com.mianmiantong.service.paper;
 
 import com.mianmiantong.dto.paper.PlagiarismReduceRequest;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.ai.AiService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -275,8 +276,10 @@ public class PlagiarismReduceService {
 
     /** SSE 流式降重改写 */
     public SseEmitter reduce(String text, String sourceText, String mode, String model,
-                              List<com.mianmiantong.dto.paper.PlagiarismReduceRequest.ReportAnnotation> annotations) {
+                              List<com.mianmiantong.dto.paper.PlagiarismReduceRequest.ReportAnnotation> annotations,
+                              List<com.mianmiantong.dto.paper.ContextChunk> contextChunks) {
         SseEmitter emitter = new SseEmitter(120_000L);
+        String selectedModel = AiModelSelector.normalize(model);
 
         Map<String, String> modeLabels = Map.of("light", "轻度降重", "medium", "中度降重", "deep", "深度降重");
         String modeLabel = modeLabels.getOrDefault(mode != null ? mode : "medium", "中度降重");
@@ -286,6 +289,8 @@ public class PlagiarismReduceService {
 
         // 构建报告标注的待改写片段列表
         String flaggedPassages = buildFlaggedPassages(annotations);
+        var sanitizedChunks = PaperContextSanitizer.sanitize(contextChunks);
+        String contextBlock = PaperContextSanitizer.formatForPrompt(sanitizedChunks);
 
         String systemPrompt = getSystemPrompt("prompts/plagiarism_transform.txt");
         String userPrompt = renderPrompt("prompts/plagiarism_transform.txt", Map.of(
@@ -293,7 +298,8 @@ public class PlagiarismReduceService {
             "source_text", safeSource,
             "mode", safeMode,
             "mode_label", modeLabel,
-            "flagged_passages", flaggedPassages
+            "flagged_passages", flaggedPassages,
+            "context_chunks", contextBlock
         ));
 
         List<Map<String, String>> messages = List.of(
@@ -307,7 +313,7 @@ public class PlagiarismReduceService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, model, token -> {
+                aiService.streamChat(systemPrompt, messages, null, selectedModel, token -> {
                     safeSend(emitter, "token", token);
                 });
 

@@ -9,6 +9,7 @@ public class AiReduceRequest {
     private String mode = "light";
     private String model;
     private List<FlaggedSentence> flaggedSentences;
+    private List<ContextChunk> contextChunks;
 
     @Data
     public static class FlaggedSentence {

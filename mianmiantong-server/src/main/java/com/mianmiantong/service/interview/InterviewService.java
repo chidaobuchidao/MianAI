@@ -9,6 +9,7 @@ import com.mianmiantong.entity.resume.Resume;
 import com.mianmiantong.entity.user.UserAiConfig;
 import com.mianmiantong.mapper.interview.InterviewSessionMapper;
 import com.mianmiantong.mapper.resume.ResumeMapper;
+import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.ai.AiService;
 import com.mianmiantong.service.coding.AlgorithmProblemService;
 import com.mianmiantong.mapper.user.UserMapper;
@@ -174,7 +175,7 @@ public class InterviewService {
 
     /** 消耗配额 */
     private void consumeQuota(String model) {
-        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), model);
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), AiModelSelector.normalize(model));
     }
 
     /** System-level API key (from env/config, for admin use) */
@@ -190,6 +191,7 @@ public class InterviewService {
     public Map<String, Object> start(InterviewStartRequest request) {
         Long userId = JwtAuthFilter.getCurrentUserId();
         String position = request.getPosition();
+        String selectedModel = AiModelSelector.normalize(request.getModel());
 
         cleanupOldSessions(userId);
 
@@ -218,7 +220,7 @@ public class InterviewService {
                  "=".repeat(80),
                  position, userId);
 
-        String firstQuestion = aiService.chat(systemPrompt, initMessages, getUserApiKey(), request.getModel());
+        String firstQuestion = aiService.chat(systemPrompt, initMessages, getUserApiKey(), selectedModel);
 
         log.info("\n" + "-".repeat(60) + "\n" +
                  "【AI原始输出 - 第1问】\n{}\n" +
@@ -229,7 +231,7 @@ public class InterviewService {
         session.setUserId(userId);
         session.setPosition(position);
         session.setCurrentQuestionIndex(0);
-        session.setModel(request.getModel());
+        session.setModel(selectedModel);
 
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(Map.of("role", "assistant", "content", firstQuestion, "time", LocalDateTime.now().toString()));
@@ -238,7 +240,7 @@ public class InterviewService {
 
         sessionMapper.insert(session);
 
-        consumeQuota(request.getModel()); // 面试成功启动后才消耗
+        consumeQuota(selectedModel); // 面试成功启动后才消耗
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sessionId", session.getId());
@@ -289,7 +291,7 @@ public class InterviewService {
                  "-".repeat(40),
                  nextIndex, sessionId, answer, summarizeContext(aiMessages));
 
-        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey(), session.getModel());
+        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey(), AiModelSelector.normalize(session.getModel()));
 
         boolean finished = aiResponse.contains("[面试结束]");
 
@@ -442,7 +444,7 @@ public class InterviewService {
                 StringBuilder codingResponse = new StringBuilder();
                 try {
                     aiService.streamChat(systemPrompt, codingMessages, userApiKey,
-                            session.getModel(), token -> {
+                            AiModelSelector.normalize(session.getModel()), token -> {
                         codingResponse.append(token);
                         try {
                             emitter.send(SseEmitter.event().name("token").data(token));
@@ -537,7 +539,7 @@ public class InterviewService {
 
             try {
                 aiService.streamChat(systemPrompt, aiMessages, userApiKey,
-                        session.getModel(), token -> {
+                    AiModelSelector.normalize(session.getModel()), token -> {
                     fullResponse.append(token);
                     try {
                         emitter.send(SseEmitter.event().name("token").data(token));
@@ -710,7 +712,7 @@ public class InterviewService {
             Map.of("role", "user", "content", "请对以上面试对话进行评估，输出[面试结束]+JSON。")
         );
 
-        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey(), session.getModel());
+        String aiResponse = aiService.chat(systemPrompt, aiMessages, getUserApiKey(), AiModelSelector.normalize(session.getModel()));
 
         log.info("\n" + "-".repeat(40) + "\n" +
                  "【AI最终报告 - 原始输出】\n{}\n" +
@@ -783,7 +785,7 @@ public class InterviewService {
     /** 进入笔试时，后台生成并存储面试报告（基于笔试前的对话） */
     private void saveInterviewReportAsync(InterviewSession session) {
         final Long sessionId = session.getId();
-        final String sessionModel = session.getModel();
+        final String sessionModel = AiModelSelector.normalize(session.getModel());
         final String messagesJson = session.getMessages();
         // 在主线程捕获 API key，异步线程无 JWT ThreadLocal 上下文
         final String apiKey = getUserApiKey();

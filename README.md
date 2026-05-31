@@ -25,7 +25,7 @@
 ## 项目结构
 
 ```
-IntervVault/
+MainAI/
 ├── mianmiantong-server/              # Spring Boot 后端
 │   └── src/main/java/com/mianmiantong/
 │       ├── controller/               # REST 控制器
