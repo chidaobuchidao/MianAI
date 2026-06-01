@@ -16,8 +16,15 @@
           </button>
         </div>
 
+        <div v-if="!accessAllowed" class="kb-locked">
+          <div class="kb-locked__title">知识库需要配置 API Key</div>
+          <p>普通用户默认不能使用文献知识库。请先在个人中心配置自己的 AI API Key；或联系管理员单独开放该功能。</p>
+          <button class="kb-action-btn" @click="$emit('configure-api-key')">去配置 API Key</button>
+        </div>
+
         <!-- Import area -->
         <div
+          v-if="accessAllowed"
           class="kb-dropzone"
           :class="{ 'kb-dropzone--active': isDragOver }"
           @dragover.prevent="isDragOver = true"
@@ -43,10 +50,10 @@
             <span class="kb-dropzone-hint">支持 PDF / DOCX / TXT / MD</span>
           </div>
         </div>
-        <div v-if="error" class="kb-error">{{ error }}</div>
+        <div v-if="accessAllowed && error" class="kb-error">{{ error }}</div>
 
         <!-- Paper list -->
-        <div class="kb-list" v-if="papers.length > 0">
+        <div class="kb-list" v-if="accessAllowed && papers.length > 0">
           <div v-for="paper in papers" :key="paper.id" class="kb-paper-item">
             <div class="kb-paper-icon">
               <svg v-if="paper.fileType === 'pdf'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E53E3E" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -64,13 +71,13 @@
         </div>
 
         <!-- Empty state -->
-        <div v-else-if="!isLoading" class="kb-empty">
+        <div v-else-if="accessAllowed && !isLoading" class="kb-empty">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="1" opacity="0.4"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           <span>暂无论文，上传后 AI 可参考知识库内容</span>
         </div>
 
         <!-- Settings -->
-        <div class="kb-settings" v-if="papers.length > 0">
+        <div class="kb-settings" v-if="accessAllowed && papers.length > 0">
           <div class="kb-setting-row">
             <label class="kb-setting-label">检索数量 (Top-K)</label>
             <div class="kb-setting-control">
@@ -97,7 +104,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="kb-actions">
+        <div class="kb-actions" v-if="accessAllowed">
           <button class="kb-action-btn" @click="$emit('backup')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             导出备份
@@ -138,6 +145,7 @@ defineProps<{
   isLoading: boolean
   importingFile: string | null
   settings: KbSettings
+  accessAllowed: boolean
   error?: string | null
 }>()
 
@@ -148,6 +156,7 @@ const emit = defineEmits<{
   clearAll: []
   backup: []
   restore: [file: File]
+  'configure-api-key': []
   'update:settings': [settings: KbSettings]
 }>()
 
@@ -258,6 +267,28 @@ function formatWords(count: number): string {
   background: var(--bg-surface, #F5F4F1);
   padding: 2px 8px;
   border-radius: 100px;
+}
+
+.kb-locked {
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid rgba(217,117,10,0.18);
+  border-radius: 12px;
+  background: rgba(217,117,10,0.06);
+  color: var(--text-muted, #555);
+  line-height: 1.7;
+}
+
+.kb-locked__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main, #141413);
+  margin-bottom: 6px;
+}
+
+.kb-locked p {
+  margin: 0 0 12px;
+  font-size: 13px;
 }
 
 .kb-close {

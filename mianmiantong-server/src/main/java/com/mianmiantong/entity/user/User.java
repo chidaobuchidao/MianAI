@@ -21,6 +21,7 @@ public class User {
     private Integer dailyQuota;
     private Integer quotaUsed;
     private LocalDate quotaDate;
+    private Integer knowledgeBaseEnabled;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

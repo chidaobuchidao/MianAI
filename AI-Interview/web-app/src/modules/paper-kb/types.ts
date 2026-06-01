@@ -32,6 +32,9 @@ export interface RetrievedChunk {
   keywords: string[]
 }
 
+export type EvidenceSupportLevel = 'direct_support' | 'background_only' | 'irrelevant'
+export type EvidenceConfidence = 'high' | 'medium' | 'low'
+
 export interface KbBackup {
   version: 1
   exportedAt: string
@@ -54,4 +57,9 @@ export interface ContextChunk {
   chunkId?: number
   paperId?: number
   chunkIndex?: number
+  supportLevel?: EvidenceSupportLevel
+  confidence?: EvidenceConfidence
+  supportedClaim?: string
+  reason?: string
+  citationIndex?: number
 }

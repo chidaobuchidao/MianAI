@@ -85,15 +85,19 @@ public class UserController {
     public Result<Map<String, Object>> quota() {
         Long userId = JwtAuthFilter.getCurrentUserId();
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("hasApiKey", userAiConfigService.hasApiKey(userId));
+        boolean hasApiKey = userAiConfigService.hasApiKey(userId);
+        result.put("hasApiKey", hasApiKey);
         boolean isAdmin = JwtAuthFilter.isAdmin();
+        boolean userKbEnabled = false;
         int dailyQuota = 10, quotaUsed = 0;
         if (userId != null) {
             var user = userMapper.selectById(userId);
             dailyQuota = user != null && user.getDailyQuota() != null ? user.getDailyQuota() : 10;
             quotaUsed = user != null && user.getQuotaUsed() != null ? user.getQuotaUsed() : 0;
+            userKbEnabled = user != null && user.getKnowledgeBaseEnabled() != null && user.getKnowledgeBaseEnabled() == 1;
         }
         result.put("isAdmin", isAdmin);
+        result.put("knowledgeBaseEnabled", hasApiKey || isAdmin || userKbEnabled);
         result.put("dailyQuota", dailyQuota);
         result.put("quotaUsed", quotaUsed);
         result.put("quotaRemaining", Math.max(0, dailyQuota - quotaUsed));

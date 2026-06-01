@@ -1,3 +1,5 @@
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
+
 export interface ParsedPaper {
   title: string
   fullText: string
@@ -25,9 +27,9 @@ async function parsePdf(file: File): Promise<ParsedPaper> {
   const arrayBuffer = await file.arrayBuffer()
   const data = new Uint8Array(arrayBuffer)
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
   const pdf = await pdfjsLib.getDocument({
     data,
-    disableWorker: true,
     useWorkerFetch: false,
   } as any).promise
 

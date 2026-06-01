@@ -5,13 +5,17 @@ import { useUserStore } from '@/stores/user'
 export interface QuotaInfo {
   hasApiKey: boolean
   isAdmin: boolean
+  knowledgeBaseEnabled: boolean
   unlimited: boolean
   dailyQuota: number
   quotaUsed: number
   quotaRemaining: number
 }
 
-type RawQuotaInfo = Omit<QuotaInfo, 'unlimited'> & { unlimited?: boolean }
+type RawQuotaInfo = Omit<QuotaInfo, 'unlimited' | 'knowledgeBaseEnabled'> & {
+  unlimited?: boolean
+  knowledgeBaseEnabled?: boolean
+}
 
 const cached = ref<QuotaInfo | null>(null)
 let lastFetch = 0
@@ -29,7 +33,7 @@ export function useQuota() {
       userStore.setAdmin(quota.isAdmin === true)
       return quota
     }
-    return normalizeQuota({ hasApiKey: false, isAdmin: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
+    return normalizeQuota({ hasApiKey: false, isAdmin: false, knowledgeBaseEnabled: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
   }
 
   /** Returns remaining count, or -1 if admin/has own key (unlimited) */
@@ -53,6 +57,7 @@ export function useQuota() {
 function normalizeQuota(quota: RawQuotaInfo): QuotaInfo {
   return {
     ...quota,
+    knowledgeBaseEnabled: quota.knowledgeBaseEnabled ?? (quota.isAdmin === true || quota.hasApiKey === true),
     unlimited: quota.unlimited ?? (quota.isAdmin === true || quota.hasApiKey === true),
   }
 }

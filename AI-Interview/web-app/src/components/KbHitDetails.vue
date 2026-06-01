@@ -63,6 +63,7 @@
               <span v-if="chunk.section" class="hit-section">{{ chunk.section }}</span>
               <span v-if="chunk.chunkIndexLabel" class="hit-section">{{ chunk.chunkIndexLabel }}</span>
               <span class="hit-chip" :class="chunk.usageClass">{{ chunk.usageLabel }}</span>
+              <span v-if="chunk.confidenceLabel" class="hit-section">{{ chunk.confidenceLabel }}</span>
             </div>
 
             <div class="hit-score-bar" aria-hidden="true">
@@ -83,6 +84,9 @@
             <div class="hit-reason">
               <span class="hit-reason__dot" />
               {{ chunk.reason }}
+            </div>
+            <div v-if="chunk.supportedClaim" class="hit-claim">
+              {{ chunk.supportedClaim }}
             </div>
 
             <div class="hit-actions">
@@ -131,6 +135,8 @@ interface DecoratedChunk {
   usageLabel: string
   usageClass: UsageClass
   reason: string
+  confidenceLabel: string
+  supportedClaim: string
 }
 
 const props = defineProps<{
@@ -167,7 +173,7 @@ function decorateChunk(chunk: ContextChunk, index: number): DecoratedChunk {
   const score = Math.max(0, Math.min(1, chunk.score ?? 0))
   const scorePercent = Math.round(score * 100)
   const keywords = pickKeywords(chunk)
-  const usage = resolveUsage(score)
+  const usage = resolveUsage(chunk, score)
   const chunkIndexLabel = typeof chunk.chunkIndex === 'number' ? `第 ${chunk.chunkIndex + 1} 段` : ''
 
   return {
@@ -182,14 +188,26 @@ function decorateChunk(chunk: ContextChunk, index: number): DecoratedChunk {
     keywords,
     usageLabel: usage.label,
     usageClass: usage.className,
-    reason: buildReason(scorePercent, keywords, chunk.section),
+    reason: chunk.reason || buildReason(scorePercent, keywords, chunk.section),
+    confidenceLabel: formatConfidence(chunk.confidence),
+    supportedClaim: chunk.supportedClaim ? `可支撑观点：${chunk.supportedClaim}` : '',
   }
 }
 
-function resolveUsage(score: number): { label: string; className: UsageClass } {
+function resolveUsage(chunk: ContextChunk, score: number): { label: string; className: UsageClass } {
+  if (chunk.supportLevel === 'direct_support') return { label: '可直接引用', className: 'hit-chip--safe' }
+  if (chunk.supportLevel === 'background_only') return { label: '仅背景参考', className: 'hit-chip--warn' }
+  if (chunk.supportLevel === 'irrelevant') return { label: '不建议引用', className: 'hit-chip--muted' }
   if (score >= 0.72) return { label: '候选引用', className: 'hit-chip--safe' }
   if (score >= 0.42) return { label: '术语/背景参考', className: 'hit-chip--warn' }
   return { label: '低相关参考', className: 'hit-chip--muted' }
+}
+
+function formatConfidence(confidence?: string): string {
+  if (confidence === 'high') return '高置信'
+  if (confidence === 'medium') return '中置信'
+  if (confidence === 'low') return '低置信'
+  return ''
 }
 
 function buildReason(scorePercent: number, keywords: string[], section?: string): string {
@@ -547,6 +565,16 @@ const STOP_WORDS = new Set([
   color: var(--text-light, #999);
   font-size: 11px;
   line-height: 1.5;
+}
+
+.hit-claim {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(34,197,94,0.06);
+  color: var(--text-muted, #555);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .hit-reason__dot {

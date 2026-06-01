@@ -78,6 +78,7 @@ public class AdminController {
             row.put("nickname", u.getNickname());
             row.put("role", u.getRole() != null && u.getRole() == 1 ? "管理员" : "普通用户");
             row.put("hasApiKey", aiConfigMapper.selectById(u.getId()) != null);
+            row.put("knowledgeBaseEnabled", u.getKnowledgeBaseEnabled() != null && u.getKnowledgeBaseEnabled() == 1);
             row.put("dailyQuota", u.getDailyQuota());
             row.put("quotaUsed", u.getQuotaUsed());
             row.put("createTime", u.getCreateTime());
@@ -173,6 +174,19 @@ public class AdminController {
         user.setRole(makeAdmin ? 1 : 0);
         userMapper.updateById(user);
         return Result.ok(Map.of("message", makeAdmin ? "已设为管理员" : "已取消管理员"));
+    }
+
+    /** Toggle paper knowledge base access for users without their own API key */
+    @PostMapping("/toggle-knowledge-base")
+    public Result<?> toggleKnowledgeBase(@RequestBody Map<String, Object> body) {
+        requireAdmin();
+        Long userId = Long.valueOf(body.get("userId").toString());
+        var user = userMapper.selectById(userId);
+        if (user == null) throw new IllegalArgumentException("用户不存在");
+        boolean enabled = user.getKnowledgeBaseEnabled() == null || user.getKnowledgeBaseEnabled() != 1;
+        user.setKnowledgeBaseEnabled(enabled ? 1 : 0);
+        userMapper.updateById(user);
+        return Result.ok(Map.of("enabled", enabled, "message", enabled ? "已开放知识库" : "已关闭知识库"));
     }
 
     /** Delete user */

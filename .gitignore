@@ -39,6 +39,8 @@ application-local.yml
 
 # Deploy scripts (may contain credentials)
 _deploy*
+deploy-*
+nginx-*.conf
 
 # Tool configs (local only)
 .claude/

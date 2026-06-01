@@ -81,10 +81,10 @@
           <polyline points="2 3 5 6 8 3" />
         </svg>
       </button>
-      <button class="btn btn-outline btn-kb" @click="showKbPanel = true">
+      <button class="btn btn-outline btn-kb" @click="openKnowledgeBase">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         知识库
-        <span v-if="kbPapers.length" class="kb-badge">{{ kbPapers.length }}</span>
+        <span v-if="canUseKnowledgeBase && kbPapers.length" class="kb-badge">{{ kbPapers.length }}</span>
       </button>
       <button class="btn btn-outline btn-upload" @click="triggerUpload">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -335,8 +335,10 @@
       :is-loading="kbLoading"
       :importing-file="kbImporting"
       :settings="kbSettings"
+      :access-allowed="canUseKnowledgeBase"
       :error="kbError"
       @close="showKbPanel = false"
+      @configure-api-key="goConfigureApiKey"
       @import="handleKbImport"
       @delete="handleKbDelete"
       @clear-all="handleKbClearAll"
@@ -377,7 +379,8 @@ const paperStore = usePaperStore()
 
 const aiModel = ref('deepseek-v4-flash')
 const reduceMode = ref('medium')
-const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
+const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, knowledgeBaseEnabled: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
+const canUseKnowledgeBase = computed(() => quotaInfo.value.knowledgeBaseEnabled || quotaInfo.value.hasApiKey || quotaInfo.value.isAdmin)
 const notes = ref('')
 const showAdvanced = ref(false)
 const showExport = ref(false)
@@ -408,8 +411,21 @@ const {
   handleImport: handleKbImport, handleDelete: handleKbDelete,
   handleClearAll: handleKbClearAll, handleBackup: handleKbBackup,
   handleRestore: handleKbRestore, retrieveRaw: kbRetrieveRaw,
-} = usePaperKbPanel('plagiarism_reduce')
+} = usePaperKbPanel('plagiarism_reduce', { canUse: () => canUseKnowledgeBase.value })
 const showKbHitDetails = ref(false)
+
+function openKnowledgeBase() {
+  if (!canUseKnowledgeBase.value) {
+    showWarn('知识库需要配置自己的 AI API Key，或由管理员单独开放后才能使用。')
+    return
+  }
+  showKbPanel.value = true
+}
+
+function goConfigureApiKey() {
+  showKbPanel.value = false
+  router.push('/profile')
+}
 
 // === Citation chips ===
 function applyCitationChips(html: string): string {

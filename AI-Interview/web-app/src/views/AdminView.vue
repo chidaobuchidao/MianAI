@@ -41,7 +41,7 @@
           <table class="tbl">
             <thead>
               <tr>
-                <th>ID</th><th>昵称</th><th>角色</th><th>Key</th><th>日配额</th><th>面试</th><th>时间</th><th>操作</th>
+                <th>ID</th><th>昵称</th><th>角色</th><th>Key</th><th>知识库</th><th>日配额</th><th>面试</th><th>时间</th><th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -51,6 +51,11 @@
                 <td><span class="tag" :class="u.role === '管理员' ? 'tag--admin' : 'tag--user'">{{ u.role }}</span></td>
                 <td>{{ u.hasApiKey ? '已配置' : '未配置' }}</td>
                 <td>
+                  <span class="tag" :class="u.hasApiKey || u.role === '管理员' || u.knowledgeBaseEnabled ? 'tag--ok' : 'tag--warn'">
+                    {{ u.hasApiKey || u.role === '管理员' ? '自动开放' : (u.knowledgeBaseEnabled ? '已开放' : '未开放') }}
+                  </span>
+                </td>
+                <td>
                   <span class="quota-cell" @click="startEditQuota(u)" title="点击设置剩余次数">{{ remaining(u) }}</span>
                 </td>
                 <td>{{ u.interviewCount }}</td>
@@ -58,6 +63,9 @@
                 <td class="tbl__actions">
                   <button class="mini-btn" @click="startEditQuota(u)">剩余</button>
                   <button class="mini-btn" @click="startEditLimit(u)" :title="'日上限：' + (u.dailyQuota ?? 10)">上限</button>
+                  <button class="mini-btn" @click="toggleKnowledgeBase(u)" :disabled="u.hasApiKey || u.role === '管理员'">
+                    {{ u.knowledgeBaseEnabled ? '关知识库' : '开知识库' }}
+                  </button>
                   <button class="mini-btn" @click="toggleAdmin(u)">{{ u.role === '管理员' ? '降级' : '升管' }}</button>
                   <button class="mini-btn mini-btn--danger" @click="deleteUser(u)">删除</button>
                 </td>
@@ -179,7 +187,7 @@ import { useUserStore } from '@/stores/user'
 import { get, post, put, del } from '@/utils/request'
 
 interface Status { totalUsers: number; totalSessions: number; hasSystemKey: boolean; usersWithKey: number }
-interface UserRow { id: number; nickname: string; role: string; hasApiKey: boolean; dailyQuota: number; quotaUsed: number; createTime: string; interviewCount: number }
+interface UserRow { id: number; nickname: string; role: string; hasApiKey: boolean; knowledgeBaseEnabled: boolean; dailyQuota: number; quotaUsed: number; createTime: string; interviewCount: number }
 interface SessionRow { id: number; userName: string; position: string; score: number | null; status: string; createTime: string }
 
 const router = useRouter()
@@ -296,6 +304,12 @@ async function toggleAdmin(u: UserRow) {
   if (!confirm(`确定${u.role === '管理员' ? '取消' : '设为'}管理员：${u.nickname}？`)) return
   await post('/api/admin/toggle-admin', { userId: u.id })
   u.role = u.role === '管理员' ? '普通用户' : '管理员'
+}
+
+async function toggleKnowledgeBase(u: UserRow) {
+  if (u.hasApiKey || u.role === '管理员') return
+  await post<{ enabled: boolean }>('/api/admin/toggle-knowledge-base', { userId: u.id })
+  u.knowledgeBaseEnabled = !u.knowledgeBaseEnabled
 }
 
 async function deleteUser(u: UserRow) {
