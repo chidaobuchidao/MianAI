@@ -57,6 +57,10 @@ data/stream_store/
 # Plans and documentation (local only; keep commits focused on project code)
 .scratch/
 CONTEXT.md
-docs/
+docs/*
+!docs/images/
+docs/images/*
+!docs/images/readme-hero.png
+!docs/images/readme-feature-showcase.png
 *.md
 mobile-preview-*.png
