@@ -291,7 +291,7 @@ function isValidReport(d: unknown): d is Report {
 async function triggerQuickAnalysis(resumeId: number) {
   if (quickAnalyzeStarted) return
   quickAnalyzeStarted = true
-  await fetchQuota()
+  await fetchQuota(true)
   const needed = deepModel.value.includes('pro') ? 2 : 1
   const qc = checkQuota(needed)
   if (!qc.ok) {
@@ -377,7 +377,7 @@ function loadRetryStatus(resumeId: number) {
 async function startDeep() {
   if (!report.value) return
   const resumeId = report.value.resumeId
-  await fetchQuota()
+  await fetchQuota(true)
   const needed = deepModel.value.includes('pro') ? 2 : 1
   const qc = checkQuota(needed)
   if (!qc.ok) { quotaError.value = qc.msg!; return }
@@ -389,7 +389,7 @@ async function startDeep() {
 
 async function retryDeep() {
   if (!report.value) return
-  await fetchQuota()
+  await fetchQuota(true)
   const needed = deepModel.value.includes('pro') ? 2 : 1
   const qc = checkQuota(needed)
   if (!qc.ok) { quotaError.value = qc.msg!; return }

@@ -21,8 +21,8 @@ const cached = ref<QuotaInfo | null>(null)
 let lastFetch = 0
 
 export function useQuota() {
-  async function fetchQuota(): Promise<QuotaInfo> {
-    if (cached.value && Date.now() - lastFetch < 30_000) return cached.value
+  async function fetchQuota(force = false): Promise<QuotaInfo> {
+    if (!force && cached.value && Date.now() - lastFetch < 30_000) return cached.value
     const res = await get<RawQuotaInfo>('/api/user/quota')
     if (res.data) {
       const quota = normalizeQuota(res.data)
@@ -51,7 +51,11 @@ export function useQuota() {
     return { ok: true, remaining: q.quotaRemaining }
   }
 
-  return { fetchQuota, checkQuota, cached }
+  function invalidateQuota() {
+    lastFetch = 0
+  }
+
+  return { fetchQuota, checkQuota, cached, invalidateQuota }
 }
 
 function normalizeQuota(quota: RawQuotaInfo): QuotaInfo {

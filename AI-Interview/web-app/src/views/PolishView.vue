@@ -750,7 +750,7 @@ async function startPolish() {
       polishedParagraphs.value = parsed
       resultText.value = serializeMarkedParagraphs(parsed)
     }
-    fetchQuota().then(q => { if (q) quotaInfo.value = q })
+    fetchQuota(true).then(q => { if (q) quotaInfo.value = q })
   } catch (e: unknown) {
     if (e instanceof DOMException && e.name === 'AbortError') return
     error.value = '请求失败: ' + (e instanceof Error ? e.message : String(e))

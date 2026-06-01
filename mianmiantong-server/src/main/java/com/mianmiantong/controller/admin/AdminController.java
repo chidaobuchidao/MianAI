@@ -8,9 +8,11 @@ import com.mianmiantong.mapper.AnnouncementMapper;
 import com.mianmiantong.mapper.interview.InterviewSessionMapper;
 import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.mapper.user.UserAiConfigMapper;
+import com.mianmiantong.service.user.QuotaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -22,17 +24,20 @@ public class AdminController {
     private final UserAiConfigMapper aiConfigMapper;
     private final InterviewSessionMapper sessionMapper;
     private final AnnouncementMapper announcementMapper;
+    private final QuotaService quotaService;
 
     @Value("${DEEPSEEK_API_KEY:}")
     private String systemApiKey;
 
     public AdminController(UserMapper userMapper, UserAiConfigMapper aiConfigMapper,
                            InterviewSessionMapper sessionMapper,
-                           AnnouncementMapper announcementMapper) {
+                           AnnouncementMapper announcementMapper,
+                           QuotaService quotaService) {
         this.userMapper = userMapper;
         this.aiConfigMapper = aiConfigMapper;
         this.sessionMapper = sessionMapper;
         this.announcementMapper = announcementMapper;
+        this.quotaService = quotaService;
     }
 
     /** All admin endpoints require role=1 */
@@ -73,6 +78,7 @@ public class AdminController {
 
         List<Map<String, Object>> list = new ArrayList<>();
         for (User u : users) {
+            quotaService.refreshDailyQuota(u);
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", u.getId());
             row.put("nickname", u.getNickname());
@@ -146,6 +152,7 @@ public class AdminController {
         if (user == null) throw new IllegalArgumentException("用户不存在");
         int daily = user.getDailyQuota() != null ? user.getDailyQuota() : 10;
         user.setQuotaUsed(Math.max(0, daily - remaining));
+        user.setQuotaDate(LocalDate.now());
         userMapper.updateById(user);
         return Result.ok(Map.of("message", "已更新"));
     }
@@ -158,6 +165,7 @@ public class AdminController {
         int limit = Integer.parseInt(body.get("limit").toString());
         var user = userMapper.selectById(userId);
         if (user == null) throw new IllegalArgumentException("用户不存在");
+        quotaService.refreshDailyQuota(user);
         user.setDailyQuota(limit);
         userMapper.updateById(user);
         return Result.ok(Map.of("message", "已更新"));

@@ -1062,7 +1062,7 @@ async function startRewrite() {
     }
     if (raw && paragraphData.value.length>0) { const parsed = parseMarked(raw); rewrittenParagraphs.value = parsed; resultText.value = serializeMarkedParagraphs(parsed) }
     showResult.value = true
-    fetchQuota().then(q => { if (q) quotaInfo.value = q })
+    fetchQuota(true).then(q => { if (q) quotaInfo.value = q })
   } catch(e:unknown) { if (e instanceof DOMException && e.name==='AbortError') return; error.value = '请求失败: '+(e instanceof Error?e.message:String(e)) }
   finally { isStreaming.value = false }
 }

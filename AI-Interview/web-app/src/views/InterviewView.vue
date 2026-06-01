@@ -523,7 +523,7 @@ const progressItems = ref<ProgressItem[]>([])
 async function startInterview(position: string) {
   if (loading.value) return  // 防止重复点击
   // Pre-check quota before API call
-  await fetchQuota()
+  await fetchQuota(true)
   const needed = interviewModel.value.includes('pro') ? 2 : 1
   const check = checkQuota(needed)
   if (!check.ok) { errorMsg.value = check.msg!; return }
@@ -569,6 +569,7 @@ async function startInterview(position: string) {
     sessionStorage.removeItem('interviewSuggestion')
     sessionStorage.removeItem('interviewCodingReview')
     codeProblemText.value = ''
+    fetchQuota(true).catch(() => {})
     started.value = true
   } catch (e: unknown) {
     errorMsg.value = e instanceof Error ? e.message : '启动失败'

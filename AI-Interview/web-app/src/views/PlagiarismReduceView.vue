@@ -750,7 +750,7 @@ async function startReduce() {
       }
     }
     if (raw && paragraphData.value.length > 0) { const parsed = parseMarked(raw); reducedParagraphs.value = parsed; resultText.value = serializeMarkedParagraphs(parsed) }
-    fetchQuota().then(q => { if (q) quotaInfo.value = q })
+    fetchQuota(true).then(q => { if (q) quotaInfo.value = q })
   } catch (e: unknown) {
     if (e instanceof DOMException && e.name === 'AbortError') return
     if (e instanceof TypeError && e.message.includes('NetworkError')) {

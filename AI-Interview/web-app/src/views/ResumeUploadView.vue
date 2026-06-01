@@ -179,7 +179,7 @@ function onHistoryPaperClick(index: number) {
 async function submitResume() {
   if (!file.value || submitting.value) return
 
-  await fetchQuota()
+  await fetchQuota(true)
   const qc = checkQuota(1, '今日剩余配额不足，请明日再试或者自行添加ApiKey')
   if (!qc.ok) {
     quotaError.value = qc.msg!
