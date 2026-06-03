@@ -1,5 +1,7 @@
 package com.mianmiantong.controller.user;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.dto.user.UserAiConfigRequest;
@@ -10,11 +12,15 @@ import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.mapper.wrongbook.WrongQuestionMapper;
 import com.mianmiantong.service.user.QuotaService;
 import com.mianmiantong.service.user.UserAiConfigService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -76,12 +82,29 @@ public class UserController {
         return Result.ok(userAiConfigService.getByUserId(userId));
     }
 
-    /** 保存用户的 AI 配置（API Key） */
+    /** 保存用户的 AI 配置 */
     @PutMapping("/ai-config")
     public Result<?> saveAiConfig(@RequestBody UserAiConfigRequest req) {
         Long userId = JwtAuthFilter.getCurrentUserId();
-        userAiConfigService.save(userId, req.getProvider(), req.getApiKey(), req.getModel());
+        String preferredModel = req.getPreferredModel() != null ? req.getPreferredModel() : req.getModel();
+        userAiConfigService.save(userId, req.getProvider(), req.getApiKey(), req.getModel(),
+                preferredModel, req.getCustomEndpoint());
         return Result.ok(null);
+    }
+
+    /** 获取系统支持的 AI 提供者列表 */
+    @GetMapping("/ai-providers")
+    public Result<List<Map<String, Object>>> getAiProviders() {
+        try {
+            var resource = new ClassPathResource("provider-presets.json");
+            var objectMapper = new ObjectMapper();
+            List<Map<String, Object>> providers = objectMapper.readValue(
+                    resource.getInputStream(), new TypeReference<>() {});
+            return Result.ok(providers);
+        } catch (Exception e) {
+            log.error("读取 provider-presets.json 失败", e);
+            return Result.ok(List.of());
+        }
     }
 
     /** 获取用户配额：每日免费 AI 调用次数剩余 */

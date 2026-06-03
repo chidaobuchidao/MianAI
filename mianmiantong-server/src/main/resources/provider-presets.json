@@ -1,0 +1,47 @@
+[
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "models": ["deepseek-v4-flash", "deepseek-v4-pro"],
+    "defaultModel": "deepseek-v4-flash",
+    "endpoint": "https://api.deepseek.com/chat/completions",
+    "website": "https://platform.deepseek.com",
+    "keyUrl": "https://platform.deepseek.com/usage"
+  },
+  {
+    "id": "qwen",
+    "name": "通义千问",
+    "models": ["qwen-turbo", "qwen-plus"],
+    "defaultModel": "qwen-turbo",
+    "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "website": "https://dashscope.aliyun.com",
+    "keyUrl": "https://dashscope.console.aliyun.com/apiKey"
+  },
+  {
+    "id": "doubao",
+    "name": "豆包",
+    "models": ["doubao-lite-4k", "doubao-pro-4k", "doubao-pro-32k"],
+    "defaultModel": "doubao-pro-4k",
+    "endpoint": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    "website": "https://console.volcengine.com/ark",
+    "keyUrl": "https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey"
+  },
+  {
+    "id": "zhipu",
+    "name": "智谱",
+    "models": ["glm-4-flash", "glm-4-plus", "glm-4-long"],
+    "defaultModel": "glm-4-flash",
+    "endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "website": "https://open.bigmodel.cn",
+    "keyUrl": "https://open.bigmodel.cn/usercenter/apikeys"
+  },
+  {
+    "id": "custom",
+    "name": "自定义",
+    "models": [],
+    "defaultModel": "",
+    "endpoint": "",
+    "website": "",
+    "keyUrl": ""
+  }
+]
