@@ -15,10 +15,12 @@
 
       <div class="model-bar">
         <span class="model-label">模型</span>
-        <div class="capsule-toggle">
-          <div class="capsule-slider" :class="{ right: resumeModel === 'deepseek-v4-pro' }" />
-          <button class="capsule-opt" :class="{ active: resumeModel === 'deepseek-v4-flash' }" @click="resumeModel = 'deepseek-v4-flash'">Flash</button>
-          <button class="capsule-opt" :class="{ active: resumeModel === 'deepseek-v4-pro' }" @click="resumeModel = 'deepseek-v4-pro'">Pro</button>
+        <div v-if="hasOptions" class="capsule-toggle">
+          <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === currentModel) * 100) + '%)' }" />
+          <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: currentModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
+        </div>
+        <div v-else class="capsule-toggle">
+          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ selectedLabel }}</span>
         </div>
       </div>
 
@@ -98,6 +100,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { get, postForm } from '@/utils/request'
 import { useQuota } from '@/composables/useQuota'
+import { useModelToggle } from '@/composables/useModelToggle'
 import GlareCard from '@/components/GlareCard.vue'
 import Folder from '@/components/Folder.vue'
 
@@ -106,7 +109,7 @@ const { fetchQuota, checkQuota } = useQuota()
 const fileInput = ref<HTMLInputElement>()
 const file = ref<File | null>(null)
 const jobDescription = ref('')
-const resumeModel = ref('deepseek-v4-flash')
+const { currentModel: resumeModel, options, hasOptions, selectedLabel, selectModel } = useModelToggle()
 const submitting = ref(false)
 const quotaError = ref('')
 const hasHistory = ref(false)
@@ -275,14 +278,11 @@ async function submitResume() {
 .capsule-slider {
   position: absolute;
   top: 0; left: 0;
-  width: 50%; height: 100%;
+  height: 100%;
   background: var(--bg-dark);
   border-radius: var(--radius-full);
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
-}
-.capsule-slider.right {
-  transform: translateX(100%);
 }
 .capsule-opt {
   position: relative; z-index: 1;
@@ -291,6 +291,7 @@ async function submitResume() {
   border: none; background: transparent;
   color: var(--text-muted); cursor: pointer;
   transition: color 0.25s;
+  white-space: nowrap;
 }
 .capsule-opt.active {
   color: #fff;
