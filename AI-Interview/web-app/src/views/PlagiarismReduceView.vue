@@ -14,12 +14,13 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/ai-reduce')">降AI</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
-        <div class="capsule-toggle">
-          <div class="capsule-slider" :class="{ right: aiModel === 'deepseek-v4-pro' }" />
-          <button class="capsule-opt" :class="{ active: aiModel === 'deepseek-v4-flash' }"
-            @click="aiModel = 'deepseek-v4-flash'">Flash</button>
-          <button class="capsule-opt" :class="{ active: aiModel === 'deepseek-v4-pro' }"
-            @click="aiModel = 'deepseek-v4-pro'">Pro</button>
+        <div v-if="hasToggle" class="capsule-toggle">
+          <div class="capsule-slider" :class="{ right: isPro }" />
+          <button class="capsule-opt" :class="{ active: !isPro }" @click="toggle">{{ displayLeft }}</button>
+          <button class="capsule-opt" :class="{ active: isPro }" @click="toggle">{{ displayRight }}</button>
+        </div>
+        <div v-else class="capsule-toggle">
+          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ currentModel }}</span>
         </div>
         <span v-if="quotaInfo.quotaRemaining >= 0" class="quota-badge" :class="{ 'quota-low': quotaInfo.quotaRemaining <= 2 && !quotaInfo.unlimited }">
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
@@ -359,6 +360,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuota, type QuotaInfo } from '@/composables/useQuota'
+import { useModelToggle } from '@/composables/useModelToggle'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePaperStore } from '@/composables/usePaperStore'
 import { usePaperKbPanel } from '@/composables/usePaperKbPanel'
@@ -374,10 +376,11 @@ import KbHitDetails from '@/components/KbHitDetails.vue'
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
 const { isDesktop } = useResponsive()
+const { currentModel, hasToggle, isPro, displayLeft, displayRight, toggle } = useModelToggle()
 const mobilePane = ref<'original' | 'result'>('original')
 const paperStore = usePaperStore()
 
-const aiModel = ref('deepseek-v4-flash')
+// aiModel replaced by currentModel from useModelToggle
 const reduceMode = ref('medium')
 const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, knowledgeBaseEnabled: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
 const canUseKnowledgeBase = computed(() => quotaInfo.value.knowledgeBaseEnabled || quotaInfo.value.hasApiKey || quotaInfo.value.isAdmin)
@@ -480,7 +483,7 @@ function moveIndicator(v?: string) {
   indicator.style.transform = `translateX(${tr.left - pr.left}px)`
 }
 onMounted(async () => { nextTick(() => moveIndicator()); const q = await fetchQuota(); if (q) quotaInfo.value = q })
-onMounted(() => {
+onMounted(async () => {
   if (hasDocument.value) return
   const doc = paperStore.load()
   if (!doc?.sourceText) return
@@ -489,7 +492,7 @@ onMounted(() => {
   reducedParagraphs.value = new Map()
   for (const p of paragraphData.value) reducedParagraphs.value.set(p.index, p.text || '')
   hasDocument.value = true
-  storedFile.value = null
+  storedFile.value = await paperStore.loadFile()
   runScan(doc.sourceText)
 })
 let _resizeObs3: ResizeObserver | null = null
@@ -673,7 +676,7 @@ async function handleFileUpload(e: Event) {
     sourceText.value = data.fullText
     paragraphData.value = (data.paragraphs?.length ? data.paragraphs : fallbackParagraphs(data.fullText))
     reducedParagraphs.value = new Map(); resultText.value = ''; hasDocument.value = true; scanDone.value = false
-    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: uploadedFile.name, timestamp: Date.now() })
+    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: uploadedFile.name, timestamp: Date.now() }, uploadedFile)
     for (const p of paragraphData.value) reducedParagraphs.value.set(p.index, p.text || '')
     await runScan(data.fullText)
   } catch (e: any) { error.value = '解析失败: ' + (e.message || String(e)) }
@@ -717,7 +720,7 @@ function rescan() {
 async function startReduce() {
   if (!hasDocument.value || isStreaming.value || !scanDone.value) return
   // 客户端额度预检
-  const needed = aiModel.value.includes('pro') ? 2 : 1
+  const needed = currentModel.value.includes('pro') ? 2 : 1
   const qr = checkQuota(needed, `今日免费次数不足（需 ${needed} 次），请配置 API Key 后继续使用`)
   if (!qr.ok) { error.value = qr.msg || '配额不足'; return }
   if (!isDesktop.value) mobilePane.value = 'result'
@@ -733,7 +736,7 @@ async function startReduce() {
   })
   resultText.value = ''; error.value = ''; isStreaming.value = true; abortController = new AbortController()
   try {
-    const res = await authFetch('/api/plagiarism-reduce/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: taggedText, sourceText: sourceRef.value, mode: reduceMode.value, model: aiModel.value, annotations: annotationPayload, contextChunks }), signal: abortController.signal })
+    const res = await authFetch('/api/plagiarism-reduce/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: taggedText, sourceText: sourceRef.value, mode: reduceMode.value, model: currentModel.value, annotations: annotationPayload, contextChunks }), signal: abortController.signal })
     if (!res.ok) {
       if (res.status === 429) { const d = await res.json().catch(() => ({ error: '配额已用完' })); throw new Error(d.error || '今日免费次数已用完') }
       if (res.status >= 500) throw new Error('服务异常，请稍后重试')
@@ -746,7 +749,7 @@ async function startReduce() {
       buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''
       for (const line of lines) {
         if (line.startsWith('event:') || line.startsWith('id:') || line.startsWith('retry:')) continue
-        if (line.startsWith('data:')) { const d = line.slice(5).trim(); if (d === 'finish' || d === '[DONE]') break; if (d.startsWith('{') || d.startsWith('"')) continue; raw += d; resultText.value = raw }
+        if (line.startsWith('data:')) { const d = line.length > 5 && line[5] === ' ' ? line.slice(6) : line.slice(5); const dt = d.trim(); if (dt === 'finish' || dt === '[DONE]') break; if (dt.startsWith('{') || dt.startsWith('"')) continue; raw += d; resultText.value = raw }
       }
     }
     if (raw && paragraphData.value.length > 0) { const parsed = parseMarked(raw); reducedParagraphs.value = parsed; resultText.value = serializeMarkedParagraphs(parsed) }
@@ -1403,6 +1406,8 @@ async function exportDoc(mode: string) {
   flex-direction: column;
   background: var(--bg-paper);
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .editor-pane.left {
@@ -1481,8 +1486,10 @@ async function exportDoc(mode: string) {
 .editor-content {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   padding: 24px 32px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .editor-content::-webkit-scrollbar {
@@ -1500,6 +1507,8 @@ async function exportDoc(mode: string) {
   color: var(--text-main);
   user-select: none;
   font-weight: 700;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .fp-body {
@@ -1513,6 +1522,8 @@ async function exportDoc(mode: string) {
   margin-right: -8px;
   transition: background 0.15s;
   min-height: 1.5em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .fp-body[contenteditable="true"]:hover {

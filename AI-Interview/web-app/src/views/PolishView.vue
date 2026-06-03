@@ -11,10 +11,13 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/ai-reduce')">降AI / 降查重</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
-        <div class="capsule-toggle">
-          <div class="capsule-slider" :class="{ right: polishModel === 'deepseek-v4-pro' }" />
-          <button class="capsule-opt" :class="{ active: polishModel === 'deepseek-v4-flash' }" @click="polishModel = 'deepseek-v4-flash'">Flash</button>
-          <button class="capsule-opt" :class="{ active: polishModel === 'deepseek-v4-pro' }" @click="polishModel = 'deepseek-v4-pro'">Pro</button>
+        <div v-if="hasToggle" class="capsule-toggle">
+          <div class="capsule-slider" :class="{ right: isPro }" />
+          <button class="capsule-opt" :class="{ active: !isPro }" @click="toggle">{{ displayLeft }}</button>
+          <button class="capsule-opt" :class="{ active: isPro }" @click="toggle">{{ displayRight }}</button>
+        </div>
+        <div v-else class="capsule-toggle">
+          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ currentModel }}</span>
         </div>
         <span v-if="quotaInfo.quotaRemaining >= 0" class="quota-badge" :class="{ 'quota-low': quotaInfo.quotaRemaining <= 2 && !quotaInfo.unlimited }">
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
@@ -55,8 +58,8 @@
         <div class="tab-indicator" ref="tabIndicator" />
         <div v-for="t in polishTabs" :key="t.value"
           class="tab-btn" :class="{ active: polishType === t.value }"
-          :ref="el => tabRefs[t.value] = el as any"
-          @click="setPolishTab(t.value)">{{ t.label }}</div>
+          :ref="el => setTabRef(t.value, el)"
+          @click="setTab(t.value)">{{ t.label }}</div>
       </div>
       <div class="toolbar-spacer" />
       <button v-if="hasDocument" class="btn btn-outline btn-link" @click="showAdvanced = !showAdvanced">
@@ -279,18 +282,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, type StyleValue } from 'vue'
+import { ref, computed, onMounted, onUnmounted, type Ref, type StyleValue } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuota, type QuotaInfo } from '@/composables/useQuota'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePaperStore } from '@/composables/usePaperStore'
 import { usePaperKbPanel } from '@/composables/usePaperKbPanel'
+import { useWarnToast } from '@/composables/useWarnToast'
+import { useTabIndicator } from '@/composables/useTabIndicator'
+import { useCitationChips } from '@/composables/useCitationChips'
+import { usePaperExport } from '@/composables/usePaperExport'
 import { readJsonResponse } from '@/utils/httpResponse'
 import { authFetch } from '@/utils/authFetch'
-import { isDocxFile, isPdfFile } from '@/utils/documentFile'
 import { preserveOriginalSpacing } from '@/utils/spacingGuard'
-import { renderCitations } from '@/modules/paper-kb'
-import type { CitedChunk } from '@/modules/paper-kb'
+import { useModelToggle } from '@/composables/useModelToggle'
 import PaperKbPanel from '@/components/PaperKbPanel.vue'
 import KbHitDetails from '@/components/KbHitDetails.vue'
 
@@ -299,13 +304,17 @@ const { fetchQuota, checkQuota } = useQuota()
 const { isDesktop } = useResponsive()
 const mobilePane = ref<'original' | 'result'>('original')
 const paperStore = usePaperStore()
+const { warnToast, showWarn } = useWarnToast()
+
+// === Model Toggle ===
+const { currentModel, hasToggle, isPro, displayLeft, displayRight, toggle } = useModelToggle()
 
 // === State ===
 const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, knowledgeBaseEnabled: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
 const canUseKnowledgeBase = computed(() => quotaInfo.value.knowledgeBaseEnabled || quotaInfo.value.hasApiKey || quotaInfo.value.isAdmin)
 const sourceText = ref('')
 const resultText = ref('')
-const polishModel = ref('deepseek-v4-flash')
+// polishModel replaced by currentModel from useModelToggle
 const polishType = ref('full')
 const outputLanguage = ref<'zh' | 'en'>('zh')
 const taskType = ref('章节正文')
@@ -313,25 +322,28 @@ const topic = ref('')
 const notes = ref('')
 const pasteText = ref('')
 const showAdvanced = ref(false)
-const showExport = ref(false)
-const isExporting = ref(false)
 const isStreaming = ref(false)
 const isPreparingPolish = ref(false)
 const isPolishBusy = computed(() => isPreparingPolish.value || isStreaming.value)
 const hasDocument = ref(false)
 const error = ref('')
-const warnToast = ref('')
-let warnTimer: ReturnType<typeof setTimeout> | null = null
-function showWarn(msg: string) { warnToast.value = msg; if (warnTimer) clearTimeout(warnTimer); warnTimer = setTimeout(() => { warnToast.value = '' }, 5000) }
 const storedFile = ref<File | null>(null)
 const originalFileName = ref('')
-const canPreserveFormat = computed(() => isDocxFile(storedFile.value))
-const canUsePdfToWordExport = computed(() => isPdfFile(storedFile.value))
-const needsOriginalFileForPreserve = computed(() => !storedFile.value && /\.docx$/i.test(originalFileName.value))
 const paragraphData = ref<any[]>([])
 const polishedParagraphs = ref<Map<number, string>>(new Map())
 const dirtyParagraphs = ref<Set<number>>(new Set())
 let abortController: AbortController | null = null
+
+// === Composables ===
+const { tabRefs, tabIndicator, setTab, setTabRef } = useTabIndicator(polishType as Ref<string>)
+const { showExport, isExporting, canPreserveFormat, canUsePdfToWordExport, needsOriginalFileForPreserve, exportDoc } = usePaperExport({
+  paragraphData: () => paragraphData.value,
+  resultParagraphs: () => polishedParagraphs.value,
+  storedFile: () => storedFile.value,
+  downloadName: 'polished',
+  setError: (msg: string) => { error.value = msg },
+  showWarn,
+})
 
 type TextAlignValue = 'left' | 'right' | 'center' | 'justify' | 'start' | 'end'
 
@@ -383,30 +395,6 @@ function goConfigureApiKey() {
   router.push('/profile')
 }
 
-// === Citation chips ===
-function applyCitationChips(html: string): string {
-  return html.replace(/\[(\d+)\]/g, (match, numStr) => {
-    const index = parseInt(numStr, 10)
-    if (index < 1 || index > 50) return match
-    return `<span class="cite-chip" data-cite-index="${index}">${index}</span>`
-  })
-}
-
-const citedReferences = computed(() => {
-  if (!lastRetrievedChunks.value.length) return []
-  const citedChunks: CitedChunk[] = lastRetrievedChunks.value
-    .filter(c => c.citationIndex != null)
-    .map(c => ({
-      index: c.citationIndex!,
-      paperTitle: c.paperTitle,
-      section: c.section,
-      content: c.content,
-    }))
-  const allText = resultParagraphs.value.map(p => p.polishedText).join(' ')
-  const { references } = renderCitations(allText, citedChunks)
-  return references
-})
-
 // === Tabs ===
 const polishTabs = [
   { value: 'vocab', label: '词汇优化' },
@@ -414,27 +402,8 @@ const polishTabs = [
   { value: 'full', label: '全面润色' },
 ]
 
-const tabRefs: Record<string, HTMLElement | null> = {}
-const tabIndicator = ref<HTMLElement | null>(null)
-
-function setPolishTab(value: string) { polishType.value = value; nextTick(() => moveIndicator(value)) }
-function moveIndicator(value?: string) {
-  const val = value || polishType.value
-  const indicator = tabIndicator.value
-  const tab = tabRefs[val]
-  if (!indicator || !tab) return
-  const parent = indicator.parentElement
-  if (!parent) return
-  const pr = parent.getBoundingClientRect()
-  const tr = tab.getBoundingClientRect()
-  indicator.style.width = `${tr.width}px`
-  indicator.style.transition = 'all 0.4s var(--spring-bounce)'
-  indicator.style.transform = `translateX(${tr.left - pr.left}px)`
-}
-
-onMounted(() => nextTick(() => moveIndicator()))
 onMounted(async () => { const q = await fetchQuota(); if (q) quotaInfo.value = q })
-onMounted(() => {
+onMounted(async () => {
   if (hasDocument.value) return
   const doc = paperStore.load()
   if (!doc?.sourceText) return
@@ -444,21 +413,12 @@ onMounted(() => {
   for (const p of paragraphData.value) polishedParagraphs.value.set(p.index, p.text || p.originalText || '')
   hasDocument.value = true
   originalFileName.value = doc.fileName || ''
-  storedFile.value = null
+  storedFile.value = await paperStore.loadFile()
 })
 
-let resizeObs: ResizeObserver | null = null
-onMounted(() => {
-  resizeObs = new ResizeObserver(() => moveIndicator())
-  const parent = tabIndicator.value?.parentElement
-  if (parent) resizeObs.observe(parent)
-})
 onUnmounted(() => {
-  resizeObs?.disconnect()
   abortController?.abort()
 })
-
-watch(polishType, () => nextTick(() => moveIndicator()))
 
 // === Paragraph rendering ===
 interface ParaStyle { fontSize: number; fontFamily: string; bold: boolean; italic: boolean; alignment: string }
@@ -501,6 +461,14 @@ const resultParagraphs = computed<RenderPara[]>(() => {
     ...p,
     polishedText: polishedParagraphs.value.get(p.index) ?? p.originalText,
   }))
+})
+
+// === Citation chips ===
+const citedSourceText = computed(() => resultParagraphs.value.map(p => p.polishedText).join(' '))
+const { applyCitationChips, citedReferences } = useCitationChips({
+  chunks: lastRetrievedChunks,
+  sourceText: citedSourceText,
+  indexStrategy: 'citationIndex',
 })
 
 const streamingLines = computed(() => {
@@ -555,7 +523,7 @@ async function handleFileUpload(e: Event) {
     polishedParagraphs.value = new Map()
     resultText.value = ''
     hasDocument.value = true
-    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: file.name, timestamp: Date.now() })
+    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: file.name, timestamp: Date.now() }, file)
     for (const p of data.paragraphs || []) {
       polishedParagraphs.value.set(p.index, p.text || '')
     }
@@ -609,7 +577,7 @@ function parseSseEventBlock(block: string): SseEvent | null {
       continue
     }
     if (line.startsWith('data:')) {
-      dataLines.push(line.slice(5))
+      dataLines.push(line.length > 5 && line[5] === ' ' ? line.slice(6) : line.slice(5))
     }
   }
   if (!dataLines.length) return null
@@ -617,10 +585,9 @@ function parseSseEventBlock(block: string): SseEvent | null {
 }
 
 function decodeTokenPayload(data: string): string {
-  const payload = data.trimStart()
-  if (!payload) return ''
+  if (!data) return ''
   try {
-    const parsed = JSON.parse(payload)
+    const parsed = JSON.parse(data)
     return typeof parsed === 'string' ? parsed : ''
   } catch {
     return data
@@ -662,7 +629,7 @@ function serializeMarkedParagraphs(paragraphs: Map<number, string>): string {
 async function startPolish() {
   if (!hasDocument.value || isPolishBusy.value) return
 
-  const needed = polishModel.value.includes('pro') ? 2 : 1
+  const needed = currentModel.value.includes('pro') ? 2 : 1
   const qr = checkQuota(needed, `今日免费次数不足（需 ${needed} 次），请配置 API Key 后继续使用`)
   if (!qr.ok) { error.value = qr.msg || '配额不足'; return }
   if (!isDesktop.value) mobilePane.value = 'result'
@@ -677,7 +644,7 @@ async function startPolish() {
     const kbContext = await kbRetrieveAndFormat(text, {
       focusText: `${taskType.value} ${topic.value}`.trim(),
       notes: notes.value,
-    }, polishModel.value)
+    }, currentModel.value)
     const augmentedNotes = [
       notes.value,
       outputLanguage.value === 'zh'
@@ -702,7 +669,7 @@ async function startPolish() {
         language: outputLanguage.value,
         topic: topic.value,
         notes: augmentedNotes,
-        model: polishModel.value,
+        model: currentModel.value,
       }),
       signal: abortController.signal,
     })
@@ -797,64 +764,6 @@ function extractEditablePolishedText(el: HTMLElement): string {
   const clone = el.cloneNode(true) as HTMLElement
   clone.querySelectorAll('.diff-del').forEach(node => node.remove())
   return clone.innerText?.trim() || ''
-}
-
-// === Export ===
-async function exportDoc(mode: string) {
-  showExport.value = false
-  if (mode === 'preserve' && !canPreserveFormat.value) {
-    error.value = '原格式导出需要当前页面持有原始 DOCX 文件，请重新上传原 DOCX 后再导出。'
-    showWarn(error.value)
-    return
-  }
-  if (mode === 'standard' && needsOriginalFileForPreserve.value) {
-    const ok = confirm('当前页面没有原始 DOCX 文件，标准 Word 导出不会保留原格式和图片。建议重新上传原 DOCX 后使用“原格式导出”。仍要继续标准导出吗？')
-    if (!ok) return
-  }
-  const allParas = paragraphData.value.map((p: any) => ({
-    index: p.index, text: polishedParagraphs.value.get(p.index) ?? p.text ?? '', originalText: p.text ?? '',
-  }))
-  const changedParas = allParas.filter((p: any) => (polishedParagraphs.value.get(p.index) ?? '').trim())
-
-  if (mode === 'pdf-beta' && storedFile.value && canUsePdfToWordExport.value) {
-    isExporting.value = true
-    const fd = new FormData()
-    fd.append('file', storedFile.value)
-    fd.append('mappings', JSON.stringify({ fileName: 'polished', paragraphs: allParas }))
-    try {
-      const res = await authFetch('/api/paper-export/pdf-to-docx-preserve-format', { method:'POST', body:fd })
-      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
-      const errData = await res.json().catch(() => null)
-      error.value = (errData?.detail || errData?.error || 'PDF 转 Word 保留导出失败') + '。标准导出不会保留原格式和图片，是否继续？'
-      if (!confirm(error.value)) { error.value = ''; return }
-    } catch(err: any) {
-      error.value = 'PDF 转 Word 导出失败: ' + (err.message || String(err)) + '。标准导出不会保留原格式和图片，是否继续？'
-      if (!confirm(error.value)) { error.value = ''; return }
-    } finally {
-      isExporting.value = false
-    }
-  }
-
-  if (mode === 'preserve' && storedFile.value && canPreserveFormat.value) {
-    const fd = new FormData()
-    fd.append('file', storedFile.value)
-    fd.append('mappings', JSON.stringify({ fileName: 'polished', paragraphs: changedParas }))
-    try {
-      const res = await authFetch('/api/paper-export/preserve-format', { method:'POST', body:fd })
-      if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
-      const errData = await res.json().catch(() => null)
-      error.value = (errData?.detail || errData?.error || '格式保留导出失败') + '。标准导出不会保留原格式和图片，是否继续？'
-      if (!confirm(error.value)) { error.value = ''; return }
-    } catch(err: any) {
-      error.value = '导出失败: ' + (err.message || String(err)) + '。标准导出不会保留原格式和图片，是否继续？'
-      if (!confirm(error.value)) { error.value = ''; return }
-    }
-  }
-  try {
-    const res = await authFetch('/api/paper-export/standard', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ fileName:'polished', paragraphs:allParas }) })
-    if (res.ok) { const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='polished.docx'; a.click(); URL.revokeObjectURL(url); return }
-    error.value = '标准导出也失败了，请重试'
-  } catch(err: any) { error.value = '导出失败: ' + (err.message || String(err)) }
 }
 
 /** Simple word-level diff: marks added/deleted segments */
@@ -982,7 +891,7 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 .workspace.split-50 { grid-template-columns: 1fr 1fr; }
 
 /* Editor panes */
-.editor-pane { display: flex; flex-direction: column; background: var(--bg-paper); min-height: 0; }
+.editor-pane { display: flex; flex-direction: column; background: var(--bg-paper); min-height: 0; min-width: 0; overflow: hidden; }
 .editor-pane.left { border-right: 1px solid var(--border-light); }
 .editor-pane.right { border-left: 1px solid var(--border-light); }
 .pane-header { padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); flex-shrink: 0; }
@@ -993,13 +902,13 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 .pane-badge.live::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-.editor-content { flex: 1; min-height: 0; padding: 24px 32px; overflow-y: auto; }
+.editor-content { flex: 1; min-height: 0; min-width: 0; padding: 24px 32px; overflow-y: auto; overflow-x: hidden; }
 .editor-content::-webkit-scrollbar { width: 5px; }
 .editor-content::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 
 /* Format paragraphs */
-.fp-heading { margin: 16px 0 6px; line-height: 1.3; color: var(--text-main); user-select: none; }
-.fp-body { margin: 0 0 6px; line-height: 1.9; color: var(--text-main); outline: none; border-radius: 4px; padding: 4px 8px; margin-left: -8px; margin-right: -8px; transition: background 0.15s; min-height: 1.5em; }
+.fp-heading { margin: 16px 0 6px; line-height: 1.3; color: var(--text-main); user-select: none; overflow-wrap: break-word; word-break: break-word; }
+.fp-body { margin: 0 0 6px; line-height: 1.9; color: var(--text-main); outline: none; border-radius: 4px; padding: 4px 8px; margin-left: -8px; margin-right: -8px; transition: background 0.15s; min-height: 1.5em; overflow-wrap: break-word; word-break: break-word; }
 .fp-body[contenteditable="true"]:hover { background: rgba(217,117,10,0.03); }
 .fp-body[contenteditable="true"]:focus { background: rgba(217,117,10,0.06); box-shadow: 0 0 0 2px rgba(217,117,10,0.15); outline: none; border-radius: 6px; }
 

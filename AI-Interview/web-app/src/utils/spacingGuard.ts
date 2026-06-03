@@ -2,7 +2,7 @@ const LATIN_SEGMENT_RE = /[A-Za-z][A-Za-z0-9\s,.;:()/%+\-/]*[A-Za-z0-9]/g
 const CJK_SPACED_SEGMENT_RE = /[\u4e00-\u9fff](?:[ \t\u00A0]+[\u4e00-\u9fff]){1,}/g
 const CONTROL_CHARS_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g
 const SOURCE_WORD_RE = /[A-Za-z]+(?:['-][A-Za-z]+)?|\d+(?:\.\d+)?/g
-const COLLAPSED_LATIN_TOKEN_RE = /[A-Za-z][A-Za-z0-9']{11,}/g
+const COLLAPSED_LATIN_TOKEN_RE = /[A-Za-z][A-Za-z0-9']{7,}/g
 const LATIN_PUNCTUATION_JOIN_RE = /([A-Za-z0-9][,.;:!?])(?=[A-Za-z])/g
 
 interface SpacingSegment {
@@ -68,7 +68,7 @@ function collectSourceWords(text: string): SourceWord[] {
 
 function splitCollapsedTokenBySourceWords(token: string, sourceWords: SourceWord[]): string | null {
   const tokenNormalized = normalizeLatinWord(token)
-  if (tokenNormalized.length < 12) return null
+  if (tokenNormalized.length < 8) return null
 
   for (let start = 0; start < sourceWords.length - 1; start++) {
     let combined = ''

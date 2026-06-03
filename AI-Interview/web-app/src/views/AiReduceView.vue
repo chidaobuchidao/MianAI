@@ -12,10 +12,13 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/plagiarism-reduce')">降查重</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
-        <div class="capsule-toggle">
-          <div class="capsule-slider" :class="{ right: aiModel === 'deepseek-v4-pro' }" />
-          <button class="capsule-opt" :class="{ active: aiModel === 'deepseek-v4-flash' }" @click="aiModel = 'deepseek-v4-flash'">Flash</button>
-          <button class="capsule-opt" :class="{ active: aiModel === 'deepseek-v4-pro' }" @click="aiModel = 'deepseek-v4-pro'">Pro</button>
+        <div v-if="hasToggle" class="capsule-toggle">
+          <div class="capsule-slider" :class="{ right: isPro }" />
+          <button class="capsule-opt" :class="{ active: !isPro }" @click="toggle">{{ displayLeft }}</button>
+          <button class="capsule-opt" :class="{ active: isPro }" @click="toggle">{{ displayRight }}</button>
+        </div>
+        <div v-else class="capsule-toggle">
+          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ currentModel }}</span>
         </div>
         <span v-if="quotaInfo.quotaRemaining >= 0" class="quota-badge" :class="{ 'quota-low': quotaInfo.quotaRemaining <= 2 && !quotaInfo.unlimited }">
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
@@ -522,6 +525,7 @@ import PaperKbPanel from '@/components/PaperKbPanel.vue'
 import KbHitDetails from '@/components/KbHitDetails.vue'
 import { useRouter } from 'vue-router'
 import { useQuota, type QuotaInfo } from '@/composables/useQuota'
+import { useModelToggle } from '@/composables/useModelToggle'
 import { useResponsive } from '@/composables/useResponsive'
 import { usePaperStore } from '@/composables/usePaperStore'
 import { readJsonResponse } from '@/utils/httpResponse'
@@ -532,10 +536,11 @@ import { preserveOriginalSpacing } from '@/utils/spacingGuard'
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
 const { isDesktop } = useResponsive()
+const { currentModel, hasToggle, isPro, displayLeft, displayRight, toggle } = useModelToggle()
 const mobilePane = ref<'result' | 'scan'>('scan')
 const paperStore = usePaperStore()
 
-const aiModel = ref('deepseek-v4-flash')
+// aiModel replaced by currentModel from useModelToggle
 const rewriteMode = ref('light')
 const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, knowledgeBaseEnabled: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
 const canUseKnowledgeBase = computed(() => quotaInfo.value.knowledgeBaseEnabled || quotaInfo.value.hasApiKey || quotaInfo.value.isAdmin)
@@ -726,7 +731,7 @@ function moveIndicator(v?: string) {
 }
 onMounted(() => nextTick(() => moveIndicator()))
 onMounted(async () => { const q = await fetchQuota(); if (q) quotaInfo.value = q })
-onMounted(() => {
+onMounted(async () => {
   if (hasDocument.value) return
   const doc = paperStore.load()
   if (!doc?.sourceText) return
@@ -735,7 +740,7 @@ onMounted(() => {
   rewrittenParagraphs.value = new Map()
   for (const p of paragraphData.value) rewrittenParagraphs.value.set(p.index, p.text || '')
   hasDocument.value = true
-  storedFile.value = null
+  storedFile.value = await paperStore.loadFile()
   runScan(doc.sourceText)
 })
 let _resizeObs: ResizeObserver | null = null
@@ -838,7 +843,7 @@ async function handleFileUpload(e: Event) {
     sourceText.value = data.fullText
     paragraphData.value = (data.paragraphs?.length ? data.paragraphs : fallbackParagraphs(data.fullText))
     rewrittenParagraphs.value = new Map(); resultText.value = ''; hasDocument.value = true
-    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: uploadedFile.name, timestamp: Date.now() })
+    paperStore.save({ sourceText: data.fullText, paragraphs: paragraphData.value, fileName: uploadedFile.name, timestamp: Date.now() }, uploadedFile)
     for (const p of paragraphData.value) rewrittenParagraphs.value.set(p.index, p.text||'')
     await runScan(data.fullText)
   } catch(e:any) { error.value = '解析失败: '+(e.message||String(e)) }
@@ -1003,7 +1008,7 @@ async function sendToAiRewrite() {
       buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''
       for (const line of lines) {
         if (line.startsWith('event:') || line.startsWith('id:') || line.startsWith('retry:')) continue
-        if (line.startsWith('data:')) { const d = line.slice(5).trim(); if (d === 'finish' || d === '[DONE]') break; if (d.startsWith('{') || d.startsWith('"')) continue; raw += d; sentenceRewriteResult.value = raw; editableSuggestion.value = raw }
+        if (line.startsWith('data:')) { const d = line.length > 5 && line[5] === ' ' ? line.slice(6) : line.slice(5); const dt = d.trim(); if (dt === 'finish' || dt === '[DONE]') break; if (dt.startsWith('{') || dt.startsWith('"')) continue; raw += d; sentenceRewriteResult.value = raw; editableSuggestion.value = raw }
       }
     }
   } catch (e: unknown) {
@@ -1029,7 +1034,7 @@ function applyInsight() {
 // SSE Rewrite
 async function startRewrite() {
   if (!hasDocument.value||isStreaming.value||!scanDone.value) return
-  const needed = aiModel.value.includes('pro') ? 2 : 1
+  const needed = currentModel.value.includes('pro') ? 2 : 1
   const qr = checkQuota(needed, `今日免费次数不足（需 ${needed} 次），请配置 API Key 后继续使用`)
   if (!qr.ok) { error.value = qr.msg || '配额不足'; return }
   showResult.value = true
@@ -1044,7 +1049,7 @@ async function startRewrite() {
       notes: notes.value,
       annotations: flagged.map((fs: any) => `${fs.text} ${fs.reason || ''} ${fs.suggestion || ''}`),
     })
-    const res = await authFetch('/api/ai-reduce/rewrite', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:taggedText, mode:rewriteMode.value, model:aiModel.value, flaggedSentences: flagged, contextChunks}), signal:abortController.signal })
+    const res = await authFetch('/api/ai-reduce/rewrite', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:taggedText, mode:rewriteMode.value, model:currentModel.value, flaggedSentences: flagged, contextChunks}), signal:abortController.signal })
     if (!res.ok) {
       if (res.status === 429) { const d = await res.json().catch(() => ({ error: '配额已用完' })); throw new Error(d.error || '今日免费次数已用完') }
       throw new Error(`请求失败: ${res.status}`)
@@ -1057,7 +1062,7 @@ async function startRewrite() {
       buffer += decoder.decode(value, {stream:true}); const lines = buffer.split('\n'); buffer = lines.pop()||''
       for (const line of lines) {
         if (line.startsWith('event:')||line.startsWith('id:')||line.startsWith('retry:')) continue
-        if (line.startsWith('data:')) { const d=line.slice(5).trim(); if (d==='finish'||d==='[DONE]') break; if (d.startsWith('{')||d.startsWith('"')) continue; raw+=d; resultText.value=raw }
+        if (line.startsWith('data:')) { const d=line.length>5&&line[5]===' '?line.slice(6):line.slice(5); const dt=d.trim(); if (dt==='finish'||dt==='[DONE]') break; if (dt.startsWith('{')||dt.startsWith('"')) continue; raw+=d; resultText.value=raw }
       }
     }
     if (raw && paragraphData.value.length>0) { const parsed = parseMarked(raw); rewrittenParagraphs.value = parsed; resultText.value = serializeMarkedParagraphs(parsed) }
@@ -1224,12 +1229,12 @@ async function exportDoc(mode: string) {
 /* Workspace: Bento */
 .workspace { flex:1; min-height:0; display:grid; background:var(--bg-canvas); overflow:hidden; }
 .workspace.split-bento { grid-template-columns:1fr 340px; }
-.editor-pane { display:flex; flex-direction:column; background:var(--bg-paper); min-height:0; }
+.editor-pane { display:flex; flex-direction:column; background:var(--bg-paper); min-height:0; min-width:0; overflow:hidden; }
 .editor-pane.left { border-right:1px solid var(--border-light); }
 .pane-header { padding:14px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-light); flex-shrink:0; background:transparent; }
 .pane-title { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
 .pane-action { font-size:12px; color:var(--text-light); }
-.editor-content { flex:1; padding:24px 32px; overflow-y:auto; font-family:Georgia,'Noto Serif SC',serif; font-size:16px; line-height:1.9; color:var(--text-main); }
+.editor-content { flex:1; min-width:0; padding:24px 32px; overflow-y:auto; overflow-x:hidden; font-family:Georgia,'Noto Serif SC',serif; font-size:16px; line-height:1.9; color:var(--text-main); }
 .editor-content.placeholder { display:flex; align-items:center; justify-content:center; font-family:var(--font-sans); }
 
 /* Highlights */
@@ -1259,8 +1264,8 @@ async function exportDoc(mode: string) {
 
 .result-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px; color:var(--text-light); font-size:13px; }
 
-.fp-heading { margin:16px 0 6px; line-height:1.3; color:var(--text-main); user-select:none; }
-.fp-body { margin:0 0 6px; line-height:1.9; color:var(--text-main); }
+.fp-heading { margin:16px 0 6px; line-height:1.3; color:var(--text-main); user-select:none; overflow-wrap:break-word; word-break:break-word; }
+.fp-body { margin:0 0 6px; line-height:1.9; color:var(--text-main); overflow-wrap:break-word; word-break:break-word; }
 
 /* Bento sidebar */
 .bento-sidebar { background:var(--bg-surface); padding:24px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; border-left:1px solid var(--border-light); }
