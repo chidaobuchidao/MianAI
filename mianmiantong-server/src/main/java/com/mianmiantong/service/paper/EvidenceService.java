@@ -8,8 +8,11 @@ import com.mianmiantong.dto.paper.EvidenceResponse;
 import com.mianmiantong.entity.user.User;
 import com.mianmiantong.entity.user.UserAiConfig;
 import com.mianmiantong.mapper.user.UserMapper;
-import com.mianmiantong.service.ai.AiModelSelector;
-import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.ai.gateway.AiGateway;
+import com.mianmiantong.service.ai.gateway.AiRequest;
+import com.mianmiantong.service.ai.gateway.AiResponse;
+import com.mianmiantong.service.ai.gateway.AiTaskType;
+import com.mianmiantong.service.ai.gateway.ChatMessage;
 import com.mianmiantong.service.user.UserAiConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,13 +29,13 @@ public class EvidenceService {
     private static final int MAX_QUERY_CHARS = 900;
     private static final int MAX_CHUNK_CHARS = 900;
 
-    private final AiService aiService;
+    private final AiGateway aiGateway;
     private final UserAiConfigService userAiConfigService;
     private final UserMapper userMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public EvidenceService(AiService aiService, UserAiConfigService userAiConfigService, UserMapper userMapper) {
-        this.aiService = aiService;
+    public EvidenceService(AiGateway aiGateway, UserAiConfigService userAiConfigService, UserMapper userMapper) {
+        this.aiGateway = aiGateway;
         this.userAiConfigService = userAiConfigService;
         this.userMapper = userMapper;
     }
@@ -54,13 +57,15 @@ public class EvidenceService {
 
         String prompt = buildPrompt(request, chunks);
         try {
-            String raw = aiService.chat(
-                "你是严谨的论文证据审查员，只判断文献片段是否能支撑当前论文观点，必须输出合法 JSON。",
-                List.of(Map.of("role", "user", "content", prompt)),
-                hasOwnKey ? config.getApiKey() : null,
-                AiModelSelector.normalize(request.getModel())
+            List<ChatMessage> messages = List.of(
+                    new ChatMessage("user", prompt)
             );
-            response.setEvidences(mergeWithOriginal(chunks, parseEvidence(raw)));
+            AiRequest aiRequest = new AiRequest(
+                "你是严谨的论文证据审查员，只判断文献片段是否能支撑当前论文观点，必须输出合法 JSON。",
+                messages, request.getModel(), AiTaskType.FLASH
+            );
+            AiResponse aiResponse = aiGateway.chat(aiRequest, userId);
+            response.setEvidences(mergeWithOriginal(chunks, parseEvidence(aiResponse.content())));
             return response;
         } catch (Exception e) {
             log.warn("Evidence classification failed, falling back to retrieval scores", e);

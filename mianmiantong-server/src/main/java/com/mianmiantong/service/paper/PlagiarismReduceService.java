@@ -1,8 +1,10 @@
 package com.mianmiantong.service.paper;
 
 import com.mianmiantong.dto.paper.PlagiarismReduceRequest;
-import com.mianmiantong.service.ai.AiModelSelector;
-import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.ai.gateway.AiGateway;
+import com.mianmiantong.service.ai.gateway.AiRequest;
+import com.mianmiantong.service.ai.gateway.AiTaskType;
+import com.mianmiantong.service.ai.gateway.ChatMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -19,10 +21,10 @@ import java.util.stream.Collectors;
 @Service
 public class PlagiarismReduceService {
 
-    private final AiService aiService;
+    private final AiGateway aiGateway;
 
-    public PlagiarismReduceService(AiService aiService) {
-        this.aiService = aiService;
+    public PlagiarismReduceService(AiGateway aiGateway) {
+        this.aiGateway = aiGateway;
     }
 
     /** 本地检测文本内部重复风险 */
@@ -279,7 +281,6 @@ public class PlagiarismReduceService {
                               List<com.mianmiantong.dto.paper.PlagiarismReduceRequest.ReportAnnotation> annotations,
                               List<com.mianmiantong.dto.paper.ContextChunk> contextChunks) {
         SseEmitter emitter = new SseEmitter(120_000L);
-        String selectedModel = AiModelSelector.normalize(model);
 
         Map<String, String> modeLabels = Map.of("light", "轻度降重", "medium", "中度降重", "deep", "深度降重");
         String modeLabel = modeLabels.getOrDefault(mode != null ? mode : "medium", "中度降重");
@@ -302,8 +303,8 @@ public class PlagiarismReduceService {
             "context_chunks", contextBlock
         ));
 
-        List<Map<String, String>> messages = List.of(
-            Map.of("role", "user", "content", userPrompt)
+        List<ChatMessage> messages = List.of(
+            new ChatMessage("user", userPrompt)
         );
 
         emitter.onTimeout(() -> {
@@ -313,7 +314,8 @@ public class PlagiarismReduceService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, selectedModel, token -> {
+                AiRequest aiRequest = new AiRequest(systemPrompt, messages, model, AiTaskType.FLASH);
+                aiGateway.streamChat(aiRequest, null, token -> {
                     safeSend(emitter, "token", token);
                 });
 

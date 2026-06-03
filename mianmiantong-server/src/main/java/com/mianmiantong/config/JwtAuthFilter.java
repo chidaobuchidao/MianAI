@@ -72,7 +72,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     /** 从SecurityContext获取当前用户ID */
     public static Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
+        Object principal = auth.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
         }
@@ -81,7 +83,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     /** 从SecurityContext获取当前用户角色（0=普通用户, 1=管理员） */
     public static int getCurrentUserRole() {
-        Object cred = SecurityContextHolder.getContext().getAuthentication().getCredentials();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return 0;
+        Object cred = auth.getCredentials();
         return cred instanceof Integer ? (Integer) cred : 0;
     }
 

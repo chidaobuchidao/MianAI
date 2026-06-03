@@ -1,8 +1,10 @@
 package com.mianmiantong.service.paper;
 
 import com.mianmiantong.dto.paper.PolishRequest;
-import com.mianmiantong.service.ai.AiModelSelector;
-import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.ai.gateway.AiGateway;
+import com.mianmiantong.service.ai.gateway.AiRequest;
+import com.mianmiantong.service.ai.gateway.AiTaskType;
+import com.mianmiantong.service.ai.gateway.ChatMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -21,17 +23,16 @@ import java.util.regex.Pattern;
 @Service
 public class PolishService {
 
-    private final AiService aiService;
+    private final AiGateway aiGateway;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public PolishService(AiService aiService) {
-        this.aiService = aiService;
+    public PolishService(AiGateway aiGateway) {
+        this.aiGateway = aiGateway;
     }
 
     /** SSE 流式润色 */
     public SseEmitter runPolish(PolishRequest req) {
         SseEmitter emitter = new SseEmitter(120_000L);
-        String selectedModel = AiModelSelector.normalize(req.getModel());
 
         String systemPrompt = getSystemPrompt("prompts/polish_run_task.txt");
         String userPrompt = renderPrompt("prompts/polish_run_task.txt", Map.of(
@@ -44,8 +45,8 @@ public class PolishService {
             "language_policy", outputLanguagePolicy(req.getLanguage())
         ));
 
-        List<Map<String, String>> messages = List.of(
-            Map.of("role", "user", "content", userPrompt)
+        List<ChatMessage> messages = List.of(
+            new ChatMessage("user", userPrompt)
         );
 
         emitter.onTimeout(() -> {
@@ -55,7 +56,8 @@ public class PolishService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, selectedModel, token -> {
+                AiRequest aiRequest = new AiRequest(systemPrompt, messages, req.getModel(), AiTaskType.FLASH);
+                aiGateway.streamChat(aiRequest, null, token -> {
                     safeSendJson(emitter, "token", token);
                 });
 

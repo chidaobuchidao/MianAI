@@ -2,7 +2,6 @@ package com.mianmiantong.controller.paper;
 
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.dto.paper.PlagiarismReduceRequest;
-import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.paper.PlagiarismReduceService;
 import com.mianmiantong.service.user.QuotaService;
 import lombok.RequiredArgsConstructor;
@@ -39,13 +38,12 @@ public class PlagiarismReduceController {
 
     @PostMapping("/run")
     public SseEmitter reduce(@RequestBody PlagiarismReduceRequest request) {
-        String selectedModel = AiModelSelector.normalize(request.getModel());
-        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), selectedModel);
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), request.getModel());
         return plagiarismService.reduce(
             request.getText(),
             request.getSourceText(),
             request.getMode(),
-            selectedModel,
+            request.getModel(),
             request.getAnnotations(),
             request.getContextChunks()
         );

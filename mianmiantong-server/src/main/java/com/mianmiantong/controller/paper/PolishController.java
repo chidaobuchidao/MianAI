@@ -2,7 +2,6 @@ package com.mianmiantong.controller.paper;
 
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.dto.paper.PolishRequest;
-import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.paper.PolishService;
 import com.mianmiantong.service.user.QuotaService;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +20,7 @@ public class PolishController {
 
     @PostMapping("/run")
     public SseEmitter runPolish(@RequestBody PolishRequest request) {
-        String selectedModel = AiModelSelector.normalize(request.getModel());
-        request.setModel(selectedModel);
-        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), selectedModel);
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), request.getModel());
         return polishService.runPolish(request);
     }
 

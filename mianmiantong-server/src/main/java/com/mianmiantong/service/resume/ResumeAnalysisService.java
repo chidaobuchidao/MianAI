@@ -6,8 +6,11 @@ import com.mianmiantong.entity.resume.Resume;
 import com.mianmiantong.entity.resume.ResumeAnalysis;
 import com.mianmiantong.mapper.resume.ResumeAnalysisMapper;
 import com.mianmiantong.mapper.resume.ResumeMapper;
-import com.mianmiantong.service.ai.AiModelSelector;
-import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.ai.gateway.AiGateway;
+import com.mianmiantong.service.ai.gateway.AiRequest;
+import com.mianmiantong.service.ai.gateway.AiResponse;
+import com.mianmiantong.service.ai.gateway.AiTaskType;
+import com.mianmiantong.service.ai.gateway.ChatMessage;
 import com.mianmiantong.service.document.DocumentAiService;
 import com.mianmiantong.service.document.DocumentParseResult;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +26,7 @@ public class ResumeAnalysisService {
 
     private final ResumeMapper resumeMapper;
     private final ResumeAnalysisMapper analysisMapper;
-    private final AiService aiService;
+    private final AiGateway aiGateway;
     private final DocumentAiService documentAiService;
     private final ObjectMapper objectMapper;
 
@@ -77,11 +80,11 @@ public class ResumeAnalysisService {
 
     public ResumeAnalysisService(ResumeMapper resumeMapper,
                                   ResumeAnalysisMapper analysisMapper,
-                                  AiService aiService,
+                                  AiGateway aiGateway,
                                   DocumentAiService documentAiService) {
         this.resumeMapper = resumeMapper;
         this.analysisMapper = analysisMapper;
-        this.aiService = aiService;
+        this.aiGateway = aiGateway;
         this.documentAiService = documentAiService;
         this.objectMapper = new ObjectMapper();
         // AI 可能返回 literal newlines 等未转义控制字符，Jackson 默认拒绝
@@ -91,7 +94,6 @@ public class ResumeAnalysisService {
 
     /** Phase 1: 快速评分（异步后台） */
     public void analyzeQuickAsync(Long resumeId, String model) {
-        String selectedModel = AiModelSelector.normalize(model);
         CompletableFuture.runAsync(() -> {
             try {
                 Resume resume = resumeMapper.selectById(resumeId);
@@ -110,9 +112,10 @@ public class ResumeAnalysisService {
                 }
 
                 String prompt = String.format(QUICK_PROMPT, resume.getJobDescription(), resume.getParsedText());
-                List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", "开始评估"));
-                String response = aiService.chat(prompt, messages, null, selectedModel);
-                Map<String, Object> report = objectMapper.readValue(extractJson(response), Map.class);
+                List<ChatMessage> messages = List.of(new ChatMessage("user", "开始评估"));
+                AiRequest aiRequest = new AiRequest(prompt, messages, model, AiTaskType.FLASH);
+                AiResponse aiResponse = aiGateway.chat(aiRequest, null);
+                Map<String, Object> report = objectMapper.readValue(extractJson(aiResponse.content()), Map.class);
 
                 ResumeAnalysis analysis = upsert(resumeId);
                 analysis.setOverallScore(toInt(report.get("overallScore")));
@@ -138,7 +141,6 @@ public class ResumeAnalysisService {
 
     /** Phase 2: 深度优化 SSE 流式（含重试与断点续传） */
     public SseEmitter analyzeDeepStream(Long resumeId, String model) {
-        String selectedModel = AiModelSelector.normalize(model);
         Resume resume = resumeMapper.selectById(resumeId);
         ResumeAnalysis analysis = upsert(resumeId);
 
@@ -196,7 +198,7 @@ public class ResumeAnalysisService {
             userMessage = "开始深度优化";
         }
 
-        List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", userMessage));
+        List<ChatMessage> messages = List.of(new ChatMessage("user", userMessage));
         SseEmitter emitter = new SseEmitter(600_000L);
         StringBuilder buf = new StringBuilder();
         if (partial != null) buf.append(partial);
@@ -215,7 +217,8 @@ public class ResumeAnalysisService {
             try {
                 final long[] lastSaveTime = {System.currentTimeMillis()};
 
-                aiService.streamChat(basePrompt, messages, null, selectedModel, token -> {
+                AiRequest aiRequest = new AiRequest(basePrompt, messages, model, AiTaskType.FLASH);
+                aiGateway.streamChat(aiRequest, null, token -> {
                     buf.append(token);
                     safeSend(emitter, "token", token);
 
@@ -271,7 +274,7 @@ public class ResumeAnalysisService {
         }
 
         String prompt = String.format(QUICK_PROMPT, resume.getJobDescription(), resume.getParsedText());
-        List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", "开始评估"));
+        List<ChatMessage> messages = List.of(new ChatMessage("user", "开始评估"));
 
         SseEmitter emitter = new SseEmitter(120_000L);
         StringBuilder buf = new StringBuilder();
@@ -280,7 +283,8 @@ public class ResumeAnalysisService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(prompt, messages, null, AiModelSelector.FLASH, token -> {
+                AiRequest aiRequest = new AiRequest(prompt, messages, null, AiTaskType.FLASH);
+                aiGateway.streamChat(aiRequest, null, token -> {
                     buf.append(token);
                     safeSend(emitter, "token", token);
                 });
@@ -324,11 +328,12 @@ public class ResumeAnalysisService {
                         analysis.getOverallScore() != null ? analysis.getOverallScore() : 5,
                         keywords, resume.getParsedText());
 
-                List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", "开始深度优化"));
-                String response = aiService.chat(prompt, messages, null, AiModelSelector.FLASH);
+                List<ChatMessage> messages = List.of(new ChatMessage("user", "开始深度优化"));
+                AiRequest aiRequest = new AiRequest(prompt, messages, null, AiTaskType.FLASH);
+                AiResponse aiResponse = aiGateway.chat(aiRequest, null);
 
-                String jsonStr = extractJson(response);
-                log.info("深度优化(异步)AI响应长度: {}, JSON长度: {}", response.length(), jsonStr.length());
+                String jsonStr = extractJson(aiResponse.content());
+                log.info("深度优化(异步)AI响应长度: {}, JSON长度: {}", aiResponse.content().length(), jsonStr.length());
                 Map<String, Object> report = objectMapper.readValue(jsonStr, Map.class);
                 analysis.setHighlights(toJson(report.get("highlights")));
                 analysis.setOptimizedText((String) report.get("optimizedText"));

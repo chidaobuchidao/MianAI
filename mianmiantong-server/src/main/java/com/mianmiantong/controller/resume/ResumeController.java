@@ -4,7 +4,6 @@ import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.common.JwtUtil;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.entity.resume.Resume;
-import com.mianmiantong.service.ai.AiModelSelector;
 import com.mianmiantong.service.document.HtmlPreviewService;
 import com.mianmiantong.service.document.TemplatePreservingExportService;
 import com.mianmiantong.service.document.WordExportService;
@@ -72,7 +71,7 @@ public class ResumeController {
 
     /** Phase 1: 快速评分（异步后台执行，前端轮询 GET /analysis） */
     private void consumeResumeQuota(String model) {
-        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), AiModelSelector.normalize(model));
+        quotaService.checkAndConsume(JwtAuthFilter.getCurrentUserId(), model);
     }
     @PostMapping("/{resumeId}/analyze")
     public Result<?> analyze(@PathVariable Long resumeId,
@@ -87,9 +86,8 @@ public class ResumeController {
         if (resume.getParseStatus() != 1) {
             return Result.fail("简历状态异常(" + resume.getParseStatus() + ")，请联系管理员");
         }
-        String selectedModel = AiModelSelector.normalize(model);
-        analysisService.analyzeQuickAsync(resumeId, selectedModel);
-        consumeResumeQuota(selectedModel); // 提交成功后才消耗
+        analysisService.analyzeQuickAsync(resumeId, model);
+        consumeResumeQuota(model); // 提交成功后才消耗
         return Result.ok(Map.of("message", "分析已开始"));
     }
 
@@ -97,18 +95,16 @@ public class ResumeController {
     @PostMapping("/{resumeId}/analyze-deep")
     public SseEmitter analyzeDeep(@PathVariable Long resumeId,
                                   @RequestParam(value = "model", required = false) String model) {
-        String selectedModel = AiModelSelector.normalize(model);
-        consumeResumeQuota(selectedModel);
-        return analysisService.analyzeDeepStream(resumeId, selectedModel);
+        consumeResumeQuota(model);
+        return analysisService.analyzeDeepStream(resumeId, model);
     }
 
     /** 检查重试状态并触发重试 */
     @PostMapping("/{resumeId}/retry-deep")
     public SseEmitter retryDeep(@PathVariable Long resumeId,
                                 @RequestParam(value = "model", required = false) String model) {
-        String selectedModel = AiModelSelector.normalize(model);
-        consumeResumeQuota(selectedModel);
-        return analysisService.analyzeDeepStream(resumeId, selectedModel);
+        consumeResumeQuota(model);
+        return analysisService.analyzeDeepStream(resumeId, model);
     }
 
     /** 查询是否可重试 */

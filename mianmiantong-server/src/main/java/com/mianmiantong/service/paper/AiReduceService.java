@@ -1,8 +1,10 @@
 package com.mianmiantong.service.paper;
 
 import com.mianmiantong.dto.paper.AiReduceRequest;
-import com.mianmiantong.service.ai.AiModelSelector;
-import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.ai.gateway.AiGateway;
+import com.mianmiantong.service.ai.gateway.AiRequest;
+import com.mianmiantong.service.ai.gateway.AiTaskType;
+import com.mianmiantong.service.ai.gateway.ChatMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -24,10 +26,10 @@ import java.util.stream.Collectors;
 @Service
 public class AiReduceService {
 
-    private final AiService aiService;
+    private final AiGateway aiGateway;
 
-    public AiReduceService(AiService aiService) {
-        this.aiService = aiService;
+    public AiReduceService(AiGateway aiGateway) {
+        this.aiGateway = aiGateway;
     }
 
     // ============================================================
@@ -615,7 +617,6 @@ public class AiReduceService {
                                List<AiReduceRequest.FlaggedSentence> flaggedSentences,
                                List<com.mianmiantong.dto.paper.ContextChunk> contextChunks) {
         SseEmitter emitter = new SseEmitter(120_000L);
-        String selectedModel = AiModelSelector.normalize(model);
 
         Map<String, String> modeLabels = Map.of("light", "轻度去痕", "deep", "深度重构", "academic", "学术拟合");
         String modeLabel = modeLabels.getOrDefault(mode != null ? mode : "light", "轻度去痕");
@@ -632,8 +633,8 @@ public class AiReduceService {
             "flagged_passages", flaggedPassages, "context_chunks", contextBlock
         ));
 
-        List<Map<String, String>> messages = List.of(
-            Map.of("role", "user", "content", userPrompt)
+        List<ChatMessage> messages = List.of(
+            new ChatMessage("user", userPrompt)
         );
 
         emitter.onTimeout(() -> {
@@ -643,7 +644,8 @@ public class AiReduceService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                aiService.streamChat(systemPrompt, messages, null, selectedModel, token ->
+                AiRequest aiRequest = new AiRequest(systemPrompt, messages, model, AiTaskType.FLASH);
+                aiGateway.streamChat(aiRequest, null, token ->
                     safeSend(emitter, "token", token)
                 );
                 emitter.send(SseEmitter.event().name("finish")

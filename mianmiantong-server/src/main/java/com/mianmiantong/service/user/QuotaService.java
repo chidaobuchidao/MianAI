@@ -4,7 +4,6 @@ import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.entity.user.User;
 import com.mianmiantong.entity.user.UserAiConfig;
 import com.mianmiantong.mapper.user.UserMapper;
-import com.mianmiantong.service.ai.AiModelSelector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,7 +39,7 @@ public class QuotaService {
 
         int daily = dailyQuota(user);
         int used = quotaUsed(user);
-        int steps = AiModelSelector.PRO.equals(AiModelSelector.normalize(model)) ? 2 : 1;
+        int steps = isProModel(model) ? 2 : 1;
 
         if (used + steps > daily) {
             throw new QuotaExhaustedException("今日免费次数不足（剩余 " + Math.max(0, daily - used) + " 次，需 " + steps + " 次），请配置 AI API Key 后无限使用");
@@ -113,6 +112,12 @@ public class QuotaService {
 
     private boolean hasApiKey(UserAiConfig config) {
         return config != null && config.getApiKey() != null && !config.getApiKey().isBlank();
+    }
+
+    private boolean isProModel(String model) {
+        if (model == null) return false;
+        String lower = model.toLowerCase();
+        return lower.contains("pro");
     }
 
     private int dailyQuota(User user) {

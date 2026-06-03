@@ -2,8 +2,11 @@ package com.mianmiantong.service.resume;
 
 import com.mianmiantong.entity.resume.ResumeTemplate;
 import com.mianmiantong.mapper.resume.ResumeTemplateMapper;
-import com.mianmiantong.service.ai.AiModelSelector;
-import com.mianmiantong.service.ai.AiService;
+import com.mianmiantong.service.ai.gateway.AiGateway;
+import com.mianmiantong.service.ai.gateway.AiRequest;
+import com.mianmiantong.service.ai.gateway.AiResponse;
+import com.mianmiantong.service.ai.gateway.AiTaskType;
+import com.mianmiantong.service.ai.gateway.ChatMessage;
 import com.mianmiantong.service.document.WordExportService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -22,14 +25,14 @@ import java.util.Map;
 public class TemplateResumeService {
 
     private final ResumeTemplateMapper templateMapper;
-    private final AiService aiService;
+    private final AiGateway aiGateway;
     private final WordExportService wordExportService;
 
     public TemplateResumeService(ResumeTemplateMapper templateMapper,
-                                 AiService aiService,
+                                 AiGateway aiGateway,
                                  WordExportService wordExportService) {
         this.templateMapper = templateMapper;
-        this.aiService = aiService;
+        this.aiGateway = aiGateway;
         this.wordExportService = wordExportService;
     }
 
@@ -79,14 +82,15 @@ public class TemplateResumeService {
         if (tpl == null) throw new IllegalArgumentException("模板不存在");
 
         String prompt = String.format(PROMPT, parsedText, jobDescription);
-        List<Map<String, String>> messages = List.of(
-                Map.of("role", "user", "content", "请生成简历")
+        List<ChatMessage> messages = List.of(
+                new ChatMessage("user", "请生成简历")
         );
 
-        String aiResponse = aiService.chat(prompt, messages, null, AiModelSelector.FLASH);
-        log.info("AI模板简历生成完成: templateId={}, len={}", templateId, aiResponse.length());
+        AiRequest request = new AiRequest(prompt, messages, null, AiTaskType.FLASH);
+        AiResponse response = aiGateway.chat(request, null);
+        log.info("AI模板简历生成完成: templateId={}, len={}", templateId, response.content().length());
 
-        return wordExportService.exportMarkdown(aiResponse,
+        return wordExportService.exportMarkdown(response.content(),
                 tpl.getName() + "简历");
     }
 
