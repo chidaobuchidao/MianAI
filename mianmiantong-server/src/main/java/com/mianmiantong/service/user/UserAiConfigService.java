@@ -25,6 +25,11 @@ public class UserAiConfigService {
     }
 
     public void save(Long userId, String provider, String apiKey, String model) {
+        save(userId, provider, apiKey, model, null, null);
+    }
+
+    public void save(Long userId, String provider, String apiKey, String model,
+                     String preferredModel, String customEndpoint) {
         // apiKey为空时删除记录，回退使用系统默认Key
         if (apiKey == null || apiKey.isBlank()) {
             mapper.deleteById(userId);
@@ -37,6 +42,8 @@ public class UserAiConfigService {
             existing.setProvider(provider);
             existing.setApiKey(apiKey);
             existing.setModel(model);
+            existing.setPreferredModel(preferredModel);
+            existing.setCustomEndpoint(customEndpoint);
             existing.setUpdateTime(now);
             mapper.updateById(existing);
         } else {
@@ -45,6 +52,8 @@ public class UserAiConfigService {
             config.setProvider(provider);
             config.setApiKey(apiKey);
             config.setModel(model);
+            config.setPreferredModel(preferredModel);
+            config.setCustomEndpoint(customEndpoint);
             config.setCreateTime(now);
             config.setUpdateTime(now);
             mapper.insert(config);

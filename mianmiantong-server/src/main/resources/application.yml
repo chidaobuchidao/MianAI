@@ -37,17 +37,25 @@ jwt:
   secret: ${JWT_SECRET:}
   expiration: 604800000  # 7 days in ms
 
-# AI Provider: qwen or deepseek
+# AI Provider
 ai:
   provider: deepseek
-  qwen:
-    api-key: ${DASHSCOPE_API_KEY:your-qwen-api-key}
-    model: qwen-turbo
-    endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
   deepseek:
     api-key: ${DEEPSEEK_API_KEY:}
     model: deepseek-v4-flash
     endpoint: https://api.deepseek.com/chat/completions
+  qwen:
+    api-key: ${DASHSCOPE_API_KEY:your-qwen-api-key}
+    model: qwen-turbo
+    endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+  doubao:
+    api-key: ${DOUBAO_API_KEY:}
+    model: doubao-pro-4k
+    endpoint: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+  zhipu:
+    api-key: ${ZHIPU_API_KEY:}
+    model: glm-4-flash
+    endpoint: https://open.bigmodel.cn/api/paas/v4/chat/completions
 
 # Knife4j
 springdoc:

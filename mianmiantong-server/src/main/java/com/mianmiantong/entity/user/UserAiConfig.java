@@ -14,6 +14,8 @@ public class UserAiConfig {
     private String provider;
     private String apiKey;
     private String model;
+    private String customEndpoint;
+    private String preferredModel;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
