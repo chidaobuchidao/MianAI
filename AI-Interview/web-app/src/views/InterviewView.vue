@@ -10,10 +10,12 @@
         <p class="pos-desc">选择目标岗位，AI 面试官将进行一场真实技术面试</p>
         <div class="model-bar">
           <span class="model-label">模型</span>
-          <div class="capsule-toggle">
-            <div class="capsule-slider" :class="{ right: interviewModel === 'deepseek-v4-pro' }" />
-            <button class="capsule-opt" :class="{ active: interviewModel === 'deepseek-v4-flash' }" @click="interviewModel = 'deepseek-v4-flash'">Flash</button>
-            <button class="capsule-opt" :class="{ active: interviewModel === 'deepseek-v4-pro' }" @click="interviewModel = 'deepseek-v4-pro'">Pro</button>
+          <div v-if="hasOptions" class="capsule-toggle">
+            <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === currentModel) * 100) + '%)' }" />
+            <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: currentModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
+          </div>
+          <div v-else class="capsule-toggle">
+            <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ selectedLabel }}</span>
           </div>
         </div>
         <div class="pos-grid">
@@ -405,6 +407,7 @@ import { getPosIcon } from '@/utils/positionIcons'
 import { useInterviewStream, type InterviewMessage, type ReportData, type CodeProblem, type CodingReview } from '@/composables/useInterviewStream'
 import { useQuota } from '@/composables/useQuota'
 import { useResponsive } from '@/composables/useResponsive'
+import { useModelToggle } from '@/composables/useModelToggle'
 
 interface ProgressItem {
   name: string
@@ -514,8 +517,8 @@ function autoResizeInput() {
   el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px'
 }
 
+const { currentModel: interviewModel, options, hasOptions, selectedLabel, selectModel } = useModelToggle()
 const positions = ['Java 后端开发', '前端开发工程师', '算法工程师', '数据分析师', 'DevOps 工程师']
-const interviewModel = ref('deepseek-v4-flash')
 const selectedPosition = ref('')
 const progressItems = ref<ProgressItem[]>([])
 
@@ -1479,14 +1482,11 @@ function submitCode() {
 .capsule-slider {
   position: absolute;
   top: 0; left: 0;
-  width: 50%; height: 100%;
+  height: 100%;
   background: var(--bg-dark);
   border-radius: var(--radius-full);
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
-}
-.capsule-slider.right {
-  transform: translateX(100%);
 }
 .capsule-opt {
   position: relative; z-index: 1;
@@ -1495,6 +1495,7 @@ function submitCode() {
   border: none; background: transparent;
   color: var(--text-muted); cursor: pointer;
   transition: color 0.25s;
+  white-space: nowrap;
 }
 .capsule-opt.active {
   color: #fff;

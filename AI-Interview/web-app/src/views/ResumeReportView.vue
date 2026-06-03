@@ -89,12 +89,12 @@
           <p class="deep-hint">AI 将逐段优化简历并生成面试追问</p>
           <div class="model-bar">
             <span class="model-label">模型</span>
-            <div class="capsule-toggle">
-              <div class="capsule-slider" :class="{ right: deepModel === 'deepseek-v4-pro' }" />
-              <button class="capsule-opt" :class="{ active: deepModel === 'deepseek-v4-flash' }"
-                @click="deepModel = 'deepseek-v4-flash'">Flash</button>
-              <button class="capsule-opt" :class="{ active: deepModel === 'deepseek-v4-pro' }"
-                @click="deepModel = 'deepseek-v4-pro'">Pro</button>
+            <div v-if="hasOptions" class="capsule-toggle">
+              <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === currentModel) * 100) + '%)' }" />
+              <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: currentModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
+            </div>
+            <div v-else class="capsule-toggle">
+              <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ selectedLabel }}</span>
             </div>
           </div>
           <button class="btn btn--primary btn--full" @click="startDeep">
@@ -189,6 +189,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { get, post } from '@/utils/request'
 import { useQuota } from '@/composables/useQuota'
+import { useModelToggle } from '@/composables/useModelToggle'
 import GridScan from '@/components/GridScan.vue'
 import UnifiedDiff from '@/components/UnifiedDiff.vue'
 
@@ -200,16 +201,10 @@ interface Report {
   optimizedText: string; interviewQuestions: string[]; suggestion: string
   parseStatus?: number; deepStatus?: number
 }
-type AiModel = 'deepseek-v4-flash' | 'deepseek-v4-pro'
-
-function normalizeAiModel(value: unknown): AiModel {
-  const raw = Array.isArray(value) ? value[0] : value
-  return raw === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash'
-}
-
 const route = useRoute()
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
+const { currentModel: deepModel, options, hasOptions, selectedLabel, selectModel } = useModelToggle()
 
 const loading = ref(true)
 const quotaError = ref('')
@@ -217,7 +212,6 @@ const loadingText = ref('AI 正在分析简历...')
 const report = ref<Report | null>(null)
 const score = ref(0)
 const deepStatus = ref(0)
-const deepModel = ref<AiModel>(normalizeAiModel(route.query.model))
 const deepElapsed = ref(0)
 const retryRemaining = ref(3)
 let deepTimer: ReturnType<typeof setInterval> | null = null
@@ -784,14 +778,11 @@ onUnmounted(() => { cleanupStream() })
 .capsule-slider {
   position: absolute;
   top: 0; left: 0;
-  width: 50%; height: 100%;
+  height: 100%;
   background: var(--bg-dark);
   border-radius: var(--radius-full);
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
-}
-.capsule-slider.right {
-  transform: translateX(100%);
 }
 .capsule-opt {
   position: relative; z-index: 1;
@@ -800,6 +791,7 @@ onUnmounted(() => { cleanupStream() })
   border: none; background: transparent;
   color: var(--text-muted); cursor: pointer;
   transition: color 0.25s;
+  white-space: nowrap;
 }
 .capsule-opt.active {
   color: #fff;
