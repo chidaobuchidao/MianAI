@@ -14,13 +14,12 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/ai-reduce')">降AI</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
-        <div v-if="hasToggle" class="capsule-toggle">
-          <div class="capsule-slider" :class="{ right: isPro }" />
-          <button class="capsule-opt" :class="{ active: !isPro }" @click="toggle">{{ displayLeft }}</button>
-          <button class="capsule-opt" :class="{ active: isPro }" @click="toggle">{{ displayRight }}</button>
+        <div v-if="hasOptions" class="capsule-toggle">
+          <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === currentModel) * 100) + '%)' }" />
+          <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: currentModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
         </div>
         <div v-else class="capsule-toggle">
-          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ currentModel }}</span>
+          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ selectedLabel }}</span>
         </div>
         <span v-if="quotaInfo.quotaRemaining >= 0" class="quota-badge" :class="{ 'quota-low': quotaInfo.quotaRemaining <= 2 && !quotaInfo.unlimited }">
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
@@ -376,7 +375,7 @@ import KbHitDetails from '@/components/KbHitDetails.vue'
 const router = useRouter()
 const { fetchQuota, checkQuota } = useQuota()
 const { isDesktop } = useResponsive()
-const { currentModel, hasToggle, isPro, displayLeft, displayRight, toggle } = useModelToggle()
+const { currentModel, options, hasOptions, selectedLabel, selectModel } = useModelToggle()
 const mobilePane = ref<'original' | 'result'>('original')
 const paperStore = usePaperStore()
 
@@ -1631,16 +1630,11 @@ async function exportDoc(mode: string) {
   position: absolute;
   top: 0;
   left: 0;
-  width: 50%;
   height: 100%;
   background: #141413;
   border-radius: 100px;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 0;
-}
-
-.capsule-slider.right {
-  transform: translateX(100%);
 }
 
 .capsule-opt {
@@ -1655,6 +1649,7 @@ async function exportDoc(mode: string) {
   cursor: pointer;
   transition: color 0.25s;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .capsule-opt.active {

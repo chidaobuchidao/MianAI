@@ -11,13 +11,12 @@
         <button class="btn btn-outline btn-switch" @click="router.replace('/paper-tools/ai-reduce')">降AI / 降查重</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;margin-left:auto;">
-        <div v-if="hasToggle" class="capsule-toggle">
-          <div class="capsule-slider" :class="{ right: isPro }" />
-          <button class="capsule-opt" :class="{ active: !isPro }" @click="toggle">{{ displayLeft }}</button>
-          <button class="capsule-opt" :class="{ active: isPro }" @click="toggle">{{ displayRight }}</button>
+        <div v-if="hasOptions" class="capsule-toggle" :style="{ '--count': options.length }">
+          <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === currentModel) * 100) + '%)' }" />
+          <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: currentModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
         </div>
         <div v-else class="capsule-toggle">
-          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ currentModel }}</span>
+          <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ selectedLabel }}</span>
         </div>
         <span v-if="quotaInfo.quotaRemaining >= 0" class="quota-badge" :class="{ 'quota-low': quotaInfo.quotaRemaining <= 2 && !quotaInfo.unlimited }">
           {{ quotaInfo.unlimited ? '无限次' : `剩余 ${quotaInfo.quotaRemaining}/${quotaInfo.dailyQuota} 次` }}
@@ -307,7 +306,7 @@ const paperStore = usePaperStore()
 const { warnToast, showWarn } = useWarnToast()
 
 // === Model Toggle ===
-const { currentModel, hasToggle, isPro, displayLeft, displayRight, toggle } = useModelToggle()
+const { currentModel, options, hasOptions, selectedLabel, selectModel } = useModelToggle()
 
 // === State ===
 const quotaInfo = ref<QuotaInfo>({ hasApiKey: false, isAdmin: false, knowledgeBaseEnabled: false, unlimited: false, dailyQuota: 10, quotaUsed: 0, quotaRemaining: 10 })
@@ -955,9 +954,8 @@ function escapeHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&l
 
 /* Capsule toggle */
 .capsule-toggle { position: relative; display: inline-flex; border: 1px solid var(--border-medium); border-radius: 100px; overflow: hidden; background: var(--bg-surface); }
-.capsule-slider { position: absolute; top: 0; left: 0; width: 50%; height: 100%; background: #141413; border-radius: 100px; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); z-index: 0; }
-.capsule-slider.right { transform: translateX(100%); }
-.capsule-opt { position: relative; z-index: 1; padding: 5px 16px; font-size: 12px; font-weight: 500; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: color 0.25s; font-family: inherit; }
+.capsule-slider { position: absolute; top: 0; left: 0; height: 100%; background: #141413; border-radius: 100px; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); z-index: 0; }
+.capsule-opt { position: relative; z-index: 1; padding: 5px 16px; font-size: 12px; font-weight: 500; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: color 0.25s; font-family: inherit; white-space: nowrap; }
 .capsule-opt.active { color: #fff; }
 .quota-badge{font-size:11px;color:var(--text-muted);background:var(--bg-surface);padding:4px 12px;border-radius:100px;white-space:nowrap;border:1px solid var(--border-light);}
 .quota-badge.quota-low{color:var(--color-danger);border-color:rgba(239,68,68,0.25);background:rgba(239,68,68,0.04);}

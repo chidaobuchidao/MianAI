@@ -7,17 +7,30 @@ interface AiConfig {
   model: string | null
 }
 
-interface ModelPair {
+export interface ModelOption {
+  id: string
   label: string
-  fast: string
-  pro: string
 }
 
-const PROVIDER_MODELS: Record<string, ModelPair> = {
-  deepseek: { label: 'Flash / Pro', fast: 'deepseek-v4-flash', pro: 'deepseek-v4-pro' },
-  qwen: { label: 'Turbo / Plus', fast: 'qwen-turbo', pro: 'qwen-plus' },
-  doubao: { label: 'Lite / Pro', fast: 'doubao-lite-4k', pro: 'doubao-pro-4k' },
-  zhipu: { label: 'Flash / Plus', fast: 'glm-4-flash', pro: 'glm-4-plus' },
+const PROVIDER_OPTIONS: Record<string, ModelOption[]> = {
+  deepseek: [
+    { id: 'deepseek-v4-flash', label: 'Flash' },
+    { id: 'deepseek-v4-pro', label: 'Pro' },
+  ],
+  qwen: [
+    { id: 'qwen-turbo', label: 'Turbo' },
+    { id: 'qwen-plus', label: 'Plus' },
+  ],
+  doubao: [
+    { id: 'doubao-lite-4k', label: 'Lite' },
+    { id: 'doubao-pro-4k', label: 'Pro' },
+    { id: 'doubao-pro-32k', label: 'Pro-32k' },
+  ],
+  zhipu: [
+    { id: 'glm-4-flash', label: 'Flash' },
+    { id: 'glm-4-plus', label: 'Plus' },
+    { id: 'glm-4-long', label: 'Long' },
+  ],
 }
 
 export function useModelToggle() {
@@ -26,17 +39,16 @@ export function useModelToggle() {
   const currentModel = ref('deepseek-v4-flash')
   const configLoaded = ref(false)
 
-  const modelPair = computed(() => PROVIDER_MODELS[userProvider.value])
-  const hasToggle = computed(() => !!modelPair.value)
-  const isPro = computed(() => modelPair.value ? currentModel.value === modelPair.value.pro : false)
-
-  const toggleLabel = computed(() => {
-    if (!modelPair.value) return currentModel.value
-    return modelPair.value.label
+  const options = computed(() => PROVIDER_OPTIONS[userProvider.value] || [])
+  const hasOptions = computed(() => options.value.length >= 2)
+  const selectedLabel = computed(() => {
+    const found = options.value.find(o => o.id === currentModel.value)
+    return found?.label || currentModel.value
   })
 
-  const displayLeft = computed(() => modelPair.value?.fast.split('-').pop() || 'Fast')
-  const displayRight = computed(() => modelPair.value?.pro.split('-').pop() || 'Pro')
+  function selectModel(id: string) {
+    currentModel.value = id
+  }
 
   async function loadConfig() {
     try {
@@ -44,12 +56,12 @@ export function useModelToggle() {
       if (res.data) {
         userProvider.value = res.data.provider || 'deepseek'
         userPreferredModel.value = res.data.preferredModel || res.data.model
-        // Set current model based on preferred or default
-        const pair = PROVIDER_MODELS[userProvider.value]
-        if (pair && userPreferredModel.value) {
-          currentModel.value = userPreferredModel.value
-        } else if (pair) {
-          currentModel.value = pair.fast
+        const opts = PROVIDER_OPTIONS[userProvider.value]
+        if (opts && userPreferredModel.value) {
+          const match = opts.find(o => o.id === userPreferredModel.value)
+          currentModel.value = match ? match.id : opts[0].id
+        } else if (opts) {
+          currentModel.value = opts[0].id
         } else if (userPreferredModel.value) {
           currentModel.value = userPreferredModel.value
         }
@@ -58,21 +70,14 @@ export function useModelToggle() {
     configLoaded.value = true
   }
 
-  function toggle() {
-    if (!modelPair.value) return
-    currentModel.value = isPro.value ? modelPair.value.fast : modelPair.value.pro
-  }
-
   onMounted(loadConfig)
 
   return {
     currentModel,
-    hasToggle,
-    isPro,
-    toggleLabel,
-    displayLeft,
-    displayRight,
-    toggle,
+    options,
+    hasOptions,
+    selectedLabel,
+    selectModel,
     configLoaded,
     userProvider,
   }
