@@ -22,6 +22,8 @@ public class User {
     private Integer quotaUsed;
     private LocalDate quotaDate;
     private Integer knowledgeBaseEnabled;
+    private String email;
+    private Integer emailVerified;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

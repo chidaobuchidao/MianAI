@@ -90,8 +90,8 @@
           <div class="model-bar">
             <span class="model-label">模型</span>
             <div v-if="hasOptions" class="capsule-toggle">
-              <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === currentModel) * 100) + '%)' }" />
-              <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: currentModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
+              <div class="capsule-slider" :style="{ width: (100 / options.length) + '%', transform: 'translateX(' + (options.findIndex(o => o.id === deepModel) * 100) + '%)' }" />
+              <button v-for="opt in options" :key="opt.id" class="capsule-opt" :class="{ active: deepModel === opt.id }" @click="selectModel(opt.id)">{{ opt.label }}</button>
             </div>
             <div v-else class="capsule-toggle">
               <span class="capsule-opt active" style="cursor:default;padding:5px 12px;">{{ selectedLabel }}</span>

@@ -54,7 +54,7 @@
     <!-- Toolbar -->
     <div class="pro-toolbar">
       <div class="tabs-container">
-        <div class="tab-indicator" ref="tabIndicator" />
+        <div class="tab-indicator" :ref="setIndicatorRef" />
         <div v-for="t in polishTabs" :key="t.value"
           class="tab-btn" :class="{ active: polishType === t.value }"
           :ref="el => setTabRef(t.value, el)"
@@ -334,7 +334,7 @@ const dirtyParagraphs = ref<Set<number>>(new Set())
 let abortController: AbortController | null = null
 
 // === Composables ===
-const { tabRefs, tabIndicator, setTab, setTabRef } = useTabIndicator(polishType as Ref<string>)
+const { setTab, setTabRef, setIndicatorRef } = useTabIndicator(polishType as Ref<string>)
 const { showExport, isExporting, canPreserveFormat, canUsePdfToWordExport, needsOriginalFileForPreserve, exportDoc } = usePaperExport({
   paragraphData: () => paragraphData.value,
   resultParagraphs: () => polishedParagraphs.value,

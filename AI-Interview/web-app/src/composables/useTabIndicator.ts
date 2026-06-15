@@ -28,6 +28,10 @@ export function useTabIndicator(activeValue: Ref<string>) {
     tabRefs[key] = el as HTMLElement | null
   }
 
+  function setIndicatorRef(el: unknown) {
+    tabIndicator.value = el as HTMLElement | null
+  }
+
   onMounted(() => {
     nextTick(() => moveIndicator())
     resizeObs = new ResizeObserver(() => moveIndicator())
@@ -41,7 +45,7 @@ export function useTabIndicator(activeValue: Ref<string>) {
 
   watch(activeValue, () => nextTick(() => moveIndicator()))
 
-  return { tabRefs, tabIndicator, moveIndicator, setTab, setTabRef }
+  return { tabRefs, tabIndicator, moveIndicator, setTab, setTabRef, setIndicatorRef }
 }
 
 export type UseTabIndicatorReturn = ReturnType<typeof useTabIndicator>

@@ -20,15 +20,151 @@ public class AuthService {
 
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
+    private final EmailService emailService;
+    private final VerificationCodeService codeService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private static final String ADMIN_USERNAME = "chidao";
     private static final String ADMIN_PASSWORD = System.getenv().getOrDefault("ADMIN_PASSWORD", "change-me");
 
-    public AuthService(UserMapper userMapper, JwtUtil jwtUtil) {
+    public AuthService(UserMapper userMapper, JwtUtil jwtUtil,
+                       EmailService emailService, VerificationCodeService codeService) {
         this.userMapper = userMapper;
         this.jwtUtil = jwtUtil;
+        this.emailService = emailService;
+        this.codeService = codeService;
     }
+
+    // ==================== Email verification code ====================
+
+    /** Send a 6-digit verification code to the given email. */
+    public void sendVerificationCode(String email, String type) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("邮箱不能为空");
+        }
+        if (!email.matches("^[\\w-.]+@[\\w-]+\\.[a-zA-Z]{2,}$")) {
+            throw new IllegalArgumentException("邮箱格式不正确");
+        }
+        if (!"register".equals(type) && !"reset".equals(type)) {
+            throw new IllegalArgumentException("无效的验证码类型");
+        }
+
+        // For registration, check if email is already taken
+        if ("register".equals(type)) {
+            User existing = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getEmail, email)
+            );
+            if (existing != null) {
+                throw new IllegalArgumentException("该邮箱已被注册");
+            }
+        }
+        // For password reset, check if email exists
+        if ("reset".equals(type)) {
+            User existing = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getEmail, email)
+            );
+            if (existing == null) {
+                throw new IllegalArgumentException("该邮箱未注册");
+            }
+        }
+
+        String code = codeService.generateAndStore(email, type);
+        emailService.sendVerificationCode(email, type, code);
+    }
+
+    // ==================== Email registration ====================
+
+    /** Register with email + verification code + password. */
+    public LoginResponse registerByEmail(String email, String code, String password, String nickname) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("邮箱不能为空");
+        }
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("验证码不能为空");
+        }
+        if (password == null || password.length() < 6) {
+            throw new IllegalArgumentException("密码至少6位");
+        }
+
+        // Verify the code (does not delete it yet)
+        codeService.verify(email, "register", code);
+
+        // Check email uniqueness (defensive, already checked in sendCode but re-check)
+        User existing = userMapper.selectOne(
+            new LambdaQueryWrapper<User>().eq(User::getEmail, email)
+        );
+        if (existing != null) {
+            throw new IllegalArgumentException("该邮箱已被注册");
+        }
+
+        User user = new User();
+        user.setEmail(email);
+        user.setEmailVerified(1);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setNickname(nickname != null && !nickname.isBlank() ? nickname : email.split("@")[0]);
+        user.setUsername(email); // Use email as username for backward compatibility
+        user.setOpenid("email_" + email.hashCode() + "_" + System.currentTimeMillis());
+        user.setRole(0);
+        user.setDailyQuota(10);
+        user.setQuotaUsed(0);
+        user.setQuotaDate(LocalDate.now());
+        userMapper.insert(user);
+
+        // Code consumed only after successful registration
+        codeService.consumeCode(email, "register");
+
+        String token = jwtUtil.generateToken(user.getId(), user.getOpenid(), 0);
+        log.info("邮箱注册: email={}, userId={}", email, user.getId());
+        return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl(), user.getEmail());
+    }
+
+    // ==================== Email login ====================
+
+    /** Login with email + password. */
+    public LoginResponse loginByEmail(String email, String password) {
+        User user = userMapper.selectOne(
+            new LambdaQueryWrapper<User>().eq(User::getEmail, email)
+        );
+        if (user == null) {
+            throw new IllegalArgumentException("邮箱或密码错误");
+        }
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new IllegalArgumentException("邮箱或密码错误");
+        }
+        String token = jwtUtil.generateToken(user.getId(), user.getOpenid(), user.getRole() != null ? user.getRole() : 0);
+        return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl(), user.getEmail());
+    }
+
+    // ==================== Password reset ====================
+
+    /** Reset password with email + verification code. */
+    public void resetPassword(String email, String code, String newPassword) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("邮箱不能为空");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new IllegalArgumentException("新密码至少6位");
+        }
+
+        codeService.verify(email, "reset", code);
+
+        User user = userMapper.selectOne(
+            new LambdaQueryWrapper<User>().eq(User::getEmail, email)
+        );
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+
+        // Code consumed only after successful password reset
+        codeService.consumeCode(email, "reset");
+
+        log.info("密码重置成功: email={}, userId={}", email, user.getId());
+    }
+
+    // ==================== Original username registration ====================
 
     /** Register new user with username + password */
     public LoginResponse register(String username, String password, String nickname) {
@@ -70,6 +206,8 @@ public class AuthService {
         return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl());
     }
 
+    // ==================== Username login ====================
+
     /** Username + password login */
     public LoginResponse login(String username, String password) {
         User user = userMapper.selectOne(
@@ -82,8 +220,9 @@ public class AuthService {
             throw new IllegalArgumentException("用户名或密码错误");
         }
         String token = jwtUtil.generateToken(user.getId(), user.getOpenid(), user.getRole() != null ? user.getRole() : 0);
-        return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl());
+        return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl(), user.getEmail());
     }
+
     public boolean isAdmin(Long userId) {
         if (userId == null) return false;
         User user = userMapper.selectById(userId);
@@ -109,7 +248,7 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(user.getId(), openid, user.getRole() != null ? user.getRole() : 0);
-        return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl());
+        return new LoginResponse(token, user.getId(), user.getNickname(), user.getAvatarUrl(), user.getEmail());
     }
 
     private String mockWechatLogin(String code) {
