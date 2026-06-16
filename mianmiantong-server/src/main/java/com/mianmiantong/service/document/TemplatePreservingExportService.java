@@ -518,8 +518,8 @@ public class TemplatePreservingExportService {
             }
 
             if (matchedIdx >= 0) {
-                if (snippetWouldDamageTextboxLayout(before, after, profiles, matchedIdx)) {
-                    log.info("highlight[{}] 跳过: replacement may damage textbox layout", hi);
+                if (isUnsafeResumeSnippetReplacement(before, after)) {
+                    log.info("highlight[{}] 跳过: replacement may merge resume textbox layout", hi);
                     continue;
                 }
                 mappings.put(matchedIdx, new String[]{before, after});
@@ -943,61 +943,6 @@ public class TemplatePreservingExportService {
         int originalLabels = countFieldLabels(original);
         int candidateLabels = countFieldLabels(candidate);
         return originalLabels > 0 && candidateLabels > originalLabels;
-    }
-
-    /**
-     * Snippet-level safety check: only rejects when the replacement would
-     * ADD new labels (merge fields) into a text-box paragraph.
-     *
-     * <p>Unlike {@link #isUnsafeResumeSnippetReplacement}, this does NOT reject
-     * replacements where both before and after have the same number of labels.
-     * Snippet replacement patches only the matched substring within the textbox,
-     * so same-label replacements (e.g. updating a specific field) are safe.</p>
-     */
-    private boolean snippetWouldDamageTextboxLayout(String before, String after,
-                                                     List<ParagraphProfile> profiles, int matchedIdx) {
-        if (before == null || after == null) return false;
-        ParagraphProfile profile = null;
-        for (ParagraphProfile p : profiles) {
-            if (p.index() == matchedIdx) { profile = p; break; }
-        }
-        if (profile == null) return false;
-
-        // Only apply relaxed check for text-box paragraphs;
-        // body/table paragraphs use the strict isUnsafeResumeSnippetReplacement.
-        String pathStr = profile.path() != null ? profile.path().pathString() : "";
-        if (!pathStr.startsWith("txbx[")) {
-            return isUnsafeResumeSnippetReplacement(before, after);
-        }
-
-        String normBefore = normalizeForMatch(before);
-        String normAfter  = normalizeForMatch(after);
-        if (normBefore.isBlank() || normAfter.isBlank()) return false;
-
-        String normPara = normalizeForMatch(profile.text());
-        double paraCoverage = normPara.length() > 0 ? (double) normBefore.length() / normPara.length() : 0;
-
-        // If before text covers most of the paragraph, this is effectively a
-        // full-paragraph replacement. Use the strict check for safety.
-        if (paraCoverage > 0.85) {
-            return isUnsafeResumeSnippetReplacement(before, after);
-        }
-
-        // For true snippet replacements (partial textbox edits), only reject
-        // when the after text adds NEW labels that would merge fields.
-        int beforePersonal = countKnownLabels(normBefore, PERSONAL_INFO_LABELS);
-        int afterPersonal  = countKnownLabels(normAfter, PERSONAL_INFO_LABELS);
-        if (beforePersonal > 0 && afterPersonal > beforePersonal) return true;
-
-        int beforeSection = countKnownLabels(normBefore, RESUME_SECTION_LABELS);
-        int afterSection  = countKnownLabels(normAfter, RESUME_SECTION_LABELS);
-        if (afterSection > beforeSection) return true;
-
-        int beforeField = countFieldLabels(before);
-        int afterField  = countFieldLabels(after);
-        if (beforeField > 0 && afterField > beforeField) return true;
-
-        return false;
     }
 
     private boolean isUnsafeResumeSnippetReplacement(String original, String candidate) {
