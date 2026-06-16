@@ -56,7 +56,7 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             message.setSentDate(new Date());
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(from, BRAND_NAME);
             helper.setReplyTo(from);
             helper.setTo(to);
