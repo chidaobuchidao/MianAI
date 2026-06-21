@@ -195,21 +195,21 @@ async function addQuestion() {
   } finally { submitting.value = false; }
 }
 
-async function ensureAdmin(): Promise<boolean> {
+async function ensureAdmin(background = false): Promise<boolean> {
   const checkId = ++authCheckSeq;
   let checkFailed = false;
-  checkingAdmin.value = true;
+  if (!background) checkingAdmin.value = true;
   userStore.restoreToken();
   if (!userStore.isLogin) {
     authorized.value = false;
-    checkingAdmin.value = false;
+    if (!background) checkingAdmin.value = false;
     uni.reLaunch({ url: '/pages/login/login' });
     return false;
   }
 
   if (userStore.isAdmin) {
     authorized.value = true;
-    checkingAdmin.value = false;
+    if (!background) checkingAdmin.value = false;
     void withTimeout(fetchQuota(true), 8_000, '管理员权限校验超时')
       .then((quota) => {
         if (quota.isAdmin !== true) {
@@ -234,7 +234,7 @@ async function ensureAdmin(): Promise<boolean> {
     authorized.value = false;
     uni.showToast({ title: "权限校验失败，请稍后重试", icon: 'none' });
   } finally {
-    if (checkId === authCheckSeq) checkingAdmin.value = false;
+    if (checkId === authCheckSeq && !background) checkingAdmin.value = false;
   }
   if (!authorized.value) {
     userStore.setAdmin(false);
@@ -259,7 +259,7 @@ async function loadAdminData() {
 onLoad(loadAdminData);
 onShow(async () => {
   if (adminLoaded) {
-    await ensureAdmin();
+    await ensureAdmin(true);
     return;
   }
   await loadAdminData();

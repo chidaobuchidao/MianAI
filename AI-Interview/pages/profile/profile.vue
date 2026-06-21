@@ -72,12 +72,12 @@
 
     <!-- 管理后台（仅管理员） -->
     <view class="menu" v-if="canAccessAdmin">
-      <view class="menu-item" @click="goAdmin">
+      <view class="menu-item" :class="{ disabled: openingAdmin }" @click="goAdmin">
         <view class="mi-left">
           <text class="mi-text">管理后台</text>
         </view>
         <view class="mi-right">
-          <text class="mi-hint configured">Admin</text>
+          <text class="mi-hint configured">{{ openingAdmin ? '打开中' : 'Admin' }}</text>
           <text class="mi-arrow">→</text>
         </view>
       </view>
@@ -154,10 +154,12 @@ const inputApiKey = ref('');
 const aiProvider = ref('deepseek');
 const aiModel = ref('deepseek-v4-flash');
 const aiKeyConfigured = ref(false);
+const openingAdmin = ref(false);
 const providers = ref<ProviderPreset[]>([
   { id: 'deepseek', name: 'DeepSeek' },
   { id: 'qwen', name: '通义千问' },
 ]);
+const ADMIN_PAGE_URL = '/pages/admin/index';
 
 const providerNames = computed(() => providers.value.map((p) => p.name || p.id));
 const selectedProviderIdx = computed(() => Math.max(0, providers.value.findIndex((p) => p.id === aiProvider.value)));
@@ -277,10 +279,39 @@ onShow(refreshProfile);
 function goInterviewHistory() { uni.navigateTo({ url: '/pages/interview/history' }); }
 function goExam() { uni.navigateTo({ url: '/pages/practice-entry/index' }); }
 function goWrongBook() { uni.switchTab({ url: '/pages/wrong-book/wrong-book' }); }
+
+function openAdminPanel(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    uni.navigateTo({
+      url: ADMIN_PAGE_URL,
+      success: () => resolve(),
+      fail: (navigateError) => {
+        console.warn('[profile] navigateTo admin failed', navigateError);
+        uni.redirectTo({
+          url: ADMIN_PAGE_URL,
+          success: () => resolve(),
+          fail: (redirectError) => {
+            console.warn('[profile] redirectTo admin failed', redirectError);
+            uni.reLaunch({
+              url: ADMIN_PAGE_URL,
+              success: () => resolve(),
+              fail: (reLaunchError) => reject(reLaunchError),
+            });
+          },
+        });
+      },
+    });
+  });
+}
+
 async function goAdmin() {
+  if (openingAdmin.value) return;
+  openingAdmin.value = true;
+  uni.showLoading({ title: '正在打开...', mask: true });
+
   try {
     if (quota.value?.isAdmin === true || userStore.isAdmin) {
-      uni.navigateTo({ url: '/pages/admin/index' });
+      await openAdminPanel();
       void withTimeout(fetchQuota(true), 8_000, '管理员权限校验超时')
         .then((nextQuota) => {
           quota.value = nextQuota;
@@ -296,13 +327,19 @@ async function goAdmin() {
     quota.value = q;
     if (q.isAdmin !== true) {
       userStore.setAdmin(false);
+      uni.hideLoading();
       uni.showToast({ title: "无管理员权限", icon: 'none' });
       return;
     }
     userStore.setAdmin(true);
-    uni.navigateTo({ url: '/pages/admin/index' });
-  } catch {
+    await openAdminPanel();
+  } catch (error) {
+    console.warn('[profile] open admin failed', error);
+    uni.hideLoading();
     uni.showToast({ title: "权限校验失败，请稍后重试", icon: 'none' });
+  } finally {
+    openingAdmin.value = false;
+    uni.hideLoading();
   }
 }
 function handleLogout() {
@@ -382,6 +419,7 @@ function handleLogout() {
 }
 .menu-item + .menu-item { border-top: 1px solid $border-light; }
 .menu-item:active { background: $bg-surface; }
+.menu-item.disabled { opacity: 0.62; pointer-events: none; }
 .mi-left { display: flex; align-items: center; gap: 20rpx; }
 .mi-text { font-size: 28rpx; font-weight: 500; color: $text-main; }
 .logout-text { color: $color-danger; }
