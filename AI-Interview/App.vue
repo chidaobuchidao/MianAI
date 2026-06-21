@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app';
-import { getToken } from '@/utils/request';
+import { useUserStore } from '@/store/user';
 
 onLaunch(() => {
-  const token = getToken();
-  // 如果没有 token，跳转登录页
-  if (!token) {
+  const userStore = useUserStore();
+  // 恢复持久化的登录状态
+  userStore.restoreToken();
+  // 如果没有 token，跳转登录页（只在非 tab 页时跳转）
+  if (!userStore.token) {
     uni.reLaunch({ url: '/pages/login/login' });
   }
 });

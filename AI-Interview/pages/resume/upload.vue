@@ -5,10 +5,17 @@
       <text class="page-desc">上传简历，AI 深度诊断项目薄弱点，给出具体优化建议</text>
     </view>
 
+    <view class="model-card" v-if="hasOptions">
+      <text class="model-card-label">分析模型</text>
+      <view class="model-opts">
+        <view v-for="m in options" :key="m.id" class="model-opt" :class="{ active: resumeModel === m.id }" @click="selectModel(m.id)">{{ m.label }}</view>
+      </view>
+    </view>
+
     <!-- 上传区域 -->
     <view class="upload-zone" @click="chooseFile">
       <view class="upload-icon-box">
-        <text class="upload-icon">📄</text>
+        <MianIcon name="file" size="58rpx" color="#D9750A" stroke-width="1.7" />
       </view>
       <text class="upload-text">{{ file ? file.name : '点击上传简历' }}</text>
       <text class="upload-hint">支持 PDF、DOCX、JPG、PNG 格式</text>
@@ -34,7 +41,7 @@
     <!-- 历史记录入口 -->
     <view class="history-link" @click="goHistory" v-if="hasHistory">
       <view class="history-link-left">
-        <text class="history-link-icon">📋</text>
+        <MianIcon name="clipboard" size="34rpx" color="#4A4A4A" stroke-width="1.7" />
         <text class="history-link-text">查看历史诊断记录</text>
       </view>
       <text class="history-link-arrow">→</text>
@@ -44,20 +51,26 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { BASE_URL, get } from '@/utils/request';
+import { BASE_URL, get, getToken } from '@/utils/request';
+import { useModelToggle } from '@/composables/useModelToggle';
+import MianIcon from '@/components/MianIcon.vue';
 
 interface FileInfo { name: string; size: number; path: string; }
+interface ResumeItem { id: number; position?: string; createTime?: string; }
 
 const file = ref<FileInfo | null>(null);
 const jobDescription = ref('');
 const submitting = ref(false);
 const hasHistory = ref(false);
+const { currentModel: resumeModel, options, hasOptions, selectModel } = useModelToggle();
 
 onMounted(async () => {
   try {
-    const r = await get<unknown[]>('/api/resume/list');
+    const r = await get<ResumeItem[]>('/api/resume/list');
     hasHistory.value = Array.isArray(r.data) && r.data.length > 0;
-  } catch {}
+  } catch {
+    // 历史加载失败，不影响主流程
+  }
 });
 
 function formatSize(bytes: number): string {
@@ -72,10 +85,12 @@ function chooseFile() {
     type: 'file',
     extension: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
     success: (res) => {
+      const first = res.tempFiles[0];
+      if (!first) return;
       file.value = {
-        name: res.tempFiles[0].name,
-        size: res.tempFiles[0].size,
-        path: res.tempFiles[0].path,
+        name: first.name,
+        size: first.size,
+        path: first.path,
       };
     },
   });
@@ -86,7 +101,7 @@ async function submitResume() {
   submitting.value = true;
 
   try {
-    const token = uni.getStorageSync('mianmiantong_token') || '';
+    const token = getToken();
 
     const res = await uni.uploadFile({
       url: `${BASE_URL}/api/resume/upload`,
@@ -94,18 +109,21 @@ async function submitResume() {
       name: 'file',
       formData: {
         jobDescription: jobDescription.value.trim(),
+        model: resumeModel.value,
       },
       header: {
         Authorization: 'Bearer ' + token,
       },
     });
 
-    const data = JSON.parse(res.data);
-    if (data.code !== 200) throw new Error(data.message);
+    const data: { code: number; message?: string; data?: { resumeId: number } } = JSON.parse(res.data);
+    if (data.code !== 200) throw new Error(data.message || '上传失败');
 
-    const { resumeId } = data.data;
-    uni.navigateTo({ url: `/pages/resume/report?resumeId=${resumeId}` });
-
+    if (data.data?.resumeId) {
+      uni.navigateTo({ url: `/pages/resume/report?resumeId=${data.data.resumeId}` });
+    } else {
+      throw new Error('服务器返回数据异常');
+    }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '上传失败';
     uni.showToast({ title: msg, icon: 'error' });
@@ -131,6 +149,12 @@ function goHistory() {
 }
 .page-desc { font-size: 26rpx; color: $text-muted; line-height: 1.6; display: block; }
 
+.model-card { background: $bg-paper; border: 1px solid $border-light; border-radius: $radius-lg; padding: 24rpx; margin-bottom: 24rpx; box-shadow: $shadow-sm; }
+.model-card-label { font-size: 24rpx; color: $text-muted; display: block; margin-bottom: 14rpx; }
+.model-opts { display: flex; flex-wrap: wrap; gap: 10rpx; }
+.model-opt { font-size: 22rpx; color: $text-light; background: $bg-surface; border: 1px solid $border-light; padding: 10rpx 22rpx; border-radius: $radius-full; }
+.model-opt.active { color: #fff; background: $bg-dark; border-color: $bg-dark; }
+
 // 上传区域
 .upload-zone {
   background: $bg-paper; border: 2rpx dashed $border-medium;
@@ -144,7 +168,6 @@ function goHistory() {
   border-radius: 24rpx; display: flex; align-items: center;
   justify-content: center; margin-bottom: 24rpx;
 }
-.upload-icon { font-size: 56rpx; }
 .upload-text {
   font-size: 28rpx; font-weight: 500; color: $text-main;
   display: block; margin-bottom: 10rpx; word-break: break-all;
@@ -184,7 +207,6 @@ function goHistory() {
 }
 .history-link:active { background: $bg-surface; }
 .history-link-left { display: flex; align-items: center; gap: 16rpx; }
-.history-link-icon { font-size: 32rpx; }
 .history-link-text { font-size: 26rpx; font-weight: 500; color: $text-main; }
 .history-link-arrow { font-size: 28rpx; color: $text-light; }
 

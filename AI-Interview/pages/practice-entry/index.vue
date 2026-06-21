@@ -8,7 +8,7 @@
     <!-- Entry 1: Random -->
     <view class="entry-card">
       <view class="entry-icon">
-        <text class="entry-icon-text">🎲</text>
+        <MianIcon name="dice" size="42rpx" color="#D9750A" stroke-width="1.8" />
       </view>
       <text class="entry-title">随机组卷</text>
       <text class="entry-desc">从题库随机抽取，模拟真实考试</text>
@@ -23,7 +23,7 @@
     <!-- Entry 2: Topic -->
     <view class="entry-card">
       <view class="entry-icon">
-        <text class="entry-icon-text">📂</text>
+        <MianIcon name="folder" size="42rpx" color="#D9750A" stroke-width="1.8" />
       </view>
       <text class="entry-title">按专题刷题</text>
       <text class="entry-desc">选择分类，集中突破薄弱环节</text>
@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { get } from '@/utils/request';
+import MianIcon from '@/components/MianIcon.vue';
 
 interface Category { id: number; name: string }
 
@@ -91,7 +92,6 @@ onMounted(async () => {
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 20rpx;
 }
-.entry-icon-text { font-size: 36rpx; }
 .entry-title { font-size: 32rpx; font-weight: 500; color: $text-main; display: block; margin-bottom: 8rpx; }
 .entry-desc { font-size: 24rpx; color: $text-light; display: block; margin-bottom: 24rpx; }
 

@@ -9,6 +9,12 @@
       <text class="score-label">综合评分</text>
     </view>
 
+    <view class="report-tabs" v-if="codingReview">
+      <view class="report-tab" :class="{ active: activeTab === 'interview' }" @click="activeTab = 'interview'">面试报告</view>
+      <view class="report-tab" :class="{ active: activeTab === 'coding' }" @click="activeTab = 'coding'">笔试报告</view>
+    </view>
+
+    <template v-if="activeTab === 'interview'">
     <!-- 考官总评 -->
     <view class="report-card" v-if="feedback">
       <text class="report-card-label">考官总评</text>
@@ -42,6 +48,31 @@
       <text class="report-card-text">{{ suggestion }}</text>
     </view>
 
+    </template>
+
+    <template v-if="activeTab === 'coding' && codingReview">
+      <view class="report-card coding-card">
+        <text class="report-card-label">代码审查</text>
+        <text class="coding-score">{{ codingReview.score }} / 10</text>
+        <text class="report-card-text">{{ codingReview.feedback }}</text>
+      </view>
+      <view class="report-card" v-if="codingReview.dimensions && codingReview.dimensions.length">
+        <text class="report-card-label">笔试维度</text>
+        <view class="dim-item" v-for="d in codingReview.dimensions" :key="d.name">
+          <view class="dim-head">
+            <text class="dim-name">{{ d.name }}</text>
+            <text class="dim-score">{{ d.score }}/10</text>
+          </view>
+          <view class="dim-bar-bg"><view class="dim-bar-fill coding" :style="{ width: (d.score * 10) + '%' }" /></view>
+          <text class="dim-comment" v-if="d.comment">{{ d.comment }}</text>
+        </view>
+      </view>
+      <view class="report-card" v-if="codingReview.suggestion">
+        <text class="report-card-label">笔试提升建议</text>
+        <text class="report-card-text">{{ codingReview.suggestion }}</text>
+      </view>
+    </template>
+
     <!-- 对话记录 -->
     <view class="chat-log-section" v-if="chatMessages.length > 0">
       <view class="chat-log-toggle" @click="showChatLog = !showChatLog">
@@ -74,42 +105,102 @@ import { get } from '@/utils/request';
 
 interface Dim { name: string; score: number; comment: string; }
 interface ChatMsg { role: string; content: string; time?: string; }
+interface ReportData {
+  score?: number;
+  feedback?: string;
+  dimensions?: Dim[];
+  suggestion?: string;
+}
 
-const score = ref(0); const feedback = ref(''); const dimensions = ref<Dim[]>([]);
-const suggestion = ref(''); const showChatLog = ref(true);
+interface PageOptions {
+  report?: string;
+  sessionId?: string;
+  type?: string;
+  correct?: string;
+  total?: string;
+  title?: string;
+}
+
+interface CodingReview { score: number; feedback: string; dimensions?: Dim[]; suggestion?: string; }
+
+const score = ref(0);
+const feedback = ref('');
+const dimensions = ref<Dim[]>([]);
+const suggestion = ref('');
+const showChatLog = ref(true);
 const chatMessages = ref<ChatMsg[]>([]);
-const examResult = ref<{correct:number;total:number}|null>(null);
+const examResult = ref<{ correct: number; total: number } | null>(null);
+const activeTab = ref<'interview' | 'coding'>('interview');
+const codingReview = ref<CodingReview | null>(null);
 
-onLoad(async (opts) => {
+onLoad(async (opts: PageOptions | undefined) => {
   if (opts?.report) {
     try {
-      const r = JSON.parse(decodeURIComponent(opts.report));
+      const r: ReportData = JSON.parse(decodeURIComponent(opts.report));
       score.value = r.score || 0;
       feedback.value = r.feedback || '';
       dimensions.value = r.dimensions || [];
       suggestion.value = r.suggestion || '';
-    } catch { feedback.value = '报告解析失败'; }
+    } catch {
+      feedback.value = '报告解析失败';
+    }
   } else if (opts?.type === 'exam') {
-    examResult.value = { correct: Number(opts.correct) || 0, total: Number(opts.total) || 0 };
-    const pct = examResult.value.total > 0 ? Math.round(examResult.value.correct / examResult.value.total * 100) : 0;
+    const correct = Number(opts.correct) || 0;
+    const total = Number(opts.total) || 0;
+    examResult.value = { correct, total };
+    const pct = total > 0 ? Math.round(correct / total * 100) : 0;
     score.value = Math.round(pct / 10);
-    feedback.value = `答对 ${examResult.value.correct}/${examResult.value.total} 题，正确率 ${pct}%`;
+    feedback.value = `答对 ${correct}/${total} 题，正确率 ${pct}%`;
     uni.setNavigationBarTitle({ title: decodeURIComponent(opts.title || '考试结果') });
+  }
+
+  const codingRaw = uni.getStorageSync('interviewCodingReview');
+  if (codingRaw) {
+    try { codingReview.value = JSON.parse(codingRaw) as CodingReview; } catch {}
+    uni.removeStorageSync('interviewCodingReview');
+  }
+
+  let detailMessages = '';
+  if (opts?.sessionId) {
+    try {
+      const detail = await get<Record<string, unknown>>(`/api/interview/${opts.sessionId}`);
+      const raw = detail.data;
+      if (raw?.codingScore != null || raw?.codingFeedback) {
+        codingReview.value = {
+          score: Number(raw.codingScore || 0),
+          feedback: String(raw.codingFeedback || ''),
+          dimensions: parseDims(raw.codingDimensions),
+          suggestion: String(raw.codingSuggestion || ''),
+        };
+      }
+      if (!feedback.value && raw?.feedback) {
+        score.value = Number(raw.overallScore || 0);
+        feedback.value = String(raw.feedback || '');
+        dimensions.value = parseDims(raw.dimensions);
+        suggestion.value = String(raw.suggestion || '');
+      }
+      detailMessages = typeof raw?.messages === 'string' ? raw.messages : '';
+    } catch {}
   }
 
   const stored = uni.getStorageSync('lastChatMessages');
   if (stored) {
-    chatMessages.value = JSON.parse(stored);
+    try { chatMessages.value = JSON.parse(stored); } catch { chatMessages.value = []; }
     uni.removeStorageSync('lastChatMessages');
-  } else if (opts?.sessionId) {
-    try {
-      const res = await get<{ messages: string }>(`/api/interview/${opts.sessionId}`);
-      if (res.data?.messages) {
-        chatMessages.value = JSON.parse(res.data.messages);
-      }
-    } catch {}
+  } else if (detailMessages) {
+    try { chatMessages.value = JSON.parse(detailMessages); } catch { chatMessages.value = []; }
   }
 });
+function parseDims(raw: unknown): Dim[] {
+  if (Array.isArray(raw)) return raw as Dim[];
+  if (typeof raw === 'string' && raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed as Dim[] : [];
+    } catch { return []; }
+  }
+  return [];
+}
 
 function goHome() { uni.switchTab({ url: '/pages/index/index' }); }
 </script>
@@ -140,6 +231,12 @@ function goHome() { uni.switchTab({ url: '/pages/index/index' }); }
   font-size: 26rpx; font-weight: 600; color: $text-main;
 }
 
+.report-tabs { display: flex; background: $bg-paper; border: 1px solid $border-light; border-radius: $radius-md; padding: 6rpx; margin-bottom: 24rpx; }
+.report-tab { flex: 1; text-align: center; padding: 18rpx 0; border-radius: $radius-sm; font-size: 24rpx; color: $text-light; }
+.report-tab.active { background: $bg-dark; color: #fff; }
+.coding-card { text-align: center; }
+.coding-score { display: block; font-family: Georgia, serif; font-size: 52rpx; font-weight: 700; color: $accent; margin-bottom: 12rpx; }
+.dim-bar-fill.coding { background: #6B8299; }
 // ===== 通用卡片 =====
 .report-card {
   background: $bg-paper; border: 1px solid $border-light;

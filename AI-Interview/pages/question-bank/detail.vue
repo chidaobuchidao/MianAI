@@ -16,18 +16,18 @@
           >
             <view class="opt-letter" :class="{ on: opt.label === question.answer }">{{ opt.label }}</view>
             <text class="opt-text">{{ opt.content }}</text>
-            <text v-if="opt.label === question.answer" class="opt-check">✓</text>
+            <view v-if="opt.label === question.answer" class="opt-check"><MianIcon name="check" size="28rpx" color="#16A34A" stroke-width="2.3" /></view>
           </view>
         </view>
 
         <view v-if="question.type === 3" class="options">
-          <view class="opt" :class="{ correct: question.answer === '正确' }">
-            <view class="opt-letter" :class="{ on: question.answer === '正确' }">✓</view>
-            <text class="opt-text">正确</text>
+          <view class="opt" :class="{ correct: question.answer === correctText }">
+            <view class="opt-letter" :class="{ on: question.answer === correctText }"><MianIcon name="check" size="28rpx" :color="question.answer === correctText ? '#fff' : '#4A4A4A'" stroke-width="2.3" /></view>
+            <text class="opt-text">{{ correctText }}</text>
           </view>
-          <view class="opt" :class="{ correct: question.answer === '错误' }">
-            <view class="opt-letter" :class="{ on: question.answer === '错误' }">✗</view>
-            <text class="opt-text">错误</text>
+          <view class="opt" :class="{ correct: question.answer === wrongText }">
+            <view class="opt-letter" :class="{ on: question.answer === wrongText }"><MianIcon name="close" size="28rpx" :color="question.answer === wrongText ? '#fff' : '#4A4A4A'" stroke-width="2.3" /></view>
+            <text class="opt-text">{{ wrongText }}</text>
           </view>
         </view>
 
@@ -61,6 +61,7 @@
 import { ref, onMounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { get } from '@/utils/request';
+import MianIcon from '@/components/MianIcon.vue';
 
 interface Question {
   id: number;
@@ -80,6 +81,8 @@ const categoryId = ref('');
 const question = ref<Question | null>(null);
 const questionIds = ref<number[]>([]);
 const currentIndex = ref(-1);
+const correctText = '\u6b63\u786e';
+const wrongText = '\u9519\u8bef';
 
 onLoad((opts: Record<string, string> | undefined) => {
   if (opts) {
@@ -181,7 +184,7 @@ onMounted(async () => {
 }
 .opt-letter.on { background: $color-success; color: #fff; border-color: $color-success; }
 .opt-text { flex: 1; line-height: 1.6; }
-.opt-check { font-size: 28rpx; font-weight: 700; color: $color-success; flex-shrink: 0; }
+.opt-check { width: 32rpx; height: 32rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
 .fill-answer { background: $bg-surface; border-radius: $radius-md; padding: 24rpx; display: flex; gap: 12rpx; }
 .fill-label { font-size: 26rpx; color: $text-light; }

@@ -25,11 +25,11 @@
 
       <view v-if="currentQuestion.type === 3" class="options">
         <view class="option" :class="{ selected: selectedIdx === 0 }" @click="selectedIdx = 0">
-          <view class="opt-letter" :class="{ active: selectedIdx === 0 }">✓</view>
+          <view class="opt-letter" :class="{ active: selectedIdx === 0 }"><MianIcon name="check" size="28rpx" :color="selectedIdx === 0 ? '#fff' : '#4A4A4A'" stroke-width="2.4" /></view>
           <text class="opt-text">正确</text>
         </view>
         <view class="option" :class="{ selected: selectedIdx === 1 }" @click="selectedIdx = 1">
-          <view class="opt-letter" :class="{ active: selectedIdx === 1 }">✗</view>
+          <view class="opt-letter" :class="{ active: selectedIdx === 1 }"><MianIcon name="close" size="28rpx" :color="selectedIdx === 1 ? '#fff' : '#4A4A4A'" stroke-width="2.4" /></view>
           <text class="opt-text">错误</text>
         </view>
       </view>
@@ -38,7 +38,7 @@
 
       <!-- Result -->
       <view v-if="answered" class="quiz-result" :class="lastCorrect ? 'is-correct' : 'is-wrong'">
-        <text class="result-icon">{{ lastCorrect ? '✓' : '✗' }}</text>
+        <view class="result-icon"><MianIcon :name="lastCorrect ? 'check' : 'close'" size="44rpx" :color="lastCorrect ? '#16A34A' : '#DC2626'" stroke-width="2.4" /></view>
         <view class="result-body">
           <text class="result-verdict">{{ lastCorrect ? '回答正确' : '回答错误' }}</text>
           <text class="result-answer">正确答案：{{ currentQuestion.answer }}</text>
@@ -71,9 +71,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { get, post } from '@/utils/request';
+import MianIcon from '@/components/MianIcon.vue';
 
 interface Question { id: number; type: number; title: string; options: string; answer: string; analysis: string; }
-interface AR { isCorrect: boolean; correctAnswer: string; analysis: string; }
+interface AnswerResponse { isCorrect: boolean; correctAnswer: string; analysis: string; }
 
 const letters = ['A', 'B', 'C', 'D'];
 const mode = ref('random');
@@ -99,14 +100,31 @@ const scorePercent = computed(() =>
   questions.value.length ? Math.round(correctCount.value / questions.value.length * 100) : 0
 );
 
-onLoad((opts: any) => {
-  mode.value = opts.mode || 'random';
-  count.value = Number(opts.count) || 10;
-  categoryId.value = opts.categoryId || '';
+interface LoadOptions {
+  mode?: string;
+  count?: string;
+  categoryId?: string;
+}
+
+onLoad((opts: LoadOptions | undefined) => {
+  mode.value = opts?.mode || 'random';
+  count.value = Number(opts?.count) || 10;
+  categoryId.value = opts?.categoryId || '';
 });
 
-function parseOptions(o: string) { if (!o) return []; try { return JSON.parse(o) } catch { return [] } }
-function typeLabel(t: number) { return ['', '单选', '多选', '判断', '填空'][t] || ''; }
+function parseOptions(o: string): string[] {
+  if (!o) return [];
+  try {
+    const parsed: unknown = JSON.parse(o);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function typeLabel(t: number): string {
+  return ['', '单选', '多选', '判断', '填空'][t] || '';
+}
 
 function getAnswerString(): string {
   if (!currentQuestion.value) return '';
@@ -120,25 +138,38 @@ function getAnswerString(): string {
 async function loadQuestions() {
   try {
     if (mode.value === 'topic' && categoryId.value) {
-      const r = await get<{ records: Question[] }>('/api/questions', { categoryId: categoryId.value, size: count.value });
-      const data = (r.data as unknown);
-      questions.value = (data as { records?: Question[] }).records || (data as Question[]) || [];
+      const r = await get<{ records: Question[] }>('/api/questions', {
+        categoryId: categoryId.value,
+        size: count.value,
+      });
+      if (r.data?.records) {
+        questions.value = r.data.records;
+      }
     } else {
-      const r = await get<Question[]>('/api/questions/random', { size: count.value } as Record<string, unknown>);
-      questions.value = r.data || [];
+      const r = await get<Question[]>('/api/questions/random', { size: count.value });
+      if (r.data) questions.value = r.data;
     }
     if (questions.value.length > 0) currentQuestion.value = questions.value[0];
-  } catch { uni.showToast({ title: '加载失败', icon: 'error' }); }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '加载失败，请检查网络后重试';
+    uni.showToast({ title: msg, icon: 'error' });
+  }
 }
 
 async function submitAnswer() {
   if (!hasAnswer.value || !currentQuestion.value) return;
   try {
-    const r = await post<AR>('/api/answers', { questionId: currentQuestion.value.id, userAnswer: getAnswerString() });
+    const r = await post<AnswerResponse>('/api/answers', {
+      questionId: currentQuestion.value.id,
+      userAnswer: getAnswerString(),
+    });
     lastCorrect.value = r.data.isCorrect;
     if (r.data.isCorrect) correctCount.value++;
     answered.value = true;
-  } catch { uni.showToast({ title: '提交失败', icon: 'error' }); }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '提交失败，请重试';
+    uni.showToast({ title: msg, icon: 'error' });
+  }
 }
 
 function prevQuestion() {
@@ -216,9 +247,7 @@ onMounted(() => { loadQuestions(); });
 .quiz-result { margin-top: 28rpx; padding: 24rpx; border-radius: $radius-md; display: flex; gap: 16rpx; }
 .quiz-result.is-correct { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); }
 .quiz-result.is-wrong { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); }
-.result-icon { font-size: 40rpx; font-weight: 700; flex-shrink: 0; }
-.is-correct .result-icon { color: $color-success; }
-.is-wrong .result-icon { color: $color-danger; }
+.result-icon { width: 48rpx; height: 48rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .result-body { flex: 1; }
 .result-verdict { font-size: 26rpx; font-weight: 600; display: block; margin-bottom: 8rpx; }
 .is-correct .result-verdict { color: $color-success; }

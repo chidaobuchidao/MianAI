@@ -23,7 +23,7 @@
     </view>
 
     <view v-else class="empty-state">
-      <text class="empty-icon">📋</text>
+      <view class="empty-icon"><MianIcon name="clipboard" size="96rpx" color="#D9750A" stroke-width="1.7" /></view>
       <text class="empty-title">暂无记录</text>
       <text class="empty-desc">完成一场 AI 面试后，记录会显示在这里</text>
       <view class="empty-btn" @click="goChat">
@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { get } from '@/utils/request';
+import MianIcon from '@/components/MianIcon.vue';
 interface S { id: number; position: string; overallScore: number; feedback: string; createTime: string; }
 const list = ref<S[]>([]);
 onMounted(async () => { try { const r = await get<S[]>('/api/interview/list'); list.value = r.data; } catch {} });
@@ -96,7 +97,7 @@ function goChat() { uni.navigateTo({ url: '/pages/interview/chat' }); }
 .status-low { background: rgba(239,68,68,0.08); color: $color-danger; }
 
 .empty-state { text-align: center; padding-top: 200rpx; }
-.empty-icon { font-size: 96rpx; display: block; margin-bottom: 24rpx; }
+.empty-icon { display: flex; justify-content: center; margin-bottom: 24rpx; }
 .empty-title { font-size: 28rpx; color: $text-main; font-weight: 500; display: block; margin-bottom: 10rpx; }
 .empty-desc { font-size: 24rpx; color: $text-light; display: block; margin-bottom: 44rpx; }
 .empty-btn {
