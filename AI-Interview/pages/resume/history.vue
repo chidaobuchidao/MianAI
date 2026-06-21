@@ -17,7 +17,7 @@
     </view>
 
     <view v-else class="empty-state">
-      <text class="empty-icon">📄</text>
+      <view class="empty-icon"><MianIcon name="file" size="96rpx" color="#D9750A" stroke-width="1.7" /></view>
       <text class="empty-title">暂无简历记录</text>
       <text class="empty-desc">上传简历后，AI 会为你生成深度诊断报告</text>
     </view>
@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { get } from '@/utils/request';
+import MianIcon from '@/components/MianIcon.vue';
 
 interface ResumeItem { id: number; position: string; parseStatus: number; createTime: string; }
 const list = ref<ResumeItem[]>([]);
@@ -86,7 +87,7 @@ function goDetail(item: ResumeItem) {
 .history-time { font-size: 22rpx; color: $text-light; }
 
 .empty-state { text-align: center; padding-top: 200rpx; }
-.empty-icon { font-size: 96rpx; display: block; margin-bottom: 24rpx; }
+.empty-icon { display: flex; justify-content: center; margin-bottom: 24rpx; }
 .empty-title { font-size: 28rpx; color: $text-main; font-weight: 500; display: block; margin-bottom: 10rpx; }
 .empty-desc { font-size: 24rpx; color: $text-light; display: block; }
 

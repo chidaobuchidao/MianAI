@@ -59,10 +59,7 @@
           <view class="model-pick">
             <text class="model-label">模型</text>
             <view class="model-opts">
-              <view class="model-opt" :class="{ active: deepModel === 'deepseek-v4-flash' }"
-                @click="deepModel = 'deepseek-v4-flash'">Flash</view>
-              <view class="model-opt" :class="{ active: deepModel === 'deepseek-v4-pro' }"
-                @click="deepModel = 'deepseek-v4-pro'">Pro</view>
+              <view v-for="m in options" :key="m.id" class="model-opt" :class="{ active: deepModel === m.id }" @click="selectModel(m.id)">{{ m.label }}</view>
             </view>
           </view>
           <view class="btn-deep" @click="startDeepOptimize">
@@ -107,7 +104,8 @@
             <view class="btn-row" style="margin-bottom:16rpx">
               <view class="btn-copy" @click="copyText(report.optimizedText)"><text>复制</text></view>
               <view class="btn-preview" @click="previewWord"><text>预览</text></view>
-              <view class="btn-download" @click="downloadWord"><text>下载Word</text></view>
+              <view class="btn-download" @click="downloadWord"><text>标准导出</text></view>
+              <view class="btn-template" @click="downloadPreserveWord"><text>保留格式</text></view>
               <view class="btn-template" @click="showTemplatePicker = true"><text>换模板</text></view>
             </view>
             <view class="optimized-resume">
@@ -146,7 +144,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { get, post, BASE_URL, streamRequest } from '@/utils/request';
+import { get, post, BASE_URL, streamRequest, getToken } from '@/utils/request';
+import { useModelToggle } from '@/composables/useModelToggle';
 import UnifiedDiff from '@/components/UnifiedDiff.vue';
 import TemplateSelector from '@/components/TemplateSelector.vue';
 
@@ -171,9 +170,8 @@ const deepStatus = ref(0);
 const retryRemaining = ref(3);
 const retryCount = ref(0);
 const deepElapsed = ref(0);
-const deepModel = ref('deepseek-v4-flash');
+const { currentModel: deepModel, options, selectModel } = useModelToggle();
 let deepTimer: ReturnType<typeof setInterval> | null = null;
-let analyzeTriggered = false;
 
 onLoad(async (opts) => {
   const resumeId = Number(opts?.resumeId);
@@ -182,7 +180,7 @@ onLoad(async (opts) => {
   get<Template[]>('/api/resume/template/list').then(r => { if (r.data) templates.value = r.data; }).catch(() => {});
 
   // === Phase 1: 加载已有报告 ===
-  let r = await get<any>(`/api/resume/${resumeId}/analysis`);
+  let r = await get<Report>(`/api/resume/${resumeId}/analysis`);
   if (isValidReport(r.data)) {
     report.value = r.data;
     score.value = r.data.overallScore || 0;
@@ -205,8 +203,7 @@ onLoad(async (opts) => {
 
   // === Phase 2: 解析完成但无报告 → 触发分析 ===
   if (report.value?.parseStatus === 1) {
-    analyzeTriggered = true;
-    await post(`/api/resume/${resumeId}/analyze`).catch(() => {});
+    await post(`/api/resume/${resumeId}/analyze?model=${encodeURIComponent(deepModel.value)}`).catch(() => {});
   }
 
   // === Phase 3: 轮询（最多 20 次 = 40s） ===
@@ -214,7 +211,7 @@ onLoad(async (opts) => {
     await sleep(2000);
     loadingText.value = `AI 正在分析简历... (${(i + 1) * 2}s)`;
 
-    r = await get<any>(`/api/resume/${resumeId}/analysis`);
+    r = await get<Report>(`/api/resume/${resumeId}/analysis`);
     if (!isValidReport(r.data)) continue;
 
     report.value = r.data;
@@ -242,7 +239,7 @@ function loadRetryStatus(resumeId: number) {
 }
 
 function isValidReport(d: unknown): d is Report {
-  return d != null && typeof d === 'object' && 'resumeId' in (d as any);
+  return d != null && typeof d === 'object' && 'resumeId' in d;
 }
 
 // ===== 深度优化 =====
@@ -328,17 +325,51 @@ function copyText(text: string) {
   uni.setClipboardData({ data: text, success: () => uni.showToast({ title: '已复制' }) });
 }
 
+function previewWord() {
+  const token = getToken();
+  const resumeId = report.value?.resumeId;
+  if (!resumeId) return;
+  uni.showLoading({ title: '加载预览...' });
+  uni.downloadFile({
+    url: `${BASE_URL}/api/resume/${resumeId}/preview-html`,
+    header: { Authorization: 'Bearer ' + token },
+    success: (res) => {
+      uni.hideLoading();
+      if (res.statusCode === 200) {
+        uni.openDocument({
+          filePath: res.tempFilePath,
+          fileType: 'docx',
+          showMenu: true,
+          fail: () => uni.showToast({ title: '请先安装WPS或Office', icon: 'none' }),
+        });
+      } else {
+        uni.showToast({ title: '预览失败', icon: 'error' });
+      }
+    },
+    fail: () => { uni.hideLoading(); uni.showToast({ title: '预览失败', icon: 'error' }); },
+  });
+}
+
 function downloadWord() {
-  const token = uni.getStorageSync('mianmiantong_token') || '';
+  downloadResumeDoc('export-word');
+}
+
+function downloadPreserveWord() {
+  downloadResumeDoc('export-preserve-format');
+}
+
+function downloadResumeDoc(endpoint: string) {
+  const token = getToken();
   const resumeId = report.value?.resumeId;
   if (!resumeId) return;
   uni.downloadFile({
-    url: `${BASE_URL}/api/resume/${resumeId}/export-word`,
+    url: `${BASE_URL}/api/resume/${resumeId}/${endpoint}`,
     header: { Authorization: 'Bearer ' + token },
     success: (res) => {
       if (res.statusCode === 200) {
-        uni.openDocument({ filePath: res.tempFilePath, showMenu: true,
-          fail: () => uni.showToast({ title: '请先安装WPS或Office', icon: 'none' }) });
+        uni.openDocument({ filePath: res.tempFilePath, showMenu: true, fail: () => uni.showToast({ title: '请先安装WPS或Office', icon: 'none' }) });
+      } else {
+        uni.showToast({ title: '下载失败', icon: 'error' });
       }
     },
     fail: () => uni.showToast({ title: '下载失败', icon: 'error' }),
@@ -347,7 +378,7 @@ function downloadWord() {
 
 function onTemplateSelect(templateId: number) {
   if (!report.value) return;
-  const token = uni.getStorageSync('mianmiantong_token') || '';
+  const token = getToken();
   const resumeId = report.value.resumeId;
   uni.showLoading({ title: '生成中...' });
   uni.downloadFile({
@@ -362,24 +393,6 @@ function onTemplateSelect(templateId: number) {
       }
     },
     fail: () => { uni.hideLoading(); uni.showToast({ title: '生成失败', icon: 'error' }); },
-  });
-}
-
-function previewWord() {
-  const token = uni.getStorageSync('mianmiantong_token') || '';
-  const resumeId = report.value?.resumeId;
-  if (!resumeId) return;
-  uni.showLoading({ title: '加载预览...' });
-  uni.downloadFile({
-    url: `${BASE_URL}/api/resume/${resumeId}/preview-html?token=${encodeURIComponent(token)}`,
-    success: (res) => {
-      uni.hideLoading();
-      if (res.statusCode === 200) {
-        uni.openDocument({ filePath: res.tempFilePath, fileType: 'docx', showMenu: true,
-          fail: () => uni.showToast({ title: '请先安装WPS或Office', icon: 'none' }) });
-      }
-    },
-    fail: () => { uni.hideLoading(); uni.showToast({ title: '预览失败', icon: 'error' }); },
   });
 }
 

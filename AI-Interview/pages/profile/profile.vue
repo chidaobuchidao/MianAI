@@ -26,6 +26,14 @@
       </view>
     </view>
 
+    <!-- 配额提示 -->
+    <view class="quota-banner" v-if="quota && !quota.isAdmin && !quota.hasApiKey">
+      <text class="quota-banner-text">剩余免费次数：<text class="quota-banner-num">{{ quota.quotaRemaining }}</text> 次 · <text class="quota-banner-link" @click="showAiKeyModal = true">配置 API Key</text> 后无限</text>
+    </view>
+    <view class="quota-banner quota-banner-ok" v-else-if="quota && !quota.isAdmin && quota.hasApiKey">
+      <text class="quota-banner-text">已配置个人 API Key，不限使用次数</text>
+    </view>
+
     <!-- 菜单 -->
     <view class="menu">
       <view class="menu-item" @click="goInterviewHistory">
@@ -48,15 +56,28 @@
       </view>
     </view>
 
-    <!-- AI API Key -->
+    <!-- AI 模型配置 -->
     <view class="menu">
       <view class="menu-item" @click="showAiKeyModal = true">
         <view class="mi-left">
-          <text class="mi-text">AI API Key</text>
+          <text class="mi-text">AI 模型配置</text>
         </view>
         <view class="mi-right">
           <text class="mi-hint" v-if="!aiKeyConfigured">未配置</text>
-          <text class="mi-hint configured" v-else>{{ aiProvider }}</text>
+          <text class="mi-hint configured" v-else>{{ aiProviderName }}</text>
+          <text class="mi-arrow">→</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 管理后台（仅管理员） -->
+    <view class="menu" v-if="canAccessAdmin">
+      <view class="menu-item" @click="goAdmin">
+        <view class="mi-left">
+          <text class="mi-text">管理后台</text>
+        </view>
+        <view class="mi-right">
+          <text class="mi-hint configured">Admin</text>
           <text class="mi-arrow">→</text>
         </view>
       </view>
@@ -74,21 +95,18 @@
     <!-- AI Key 弹窗 -->
     <view class="modal-mask" v-if="showAiKeyModal" @click="showAiKeyModal = false">
       <view class="modal-card" @click.stop>
-        <text class="modal-title">AI API Key 配置</text>
+        <text class="modal-title">AI 模型配置</text>
         <text class="modal-desc">填入你自己的 API Key，优先使用你的 Key 调用 AI。留空则使用系统默认。</text>
         <view class="form-item">
           <text class="form-label">Provider</text>
-          <picker mode="selector" :range="providers" :value="providers.indexOf(aiProvider)" @change="onProviderChange">
+          <picker mode="selector" :range="providerNames" :value="selectedProviderIdx" @change="onProviderChange">
             <view class="form-picker">{{ aiProvider }}</view>
           </picker>
         </view>
         <view class="form-item">
           <text class="form-label">默认模型</text>
           <view class="model-opts">
-            <view class="model-opt" :class="{ active: aiModel === 'deepseek-v4-flash' }"
-              @click="aiModel = 'deepseek-v4-flash'">Flash</view>
-            <view class="model-opt" :class="{ active: aiModel === 'deepseek-v4-pro' }"
-              @click="aiModel = 'deepseek-v4-pro'">Pro</view>
+            <view v-for="m in modelOptions" :key="m.id" class="model-opt" :class="{ active: aiModel === m.id }" @click="aiModel = m.id">{{ m.label }}</view>
           </view>
         </view>
         <view class="form-item">
@@ -105,73 +123,194 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/user';
 import { get, put } from '@/utils/request';
+import { useQuota, type QuotaInfo } from '@/composables/useQuota';
+import { fallbackModels, type ModelOption, type ProviderPreset } from '@/composables/useModelToggle';
 
 const userStore = useUserStore();
+const { fetchQuota } = useQuota();
 
-interface Stats { practiceCount: number; interviewCount: number; wrongCount: number; }
+interface Stats {
+  practiceCount: number;
+  interviewCount: number;
+  wrongCount: number;
+}
+
+interface AiConfig {
+  provider: string;
+  apiKey: string;
+  model?: string;
+  preferredModel?: string;
+}
+
 const stats = ref<Stats>({ practiceCount: 0, interviewCount: 0, wrongCount: 0 });
+const quota = ref<QuotaInfo | null>(null);
 
 const showAiKeyModal = ref(false);
 const inputApiKey = ref('');
 const aiProvider = ref('deepseek');
 const aiModel = ref('deepseek-v4-flash');
 const aiKeyConfigured = ref(false);
-const providers = ['deepseek', 'qwen'];
+const providers = ref<ProviderPreset[]>([
+  { id: 'deepseek', name: 'DeepSeek' },
+  { id: 'qwen', name: '通义千问' },
+]);
+
+const providerNames = computed(() => providers.value.map((p) => p.name || p.id));
+const selectedProviderIdx = computed(() => Math.max(0, providers.value.findIndex((p) => p.id === aiProvider.value)));
+const aiProviderName = computed(() => providers.value.find((p) => p.id === aiProvider.value)?.name || aiProvider.value);
+const canAccessAdmin = computed(() => quota.value?.isAdmin === true || userStore.isAdmin);
+const modelOptions = computed<ModelOption[]>(() => {
+  const preset = providers.value.find((p) => p.id === aiProvider.value);
+  if (preset?.models?.length) {
+    return preset.models.map((m) => typeof m === 'string' ? { id: m, label: labelModel(m) } : m);
+  }
+  return fallbackModels(aiProvider.value);
+});
+
+function labelModel(id: string): string {
+  const parts = id.split('-');
+  return parts[parts.length - 1]?.toUpperCase() || id;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        if (timer) clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        if (timer) clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 async function loadStats() {
   try {
     const res = await get<Stats>('/api/user/stats');
-    stats.value = res.data;
-  } catch {}
+    if (res.data) stats.value = res.data;
+  } catch {
+    uni.showToast({ title: '加载统计数据失败', icon: 'none' });
+  }
+}
+
+async function loadProviders() {
+  try {
+    const res = await get<ProviderPreset[]>('/api/user/ai-providers');
+    if (Array.isArray(res.data) && res.data.length) {
+      providers.value = res.data;
+    }
+  } catch {
+    // 使用内置 provider 列表
+  }
 }
 
 async function loadAiConfig() {
   try {
-    const res = await get<{provider:string;apiKey:string;model:string}>('/api/user/ai-config');
-    if (res.data && res.data.apiKey) {
-      aiProvider.value = res.data.provider;
-      inputApiKey.value = res.data.apiKey;
-      aiModel.value = res.data.model || 'deepseek-v4-flash';
-      aiKeyConfigured.value = true;
+    const res = await get<AiConfig>('/api/user/ai-config');
+    if (res.data) {
+      aiProvider.value = res.data.provider || 'deepseek';
+      inputApiKey.value = res.data.apiKey || '';
+      aiKeyConfigured.value = !!res.data.apiKey;
+      const preferred = res.data.preferredModel || res.data.model;
+      const options = modelOptions.value;
+      aiModel.value = preferred && options.some((m) => m.id === preferred)
+        ? preferred
+        : (options[0]?.id || 'deepseek-v4-flash');
     }
-  } catch {}
+  } catch {
+    // 配置加载失败，使用默认值
+  }
 }
 
 async function saveAiKey() {
-  if (!inputApiKey.value.trim()) {
-    uni.showToast({ title:'请输入API Key', icon:'none' });
+  const trimmed = inputApiKey.value.trim();
+  if (!trimmed) {
+    uni.showToast({ title: '请输入 API Key', icon: 'none' });
     return;
   }
   try {
-    await put('/api/user/ai-config', { apiKey: inputApiKey.value.trim(), provider: aiProvider.value, model: aiModel.value });
+    await put('/api/user/ai-config', {
+      apiKey: trimmed,
+      provider: aiProvider.value,
+      model: aiModel.value,
+      preferredModel: aiModel.value,
+    });
     aiKeyConfigured.value = true;
     showAiKeyModal.value = false;
-    uni.showToast({ title:'保存成功', icon:'success' });
+    uni.showToast({ title: '保存成功', icon: 'success' });
+    quota.value = await fetchQuota(true);
   } catch {
-    uni.showToast({ title:'保存失败', icon:'error' });
+    uni.showToast({ title: '保存失败，请重试', icon: 'error' });
   }
 }
 
 function onProviderChange(e: { detail: { value: number } }) {
-  aiProvider.value = providers[e.detail.value];
+  const next = providers.value[e.detail.value];
+  if (!next) return;
+  aiProvider.value = next.id;
+  aiModel.value = (next.models?.[0] || fallbackModels(next.id)[0])?.id || 'deepseek-v4-flash';
 }
 
-onShow(() => {
-  if (userStore.isLogin) {
-    loadStats();
-    loadAiConfig();
-  }
-});
+async function refreshProfile() {
+  if (!userStore.isLogin) return;
+  await loadProviders();
+  const [q] = await Promise.allSettled([
+    fetchQuota(),
+    loadStats(),
+    loadAiConfig(),
+  ]);
+  if (q.status === 'fulfilled') quota.value = q.value;
+}
+
+onMounted(refreshProfile);
+onShow(refreshProfile);
 
 function goInterviewHistory() { uni.navigateTo({ url: '/pages/interview/history' }); }
 function goExam() { uni.navigateTo({ url: '/pages/practice-entry/index' }); }
 function goWrongBook() { uni.switchTab({ url: '/pages/wrong-book/wrong-book' }); }
+async function goAdmin() {
+  try {
+    if (quota.value?.isAdmin === true || userStore.isAdmin) {
+      uni.navigateTo({ url: '/pages/admin/index' });
+      void withTimeout(fetchQuota(true), 8_000, '管理员权限校验超时')
+        .then((nextQuota) => {
+          quota.value = nextQuota;
+          if (nextQuota.isAdmin !== true) userStore.setAdmin(false);
+        })
+        .catch((error) => {
+          console.warn('[profile] 管理员权限复核失败', error);
+        });
+      return;
+    }
+
+    const q = quota.value || await withTimeout(fetchQuota(true), 8_000, '管理员权限校验超时');
+    quota.value = q;
+    if (q.isAdmin !== true) {
+      userStore.setAdmin(false);
+      uni.showToast({ title: "无管理员权限", icon: 'none' });
+      return;
+    }
+    userStore.setAdmin(true);
+    uni.navigateTo({ url: '/pages/admin/index' });
+  } catch {
+    uni.showToast({ title: "权限校验失败，请稍后重试", icon: 'none' });
+  }
+}
 function handleLogout() {
-  uni.showModal({ title:'提示', content:'确定要退出吗？', success: r => { if (r.confirm) userStore.logout(); } });
+  uni.showModal({
+    title: '提示',
+    content: '确定要退出吗？',
+    success: (r) => { if (r.confirm) userStore.logout(); },
+  });
 }
 </script>
 
@@ -217,6 +356,19 @@ function handleLogout() {
   font-weight: 600; color: $text-main;
 }
 .data-lbl { font-size: 24rpx; color: $text-light; margin-top: 8rpx; }
+
+// ===== 配额 =====
+.quota-banner {
+  margin: 0 28rpx 24rpx; padding: 20rpx 24rpx;
+  background: rgba(217,117,10,0.06); border: 1px solid rgba(217,117,10,0.15);
+  border-radius: $radius-md;
+}
+.quota-banner-ok {
+  background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.15);
+}
+.quota-banner-text { font-size: 24rpx; color: $text-muted; line-height: 1.6; }
+.quota-banner-num { font-weight: 600; color: $accent; }
+.quota-banner-link { color: $accent; font-weight: 600; }
 
 // ===== 菜单 =====
 .menu {
@@ -282,7 +434,7 @@ function handleLogout() {
 @media (min-width: 1025px) {
   .profile { display: flex; flex-direction: column; align-items: center; }
   .head { width: 100%; }
-  .data-row, .menu { width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .data-row, .menu, .quota-banner { width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; }
   .data-row { padding-left: 0; padding-right: 0; }
 }
 </style>

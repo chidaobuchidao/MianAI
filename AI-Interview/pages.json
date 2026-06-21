@@ -56,17 +56,6 @@
             ]
         },
         {
-            "root": "pages/question",
-            "pages": [
-                {
-                    "path": "list",
-                    "style": {
-                        "navigationBarTitleText": "题库"
-                    }
-                }
-            ]
-        },
-        {
             "root": "pages/practice-entry",
             "pages": [
                 {
@@ -125,6 +114,25 @@
                     "path": "history",
                     "style": {
                         "navigationBarTitleText": "面试历史"
+                    }
+                }
+            ]
+        },
+        {
+            "root": "pages/paper-tools",
+            "pages": [
+                { "path": "polish", "style": { "navigationBarTitleText": "学术润色" } },
+                { "path": "ai-reduce", "style": { "navigationBarTitleText": "降AI检测" } },
+                { "path": "plagiarism-reduce", "style": { "navigationBarTitleText": "降查重" } }
+            ]
+        },
+        {
+            "root": "pages/admin",
+            "pages": [
+                {
+                    "path": "index",
+                    "style": {
+                        "navigationBarTitleText": "管理后台"
                     }
                 }
             ]

@@ -28,9 +28,16 @@
         </view>
         <text class="q-arrow">›</text>
       </view>
+
+      <!-- Load more -->
+      <view class="load-more" v-if="hasMore">
+        <view class="load-more-btn" :class="{ disabled: loading }" @click="loadMore">
+          <text>{{ loading ? '加载中...' : '加载更多' }}</text>
+        </view>
+      </view>
     </view>
 
-    <view v-else class="empty-state">
+    <view v-else-if="!loading" class="empty-state">
       <text class="empty-title">暂无题目</text>
     </view>
   </view>
@@ -41,11 +48,18 @@ import { ref, onMounted } from 'vue';
 import { get } from '@/utils/request';
 
 interface Category { id: number; name: string }
-interface Question { id: number; title: string; categoryName: string; difficulty: number }
+interface Question {
+  id: number; title: string; categoryName: string;
+  categoryId: number; difficulty: number;
+}
 
 const activeCategory = ref<string | number>('');
 const categories = ref<Category[]>([]);
 const questions = ref<Question[]>([]);
+const page = ref(1);
+const pageSize = 20;
+const hasMore = ref(true);
+const loading = ref(false);
 
 function difficultyLabel(d: number): string {
   return d === 3 ? '困难' : d === 2 ? '中等' : '简单';
@@ -53,33 +67,53 @@ function difficultyLabel(d: number): string {
 
 function selectCategory(id: string | number) {
   activeCategory.value = id;
+  page.value = 1;
+  questions.value = [];
+  hasMore.value = true;
   fetchQuestions();
 }
 
 async function fetchQuestions() {
+  loading.value = true;
   try {
-    const params: Record<string, unknown> = { size: 50 };
+    const params: Record<string, unknown> = { page: page.value, size: pageSize };
     if (activeCategory.value) params.categoryId = activeCategory.value;
-    const res = await get<{ records: Question[] }>('/api/questions', params);
-    const data = res.data as Record<string, unknown>;
-    questions.value = (data.records || data || []) as Question[];
+    const res = await get<{ records: Question[]; total: number }>('/api/questions', params);
+    const data = res.data;
+    if (data) {
+      const records = data.records || [];
+      if (page.value === 1) {
+        questions.value = records;
+      } else {
+        questions.value.push(...records);
+      }
+      const total = data.total || 0;
+      hasMore.value = questions.value.length < total;
+    }
   } catch {
-    // 静默失败，显示空状态
+    // 加载失败保持当前状态
   }
+  loading.value = false;
+}
+
+async function loadMore() {
+  if (loading.value) return;
+  page.value++;
+  await fetchQuestions();
 }
 
 function goDetail(q: Question) {
   uni.navigateTo({
-    url: `/pages/question-bank/detail?id=${q.id}&categoryId=${activeCategory.value || ''}&categoryName=${encodeURIComponent(q.categoryName || '')}`
+    url: `/pages/question-bank/detail?id=${q.id}&categoryId=${activeCategory.value || ''}&categoryName=${encodeURIComponent(q.categoryName || '')}`,
   });
 }
 
 onMounted(async () => {
   try {
     const r = await get<Category[]>('/api/questions/categories');
-    categories.value = (r.data as Category[]) || [];
+    if (r.data) categories.value = r.data;
   } catch {
-    // 静默失败
+    // 分类加载失败
   }
   fetchQuestions();
 });
@@ -103,11 +137,14 @@ onMounted(async () => {
   font-size: 26rpx; color: $text-muted; background: $bg-surface;
   border: 1px solid $border-light;
 }
-.chip.active { background: rgba(217,117,10,0.06); border-color: $accent; color: $accent; font-weight: 600; }
+.chip.active {
+  background: rgba(217, 117, 10, 0.06);
+  border-color: $accent; color: $accent; font-weight: 600;
+}
 
 .q-list { display: flex; flex-direction: column; gap: 14rpx; }
 .q-card {
-  display: flex; align-items: flex-start; gap: 16rpx;
+  display: flex; align-items: flex-start; gap: 14rpx;
   padding: 28rpx 24rpx;
   background: $bg-paper; border: 1px solid $border-light;
   border-radius: $radius-lg;
@@ -115,9 +152,21 @@ onMounted(async () => {
 .q-card:active { background: $bg-surface; }
 .q-number { font-size: 26rpx; font-weight: 600; color: $accent; flex-shrink: 0; }
 .q-content { flex: 1; min-width: 0; }
-.q-title { font-size: 28rpx; color: $text-main; line-height: 1.5; display: block; margin-bottom: 6rpx; }
+.q-title {
+  font-size: 28rpx; color: $text-main; line-height: 1.5;
+  display: block; margin-bottom: 6rpx;
+}
 .q-meta { font-size: 22rpx; color: $text-light; }
 .q-arrow { color: #CCC; font-size: 32rpx; flex-shrink: 0; }
+
+.load-more { text-align: center; padding: 32rpx 0; }
+.load-more-btn {
+  display: inline-block; padding: 16rpx 48rpx;
+  background: $bg-paper; border: 1px solid $border-light;
+  border-radius: $radius-full; font-size: 26rpx; color: $text-muted;
+}
+.load-more-btn.disabled { opacity: 0.4; }
+.load-more-btn:active { background: $bg-surface; }
 
 .empty-state { text-align: center; padding-top: 200rpx; }
 .empty-title { font-size: 28rpx; color: $text-light; }
