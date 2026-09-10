@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
+const backendTarget = 'http://localhost:8080'
+
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -20,11 +22,17 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: backendTarget,
         changeOrigin: true,
         // SSE streaming support: disable buffering, extend timeout
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
+            // Same-origin browser requests remain same-origin after the dev proxy
+            // rewrites Host, including when Vite runs on an alternate local port.
+            const origin = req.headers.origin
+            if (origin === `http://${req.headers.host}` || origin === `https://${req.headers.host}`) {
+              proxyReq.setHeader('Origin', backendTarget)
+            }
             // Prevent proxy from buffering SSE streams
             if (req.headers.accept === 'text/event-stream') {
               proxyReq.setHeader('Connection', 'keep-alive')
