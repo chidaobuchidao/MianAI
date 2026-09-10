@@ -8,9 +8,9 @@ const width = ref(1000)
 const selectedIndex = ref(0)
 const inspecting = ref(false)
 const series = [
-  { key: 'totalTokens', label: '总量', color: '#af52ff' },
-  { key: 'inputTokens', label: '输入', color: '#3686ff' },
-  { key: 'outputTokens', label: '输出', color: '#009b67' }
+  { key: 'totalTokens', label: '总量', color: 'var(--accent)' },
+  { key: 'inputTokens', label: '输入', color: '#596a7c' },
+  { key: 'outputTokens', label: '输出', color: '#397362' }
 ] as const
 type SeriesKey = typeof series[number]['key']
 const visible = ref<SeriesKey[]>(series.map(item => item.key))
@@ -68,13 +68,13 @@ onBeforeUnmount(() => observer?.disconnect())
     <div class="chart-scroll"><div ref="canvas" class="chart-canvas">
       <svg :viewBox="`0 0 ${width} 342`" class="chart" tabindex="0" role="group" aria-label="Token 用量折线图，使用左右方向键查看每日数值，Home 和 End 跳至首尾日期" :aria-describedby="`${id}-detail`"
         @pointermove="point" @pointerdown="point" @pointerleave="inspecting = false" @focus="inspecting = true" @blur="inspecting = false" @keydown="move">
-        <defs><linearGradient :id="`${id}-fill`" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#af52ff" stop-opacity=".17" /><stop offset="100%" stop-color="#af52ff" stop-opacity="0" /></linearGradient></defs>
+        <defs><linearGradient :id="`${id}-fill`" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity=".17" /><stop offset="100%" stop-color="var(--accent)" stop-opacity="0" /></linearGradient></defs>
         <g aria-hidden="true">
-          <template v-for="fraction in [0, .25, .5, .75, 1]" :key="fraction"><line x1="62" :x2="width - 28" :y1="y(maximum * fraction)" :y2="y(maximum * fraction)" stroke="#eceef2" stroke-dasharray="2 4" /><text x="52" :y="y(maximum * fraction) + 4" text-anchor="end">{{ compactNumber(maximum * fraction) }}</text></template>
+          <template v-for="fraction in [0, .25, .5, .75, 1]" :key="fraction"><line x1="62" :x2="width - 28" :y1="y(maximum * fraction)" :y2="y(maximum * fraction)" stroke="var(--border-light)" stroke-dasharray="2 4" /><text x="52" :y="y(maximum * fraction) + 4" text-anchor="end">{{ compactNumber(maximum * fraction) }}</text></template>
           <path v-if="days.length && visible.includes('totalTokens')" :d="`${path('totalTokens')} L ${x(days.length - 1)} 302 L ${x(0)} 302 Z`" :fill="`url(#${id}-fill)`" />
           <path v-for="item in active" :key="item.key" :d="path(item.key)" fill="none" :stroke="item.color" stroke-width="2.2" stroke-linejoin="round" />
           <template v-for="(day, index) in days" :key="day.date"><text v-if="(index % stride === 0 && days.length - 1 - index >= stride * .65) || index === days.length - 1" :x="x(index)" y="327" :text-anchor="index === 0 ? 'start' : index === days.length - 1 ? 'end' : 'middle'">{{ day.date.slice(5).replace('-', '/') }}</text></template>
-          <template v-if="inspecting && selected"><line :x1="x(selectedIndex)" :x2="x(selectedIndex)" y1="32" y2="302" stroke="#d4d8df" /><circle v-for="item in active" :key="item.key" :cx="x(selectedIndex)" :cy="y(selected[item.key])" r="4" :fill="item.color" stroke="white" stroke-width="2" /></template>
+          <template v-if="inspecting && selected"><line :x1="x(selectedIndex)" :x2="x(selectedIndex)" y1="32" y2="302" stroke="#d4d8df" /><circle v-for="item in active" :key="item.key" :cx="x(selectedIndex)" :cy="y(selected[item.key])" r="4" :fill="item.color" stroke="var(--bg-paper)" stroke-width="2" /></template>
           <template v-else-if="days.length === 1"><circle v-for="item in active" :key="item.key" :cx="x(0)" :cy="y(days[0]![item.key])" r="3" :fill="item.color" /></template>
         </g>
       </svg>
@@ -86,11 +86,11 @@ onBeforeUnmount(() => observer?.disconnect())
 </template>
 
 <style scoped>
-.trend { padding: 26px 24px 16px; border: 1px solid #eceef2; border-radius: 14px; background: white; }
-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; } h2 { margin: 0; font-size: 18px; font-weight: 650; color: #181c24; } header span { font-size: 12px; color: #6b7280; }
-.chart-scroll { overflow-x: auto; } .chart-canvas { position: relative; min-width: 640px; } .chart { display: block; width: 100%; height: 342px; overflow: visible; } text { font: 11px ui-sans-serif, system-ui, sans-serif; fill: #6b7280; }
-.tooltip { position: absolute; top: 45px; width: 202px; pointer-events: none; background: white; border: 1px solid #e9ebef; border-radius: 12px; box-shadow: 0 6px 16px #19233918; padding: 14px; font-size: 12px; color: #313743; } .tooltip strong { display: block; margin-bottom: 10px; font-size: 13px; } .tooltip div, .tooltip span { display: flex; align-items: center; gap: 7px; } .tooltip div { justify-content: space-between; margin-top: 7px; } .tooltip b { font-weight: 500; font-variant-numeric: tabular-nums; } .tooltip p { margin-top: 12px; padding-top: 10px; border-top: 1px solid #f0f1f4; color: #6b7280; font-size: 11px; } .tooltip p span { margin-top: 3px; }
-i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; } .legend { display: flex; justify-content: center; gap: 6px; } .legend button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; color: #505866; font: inherit; font-size: 12px; border-radius: 6px; cursor: pointer; } .legend button[aria-pressed=false] { color: #747b86; text-decoration: line-through; } .legend button[aria-pressed=false] i { background: #c5c9d0 !important; } .legend button:hover { background: #f6f8fc; }
-:is(button, svg):focus-visible { outline: 2px solid #1687ff; outline-offset: -2px; } .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.trend { padding: 26px 24px 16px; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--bg-paper); }
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; } h2 { font-family: var(--font-serif); margin: 0; font-size: 18px; font-weight: 650; color: var(--text-main); } header span { font-size: 12px; color: var(--text-muted); }
+.chart-scroll { overflow-x: auto; } .chart-canvas { position: relative; min-width: 640px; } .chart { display: block; width: 100%; height: 342px; overflow: visible; } text { font-family: var(--font-sans); font-size: 11px; fill: var(--text-muted); }
+.tooltip { position: absolute; top: 45px; width: 202px; pointer-events: none; background: var(--bg-paper); border: 1px solid var(--border-light); border-radius: 12px; box-shadow: var(--shadow-md); padding: 14px; font-size: 12px; color: var(--text-main); } .tooltip strong { display: block; margin-bottom: 10px; font-size: 13px; } .tooltip div, .tooltip span { display: flex; align-items: center; gap: 7px; } .tooltip div { justify-content: space-between; margin-top: 7px; } .tooltip b { font-weight: 500; font-variant-numeric: tabular-nums; } .tooltip p { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-light); color: var(--text-muted); font-size: 11px; } .tooltip p span { margin-top: 3px; }
+i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; } .legend { display: flex; justify-content: center; gap: 6px; } .legend button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; color: var(--text-muted); font: inherit; font-size: 12px; border-radius: 6px; cursor: pointer; } .legend button[aria-pressed=false] { color: #747b86; text-decoration: line-through; } .legend button[aria-pressed=false] i { background: #c5c9d0 !important; } .legend button:hover { background: var(--bg-surface); }
+:is(button, svg):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; } .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 600px) { .trend { padding: 20px 12px 12px; } h2 { font-size: 16px; } header { padding: 0 4px; } header span { font-size: 11px; } }
 </style>
