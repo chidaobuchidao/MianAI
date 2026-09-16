@@ -12,7 +12,7 @@
       </div>
 
       <!-- Stats -->
-      <RouterLink class="usage-entry" to="/admin/token-usage">全站 Token 用量 <span>查看调用与模型消耗 →</span></RouterLink>
+      <RouterLink class="usage-entry" to="/profile">系统 Key 用量 <span>前往个人中心查看 →</span></RouterLink>
       <div class="stats-row">
         <div class="stat-card">
           <span class="stat-card__num">{{ status.totalUsers }}</span>

@@ -36,13 +36,10 @@
         <span>已配置个人 API Key，不限使用次数</span>
       </div>
 
+      <ProfileTokenUsage />
+
       <!-- Menu -->
       <div class="menu-group">
-        <button class="menu-item" @click="$router.push('/token-usage')">
-          <span class="menu-item__label">Token 用量</span>
-          <span class="menu-item__hint">查看使用记录</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
         <button class="menu-item" @click="$router.push('/interview/history')">
           <span class="menu-item__label">面试历史</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2">
@@ -192,6 +189,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import ProfileTokenUsage from '@/components/ProfileTokenUsage.vue'
 import { get, put } from '@/utils/request'
 
 /* ---- Types ---- */

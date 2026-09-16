@@ -19,7 +19,7 @@ export function useTokenUsage() {
       const params: Record<string, unknown> = {
         days: filters.days, model: filters.model, feature: filters.feature
       }
-      if (admin) Object.assign(params, { userId: filters.userId, keySource: filters.keySource })
+      if (admin) Object.assign(params, { userId: filters.userId })
       const response = await get<TokenUsage>(`/api/${admin ? 'admin' : 'user'}/token-usage`, params)
       if (response.code !== 200 || !response.data) throw new Error(response.message || '暂时无法获取用量')
       if (id === requestId) data.value = response.data

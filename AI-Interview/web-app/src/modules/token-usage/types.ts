@@ -24,7 +24,6 @@ export interface UsageFilters {
   model?: string
   feature?: string
   userId?: string
-  keySource?: '' | 'SYSTEM' | 'PERSONAL'
 }
 export const featureLabels: Record<string, string> = {
   INTERVIEW: '模拟面试', RESUME: '简历分析', PAPER_POLISH: '论文润色',

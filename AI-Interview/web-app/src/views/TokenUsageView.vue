@@ -12,7 +12,7 @@ const route = useRoute()
 const userStore = useUserStore()
 const admin = computed(() => route.meta.requiresAdmin === true)
 const days = ref<UsageDays>(7)
-const filters = reactive({ model: '', feature: '', userId: '', keySource: '' as '' | 'SYSTEM' | 'PERSONAL' })
+const filters = reactive({ model: '', feature: '', userId: '' })
 const applied = ref<UsageFilters>({ days: 7 })
 const validation = ref('')
 const models = ref<string[]>([])
@@ -20,10 +20,9 @@ const { data, loading, error, load } = useTokenUsage()
 const updatedAt = ref('')
 const coverage = computed(() => data.value?.summary.calls
   ? ((data.value.summary.calls - data.value.summary.unknownCalls) / data.value.summary.calls * 100).toFixed(1) : null)
-const filtered = computed(() => !!(applied.value.model || applied.value.feature || applied.value.userId || applied.value.keySource))
+const filtered = computed(() => !!(applied.value.model || applied.value.feature || applied.value.userId))
 const dirty = computed(() => filters.model.trim() !== (applied.value.model || '') || filters.feature !== (applied.value.feature || '')
-  || (admin.value && (filters.userId.trim() !== (applied.value.userId || '') || filters.keySource !== (applied.value.keySource || ''))))
-
+  || (admin.value && filters.userId.trim() !== (applied.value.userId || '')))
 watch(data, value => {
   if (value) {
     models.value = [...new Set([...models.value, ...value.models.map(model => model.key)])].sort()
@@ -32,7 +31,7 @@ watch(data, value => {
 })
 watch(admin, () => {
   validation.value = ''
-  Object.assign(filters, { model: '', feature: '', userId: '', keySource: '' })
+  Object.assign(filters, { model: '', feature: '', userId: '' })
   days.value = 7
   applied.value = { days: 7 }
   models.value = []
@@ -47,7 +46,7 @@ function apply() {
   }
   applied.value = {
     days: days.value, model: filters.model.trim(), feature: filters.feature,
-    ...(admin.value ? { userId, keySource: filters.keySource } : {})
+    ...(admin.value ? { userId } : {})
   }
   void load(admin.value, applied.value)
 }
@@ -57,7 +56,7 @@ function setDays(value: UsageDays) {
   void load(admin.value, applied.value)
 }
 function reset() {
-  Object.assign(filters, { model: '', feature: '', userId: '', keySource: '' })
+  Object.assign(filters, { model: '', feature: '', userId: '' })
   apply()
 }
 </script>
@@ -65,27 +64,27 @@ function reset() {
 <template>
   <main class="usage-page">
     <header class="topbar">
-      <RouterLink class="back-link" :to="admin ? '/admin' : '/profile'" :aria-label="admin ? '返回管理后台' : '返回个人中心'"><ArrowLeft :size="18" aria-hidden="true" /></RouterLink>
-      <span>{{ admin ? '管理后台' : '个人中心' }}</span>
+      <RouterLink class="back-link" to="/profile" aria-label="返回个人中心"><ArrowLeft :size="18" aria-hidden="true" /></RouterLink>
+      <span>个人中心</span>
       <span class="topbar-caption">Mianmian.</span>
     </header>
 
     <nav class="section-nav" aria-label="用量页面导航">
       <RouterLink to="/profile">个人中心</RouterLink>
       <RouterLink to="/token-usage" :class="{ active: !admin }" :aria-current="!admin ? 'page' : undefined"><BarChart3 :size="15" aria-hidden="true" />个人用量</RouterLink>
-      <RouterLink v-if="userStore.isAdmin" to="/admin/token-usage" :class="{ active: admin }" :aria-current="admin ? 'page' : undefined"><Activity :size="15" aria-hidden="true" />全站用量</RouterLink>
+      <RouterLink v-if="userStore.isAdmin" to="/admin/token-usage" :class="{ active: admin }" :aria-current="admin ? 'page' : undefined"><Activity :size="15" aria-hidden="true" />系统 Key 用量</RouterLink>
       <RouterLink v-if="userStore.isAdmin" to="/admin">管理后台</RouterLink>
     </nav>
 
     <div class="usage-content">
       <div class="page-toolbar">
-        <div class="page-title"><h1>{{ admin ? '全站使用统计' : '使用统计' }}</h1><p>查看 AI 模型的调用与 Token 用量</p></div>
+        <div class="page-title"><h1>{{ admin ? '系统 Key 使用统计' : '我的使用统计' }}</h1><p>{{ admin ? '仅统计平台提供的系统 Key 调用，不包含用户个人 Key。' : '仅统计你自己的调用，包含系统 Key 和个人 Key。' }}</p></div>
         <form class="filters" aria-label="用量筛选" @submit.prevent="apply">
           <label class="model-field"><span class="sr-only">模型</span><input v-model="filters.model" list="usage-models" maxlength="255" placeholder="全部模型" /><datalist id="usage-models"><option v-for="model in models" :key="model" :value="model" /></datalist></label>
           <label class="feature-field"><span class="sr-only">功能</span><select v-model="filters.feature"><option value="">全部功能</option><option v-for="(name, key) in featureLabels" :key="key" :value="key">{{ name }}</option></select></label>
           <template v-if="admin">
             <label class="user-field"><span class="sr-only">用户 ID</span><input v-model="filters.userId" inputmode="numeric" maxlength="19" placeholder="全部用户 ID" :aria-invalid="!!validation" :aria-describedby="validation ? 'filter-validation' : undefined" /></label>
-            <label class="source-field"><span class="sr-only">Key 来源</span><select v-model="filters.keySource"><option value="">全部 Key 来源</option><option value="SYSTEM">系统 Key</option><option value="PERSONAL">个人 Key</option></select></label>
+
           </template>
           <button class="apply-btn compact-button" type="submit"><SlidersHorizontal :size="14" aria-hidden="true" /><span>应用筛选</span></button>
           <button v-if="filtered || dirty" class="reset-btn compact-button" type="button" @click="reset">重置</button>
@@ -116,7 +115,7 @@ function reset() {
 
         <div class="report-meta"><div class="coverage" :class="{ 'coverage--partial': data.summary.unknownCalls > 0 }"><Info :size="13" aria-hidden="true" /><span v-if="data.summary.unknownCalls">{{ formatNumber(data.summary.unknownCalls) }} 次调用未返回完整用量，实际消耗可能更高。</span><span v-else>{{ data.summary.calls ? '当前调用均已返回完整用量。' : '当前无调用记录。' }}</span><span class="failed-count">失败 / 中断 {{ formatNumber(data.summary.failedCalls) }} 次</span></div><span class="date-note">{{ data.startDate }} 至 {{ data.daily.at(-1)?.date || data.endDate }} · {{ data.timezone }}<span v-if="updatedAt"> · {{ updatedAt }} 更新</span></span></div>
 
-        <section v-if="data.summary.calls === 0" class="state-card empty-state"><BarChart3 :size="38" class="state-icon" aria-hidden="true" /><h2>{{ filtered ? '当前筛选下暂无调用' : '用量记录从这里开始' }}</h2><p>{{ filtered ? '尝试调整时间范围、模型或功能。' : '使用面试、简历或论文工具后，可在这里查看记录。' }}</p><button v-if="filtered" class="apply-btn" @click="reset">清除筛选</button><RouterLink v-else class="apply-btn" :to="admin ? '/admin' : '/profile'">{{ admin ? '返回管理后台' : '返回个人中心' }}</RouterLink></section>
+        <section v-if="data.summary.calls === 0" class="state-card empty-state"><BarChart3 :size="38" class="state-icon" aria-hidden="true" /><h2>{{ filtered ? '当前筛选下暂无调用' : '用量记录从这里开始' }}</h2><p>{{ filtered ? '尝试调整时间范围、模型或功能。' : '使用面试、简历或论文工具后，可在这里查看记录。' }}</p><button v-if="filtered" class="apply-btn" @click="reset">清除筛选</button><RouterLink v-else class="apply-btn" to="/profile">返回个人中心</RouterLink></section>
         <TokenUsageTrend v-else :days="data.daily" />
         <div class="usage-table"><TokenUsageTable :data="data" :admin="admin" /></div>
 
@@ -140,7 +139,7 @@ function reset() {
 .page-title p { font-size: 13px; color: var(--usage-muted); margin-top: 4px; }
 .filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .filters label { display: block; position: relative; min-width: 0; }
-.model-field { width: 144px; } .feature-field { width: 125px; } .source-field { width: 135px; } .user-field { width: 128px; } .days-field { width: 129px; }
+.model-field { width: 144px; } .feature-field { width: 125px; } .user-field { width: 128px; } .days-field { width: 129px; }
 input, select { height: 36px; width: 100%; border: 1px solid var(--border-medium); border-radius: 8px; background: var(--bg-paper); color: var(--text-main); font-size: 12px; padding: 0 10px; font-family: inherit; box-shadow: 0 1px 2px #17243d04; }
 input::placeholder { color: var(--text-muted); } select { padding-right: 5px; }
 .days-field > svg { position: absolute; top: 11px; left: 10px; color: #7c8390; pointer-events: none; } .days-field select { padding-left: 31px; }
