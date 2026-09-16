@@ -59,6 +59,7 @@ class TokenUsageIntegrationTest {
         insert(ownerId, "SYSTEM", "SUCCESS", 10L, 20L);
         insert(ownerId, "PERSONAL", "FAILED", 40L, null);
         insert(otherId, "SYSTEM", "SUCCESS", 100L, 200L);
+        insert(otherId, "PERSONAL", "SUCCESS", 9000L, 8000L);
         insert(null, "SYSTEM", "FAILED", null, null);
     }
 
@@ -95,13 +96,13 @@ class TokenUsageIntegrationTest {
     }
 
     @Test
-    void signedAdminTokenAggregatesAllOwnersAndAppliesSystemKeyAndUserFilters() throws Exception {
+    void signedAdminTokenOnlyAggregatesSystemKeysEvenWhenSourceIsOmitted() throws Exception {
         mvc.perform(get("/api/admin/token-usage").header("Authorization", bearer(ownerId, 1))
                         .param("model", model))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.summary.calls").value(4))
-                .andExpect(jsonPath("$.data.summary.totalTokens").value(370))
-                .andExpect(jsonPath("$.data.summary.unknownCalls").value(2))
+                .andExpect(jsonPath("$.data.summary.calls").value(3))
+                .andExpect(jsonPath("$.data.summary.totalTokens").value(330))
+                .andExpect(jsonPath("$.data.summary.unknownCalls").value(1))
                 .andExpect(jsonPath("$.data.users.length()").value(3))
                 .andExpect(jsonPath("$.data.users[0].key").value(String.valueOf(otherId)))
                 .andExpect(jsonPath("$.data.users[2].key").value("unassigned"));
@@ -119,6 +120,22 @@ class TokenUsageIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.calls").value(1))
                 .andExpect(jsonPath("$.data.summary.totalTokens").value(30))
                 .andExpect(jsonPath("$.data.users.length()").value(1));
+    }
+
+    @Test
+    void adminCannotRequestPersonalKeysButCanStillReadOwnUsage() throws Exception {
+        for (String source : List.of("PERSONAL", "", "all", "SYSTEM,PERSONAL")) {
+            mvc.perform(get("/api/admin/token-usage").header("Authorization", bearer(ownerId, 1))
+                            .param("keySource", source).param("userId", String.valueOf(otherId)))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.summary.totalTokens").value(70))
+                .andExpect(jsonPath("$.data.users").isEmpty());
+        mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 1))
+                        .param("userId", String.valueOf(otherId)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

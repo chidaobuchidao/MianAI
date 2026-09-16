@@ -47,10 +47,12 @@ public class TokenUsageService {
     @Transactional(readOnly = true)
     public TokenUsageResponse admin(int days, String model, String feature, Long userId, String keySource) {
         if (userId != null) requirePositiveUser(userId);
-        if (keySource != null && !keySource.equals("SYSTEM") && !keySource.equals("PERSONAL")) {
-            throw new IllegalArgumentException("keySource 只支持 SYSTEM 或 PERSONAL");
+        if (keySource != null && !keySource.equals("SYSTEM")) {
+            throw new IllegalArgumentException("管理员统计仅支持系统 Key 用量");
         }
-        return aggregate(days, model, feature, userId, keySource, true);
+        // The scope is mandatory even when older clients omit the source filter.
+        // Apply it before every aggregate so private usage cannot leak via rankings.
+        return aggregate(days, model, feature, userId, "SYSTEM", true);
     }
 
     private TokenUsageResponse aggregate(int days, String model, String feature, Long userId,

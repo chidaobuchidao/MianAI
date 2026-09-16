@@ -76,12 +76,22 @@ class TokenUsageControllerTest {
     }
 
     @Test
-    void adminEndpointAcceptsAllFilters() throws Exception {
+    void adminEndpointAcceptsSystemUsageFilters() throws Exception {
         login(7L, 1);
         mvc.perform(get("/api/admin/token-usage").param("days", "30").param("model", "m")
                         .param("feature", "RESUME").param("userId", "8").param("keySource", "SYSTEM"))
                 .andExpect(status().isOk());
         verify(service).admin(30, "m", "RESUME", 8L, "SYSTEM");
+    }
+
+    @Test
+    void adminRejectsAttemptsToExpandKeyScopeBeforeQuerying() throws Exception {
+        login(7L, 1);
+        for (String source : List.of("PERSONAL", "", "all", "SYSTEM,PERSONAL")) {
+            mvc.perform(get("/api/admin/token-usage").param("keySource", source))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(service);
     }
 
     @Test

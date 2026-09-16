@@ -85,12 +85,12 @@ class TokenUsageServiceTest {
     @Test
     void adminFiltersApplyToEveryAggregationAndModelFilterIsBoundAsData() {
         String model = "model' OR 1=1 --";
-        insert("2026-09-09 01:00:00", 7L, model, "RESUME", "PERSONAL", "SUCCESS", 10L, 20L);
-        insert("2026-09-09 01:00:00", 7L, model, "RESUME", "SYSTEM", "SUCCESS", 900L, 900L);
-        insert("2026-09-09 01:00:00", 8L, model, "RESUME", "PERSONAL", "SUCCESS", 900L, 900L);
-        insert("2026-09-09 01:00:00", 7L, "other", "RESUME", "PERSONAL", "SUCCESS", 900L, 900L);
-        insert("2026-09-09 01:00:00", 7L, model, "INTERVIEW", "PERSONAL", "SUCCESS", 900L, 900L);
-        var response = service.admin(7, model, "RESUME", 7L, "PERSONAL");
+        insert("2026-09-09 01:00:00", 7L, model, "RESUME", "SYSTEM", "SUCCESS", 10L, 20L);
+        insert("2026-09-09 01:00:00", 7L, model, "RESUME", "PERSONAL", "SUCCESS", 900L, 900L);
+        insert("2026-09-09 01:00:00", 8L, model, "RESUME", "SYSTEM", "SUCCESS", 900L, 900L);
+        insert("2026-09-09 01:00:00", 7L, "other", "RESUME", "SYSTEM", "SUCCESS", 900L, 900L);
+        insert("2026-09-09 01:00:00", 7L, model, "INTERVIEW", "SYSTEM", "SUCCESS", 900L, 900L);
+        var response = service.admin(7, model, "RESUME", 7L, "SYSTEM");
         assertThat(response.summary().calls()).isEqualTo(1);
         assertThat(response.daily().get(6).totalTokens()).isEqualTo(30);
         assertThat(response.models()).singleElement().satisfies(g -> {
@@ -99,6 +99,21 @@ class TokenUsageServiceTest {
         });
         assertThat(response.features()).singleElement().satisfies(g -> assertThat(g.totalTokens()).isEqualTo(30));
         assertThat(response.users()).singleElement().satisfies(g -> assertThat(g.key()).isEqualTo("7"));
+    }
+
+    @Test
+    void adminDefaultScopeExcludesPersonalKeysFromEveryAggregation() {
+        insert("2026-09-09 01:00:00", 7L, "system-model", "INTERVIEW", "SYSTEM", "SUCCESS", 10L, 20L);
+        insert("2026-09-09 01:00:00", 8L, "private-model", "RESUME", "PERSONAL", "SUCCESS", 900L, 800L);
+        var response = service.admin(7, null, null, null, null);
+        assertThat(response.summary().totalTokens()).isEqualTo(30);
+        assertThat(response.summary().calls()).isEqualTo(1);
+        assertThat(response.daily().get(6).totalTokens()).isEqualTo(30);
+        assertThat(response.models()).extracting(TokenUsageResponse.Group::key).containsExactly("system-model");
+        assertThat(response.features()).extracting(TokenUsageResponse.Group::key).containsExactly("INTERVIEW");
+        assertThat(response.users()).extracting(TokenUsageResponse.Group::key).containsExactly("7");
+        assertThat(service.admin(7, null, null, 8L, null).summary().calls()).isZero();
+        assertThatIllegalArgumentException().isThrownBy(() -> service.admin(7, null, null, null, "PERSONAL"));
     }
 
     @Test

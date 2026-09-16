@@ -44,6 +44,9 @@ public class TokenUsageController {
             @RequestParam(name = "keySource", required = false) String keySource) {
         if (authenticatedUserId() == null) return failure(401, "请先登录");
         if (!JwtAuthFilter.isAdmin()) return failure(403, "无管理员权限");
+        if (keySource != null && !keySource.equals("SYSTEM")) {
+            return failure(400, "管理员统计仅支持系统 Key 用量");
+        }
         Long userId = null;
         if (requestedUserId != null) {
             try {
