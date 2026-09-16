@@ -6,15 +6,16 @@ import { useUserStore } from '@/stores/user'
 import { useTokenUsage } from '@/modules/token-usage/useTokenUsage'
 import { formatNumber, type UsageDays } from '@/modules/token-usage/types'
 
+const props = defineProps<{ allowSystemUsage: boolean }>()
 const userStore = useUserStore()
 const id = useId()
 const days = ref<UsageDays>(7)
 const scope = ref<'personal' | 'system'>('personal')
-const system = computed(() => userStore.isAdmin && scope.value === 'system')
+const system = computed(() => props.allowSystemUsage && scope.value === 'system')
 const showTrend = ref(false)
 const { data, loading, error, load } = useTokenUsage()
 const refresh = () => load(system.value, { days: days.value })
-watch(() => userStore.isAdmin, () => { scope.value = 'personal' })
+watch(() => props.allowSystemUsage, () => { scope.value = 'personal' })
 watch([days, system, () => userStore.userId], refresh, { immediate: true })
 </script>
 
@@ -22,7 +23,7 @@ watch([days, system, () => userStore.userId], refresh, { immediate: true })
   <section id="token-usage" class="profile-usage" :aria-labelledby="`${id}-title`">
     <header><h2 :id="`${id}-title`"><Zap :size="18" aria-hidden="true" />Token 用量</h2><button class="refresh" :disabled="loading" aria-label="刷新 Token 用量" @click="refresh"><RefreshCw :size="16" aria-hidden="true" /></button></header>
     <div class="controls">
-      <div v-if="userStore.isAdmin" class="scope" role="group" aria-label="用量范围"><button :aria-pressed="!system" @click="scope = 'personal'">我的用量</button><button :aria-pressed="system" @click="scope = 'system'">系统 Key 用量</button></div>
+      <div v-if="allowSystemUsage" class="scope" role="group" aria-label="用量范围"><button :aria-pressed="!system" @click="scope = 'personal'">我的用量</button><button :aria-pressed="system" @click="scope = 'system'">系统 Key 用量</button></div>
       <span v-else class="scope-label">我的用量</span>
       <label><span class="sr-only">用量时间范围</span><select v-model="days"><option v-for="value in ([7, 30, 90] as const)" :key="value" :value="value">最近 {{ value }} 天</option></select></label>
     </div>
@@ -31,7 +32,7 @@ watch([days, system, () => userStore.userId], refresh, { immediate: true })
     <template v-else-if="data">
       <div class="total"><span>已知消耗 Tokens</span><strong>{{ formatNumber(data.summary.totalTokens) }}</strong></div>
       <dl class="metrics"><div><dt>输入</dt><dd>{{ formatNumber(data.summary.inputTokens) }}</dd></div><div><dt>输出</dt><dd>{{ formatNumber(data.summary.outputTokens) }}</dd></div><div><dt>调用次数</dt><dd>{{ formatNumber(data.summary.calls) }}</dd></div></dl>
-      <p v-if="data.summary.calls === 0" class="notice">这段时间暂无{{ system ? '系统 Key' : '个人' }}调用记录。</p>
+      <p v-if="data.summary.calls === 0" class="notice">这段时间暂无{{ system ? '系统 Key' : '个人 Key' }} 调用记录。</p>
       <p v-else-if="data.summary.unknownCalls" class="notice">{{ formatNumber(data.summary.unknownCalls) }} 次调用未返回完整用量，实际消耗可能更高。</p>
       <p class="period">{{ data.startDate }} 至 {{ data.daily.at(-1)?.date || data.endDate }} · {{ data.timezone }}</p>
       <details v-if="data.summary.calls > 0" @toggle="showTrend = ($event.target as HTMLDetailsElement).open"><summary>查看每日趋势</summary><TokenUsageTrend v-if="showTrend" :key="system ? 'system' : 'personal'" :days="data.daily" /></details>

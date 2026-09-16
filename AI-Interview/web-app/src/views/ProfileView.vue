@@ -36,7 +36,7 @@
         <span>已配置个人 API Key，不限使用次数</span>
       </div>
 
-      <ProfileTokenUsage />
+      <ProfileTokenUsage :allow-system-usage="quota?.isAdmin === true" />
 
       <!-- Menu -->
       <div class="menu-group">

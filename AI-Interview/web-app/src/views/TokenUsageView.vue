@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Activity, ArrowDownToLine, ArrowLeft, ArrowUpFromLine, BarChart3, CalendarDays, CircleAlert, Database, Info, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-vue-next'
 import TokenUsageTrend from '@/components/TokenUsageTrend.vue'
 import TokenUsageTable from '@/components/TokenUsageTable.vue'
-import { useUserStore } from '@/stores/user'
+import { get } from '@/utils/request'
 import { useTokenUsage } from '@/modules/token-usage/useTokenUsage'
 import { featureLabels, formatNumber, type UsageDays, type UsageFilters } from '@/modules/token-usage/types'
 
 const route = useRoute()
-const userStore = useUserStore()
+const canViewSystem = ref(false)
+onMounted(async () => {
+  try {
+    const response = await get<{ isAdmin: boolean }>('/api/user/quota')
+    canViewSystem.value = response.code === 200 && response.data?.isAdmin === true
+  } catch {
+    canViewSystem.value = false
+  }
+})
 const admin = computed(() => route.meta.requiresAdmin === true)
 const days = ref<UsageDays>(7)
 const filters = reactive({ model: '', feature: '', userId: '' })
@@ -72,13 +80,13 @@ function reset() {
     <nav class="section-nav" aria-label="用量页面导航">
       <RouterLink to="/profile">个人中心</RouterLink>
       <RouterLink to="/token-usage" :class="{ active: !admin }" :aria-current="!admin ? 'page' : undefined"><BarChart3 :size="15" aria-hidden="true" />个人用量</RouterLink>
-      <RouterLink v-if="userStore.isAdmin" to="/admin/token-usage" :class="{ active: admin }" :aria-current="admin ? 'page' : undefined"><Activity :size="15" aria-hidden="true" />系统 Key 用量</RouterLink>
-      <RouterLink v-if="userStore.isAdmin" to="/admin">管理后台</RouterLink>
+      <RouterLink v-if="canViewSystem" to="/admin/token-usage" :class="{ active: admin }" :aria-current="admin ? 'page' : undefined"><Activity :size="15" aria-hidden="true" />系统 Key 用量</RouterLink>
+      <RouterLink v-if="canViewSystem" to="/admin">管理后台</RouterLink>
     </nav>
 
     <div class="usage-content">
       <div class="page-toolbar">
-        <div class="page-title"><h1>{{ admin ? '系统 Key 使用统计' : '我的使用统计' }}</h1><p>{{ admin ? '仅统计平台提供的系统 Key 调用，不包含用户个人 Key。' : '仅统计你自己的调用，包含系统 Key 和个人 Key。' }}</p></div>
+        <div class="page-title"><h1>{{ admin ? '系统 Key 使用统计' : '我的使用统计' }}</h1><p>{{ admin ? '仅统计平台提供的系统 Key 调用，不包含用户个人 Key。' : '仅统计你使用个人 API Key 的调用。' }}</p></div>
         <form class="filters" aria-label="用量筛选" @submit.prevent="apply">
           <label class="model-field"><span class="sr-only">模型</span><input v-model="filters.model" list="usage-models" maxlength="255" placeholder="全部模型" /><datalist id="usage-models"><option v-for="model in models" :key="model" :value="model" /></datalist></label>
           <label class="feature-field"><span class="sr-only">功能</span><select v-model="filters.feature"><option value="">全部功能</option><option v-for="(name, key) in featureLabels" :key="key" :value="key">{{ name }}</option></select></label>
