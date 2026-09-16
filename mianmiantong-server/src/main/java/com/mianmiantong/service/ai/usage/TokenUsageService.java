@@ -41,7 +41,7 @@ public class TokenUsageService {
     @Transactional(readOnly = true)
     public TokenUsageResponse personal(Long currentUserId, int days, String model, String feature) {
         requirePositiveUser(currentUserId);
-        return aggregate(days, model, feature, currentUserId, null, false);
+        return aggregate(days, model, feature, currentUserId, "PERSONAL", false);
     }
 
     @Transactional(readOnly = true)

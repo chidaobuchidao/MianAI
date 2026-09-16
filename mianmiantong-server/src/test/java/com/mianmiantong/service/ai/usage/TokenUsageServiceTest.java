@@ -47,17 +47,19 @@ class TokenUsageServiceTest {
         // Timestamp would let Connector/J shift these boundaries when JVM and connection zones differ.
         verify(observedJdbc).queryForObject(anyString(), any(RowMapper.class),
                 eq(LocalDateTime.of(2026, 9, 3, 0, 0)),
-                eq(LocalDateTime.of(2026, 9, 10, 0, 0)), eq(7L));
+                eq(LocalDateTime.of(2026, 9, 10, 0, 0)), eq(7L), eq("PERSONAL"));
     }
 
     @Test
-    void isolatesPersonalUsageIncludesBothKeySourcesAndUsesExclusiveShanghaiBoundary() {
-        insert("2026-09-02 23:59:59", 7L, "m", "INTERVIEW", "SYSTEM", "SUCCESS", 999L, 999L);
-        insert("2026-09-03 00:00:00", 7L, "m", "INTERVIEW", "SYSTEM", "SUCCESS", 10L, 20L);
+    void isolatesPersonalKeysAndUsesExclusiveShanghaiBoundary() {
+        insert("2026-09-02 23:59:59", 7L, "m", "INTERVIEW", "PERSONAL", "SUCCESS", 999L, 999L);
+        insert("2026-09-03 00:00:00", 7L, "m", "INTERVIEW", "PERSONAL", "SUCCESS", 10L, 20L);
         insert("2026-09-09 23:59:59", 7L, "m", "INTERVIEW", "PERSONAL", "SUCCESS", 30L, 40L);
-        insert("2026-09-10 00:00:00", 7L, "m", "INTERVIEW", "SYSTEM", "SUCCESS", 999L, 999L);
-        insert("2026-09-08 12:00:00", 8L, "secret", "RESUME", "SYSTEM", "SUCCESS", 999L, 999L);
-        insert("2026-09-08 12:00:00", null, "orphan", "OTHER", "SYSTEM", "SUCCESS", 999L, 999L);
+        insert("2026-09-10 00:00:00", 7L, "m", "INTERVIEW", "PERSONAL", "SUCCESS", 999L, 999L);
+        insert("2026-09-08 12:00:00", 8L, "secret", "RESUME", "PERSONAL", "SUCCESS", 999L, 999L);
+        insert("2026-09-08 12:00:00", null, "orphan", "OTHER", "PERSONAL", "SUCCESS", 999L, 999L);
+
+        insert("2026-09-08 12:00:00", 7L, "system-only", "OTHER", "SYSTEM", "FAILED", 9000L, null);
 
         var response = service.personal(7L, 7, null, null);
         assertThat(response.timezone()).isEqualTo("Asia/Shanghai");
@@ -74,12 +76,23 @@ class TokenUsageServiceTest {
 
     @Test
     void aggregatesKnownComponentsAndUnknownFailedCallsWithoutLosingLongValues() {
-        insert("2026-09-09 01:00:00", 7L, "m", "INTERVIEW", "SYSTEM", "SUCCESS", 4_000_000_000L, 3L);
-        insert("2026-09-09 02:00:00", 7L, "m", "INTERVIEW", "SYSTEM", "FAILED", 8L, null);
-        insert("2026-09-09 03:00:00", 7L, "m", "INTERVIEW", "SYSTEM", "FAILED", null, 9L);
-        insert("2026-09-09 04:00:00", 7L, "m", "INTERVIEW", "SYSTEM", "SUCCESS", null, null);
+        insert("2026-09-09 01:00:00", 7L, "m", "INTERVIEW", "PERSONAL", "SUCCESS", 4_000_000_000L, 3L);
+        insert("2026-09-09 02:00:00", 7L, "m", "INTERVIEW", "PERSONAL", "FAILED", 8L, null);
+        insert("2026-09-09 03:00:00", 7L, "m", "INTERVIEW", "PERSONAL", "FAILED", null, 9L);
+        insert("2026-09-09 04:00:00", 7L, "m", "INTERVIEW", "PERSONAL", "SUCCESS", null, null);
         assertThat(service.personal(7L, 7, null, null).summary())
                 .isEqualTo(new TokenUsageResponse.Metrics(4, 4_000_000_008L, 12, 4_000_000_020L, 3, 2));
+    }
+
+    @Test
+    void userWithOnlySystemCallsGetsAnEmptyPersonalReport() {
+        insert("2026-09-09 01:00:00", 7L, "system-model", "INTERVIEW", "SYSTEM", "SUCCESS", 10L, 20L);
+        var response = service.personal(7L, 7, null, null);
+        assertThat(response.summary()).isEqualTo(TokenUsageResponse.Metrics.ZERO);
+        assertThat(response.daily()).allSatisfy(day -> assertThat(day.totalTokens()).isZero());
+        assertThat(response.models()).isEmpty();
+        assertThat(response.features()).isEmpty();
+        assertThat(response.users()).isEmpty();
     }
 
     @Test

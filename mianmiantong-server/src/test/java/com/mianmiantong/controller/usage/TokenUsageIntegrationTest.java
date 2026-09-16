@@ -72,23 +72,27 @@ class TokenUsageIntegrationTest {
     }
 
     @Test
-    void signedUserTokenReturnsOnlyOwnedUsageThroughRealDatabaseAndController() throws Exception {
+    void signedUserTokenReturnsOnlyOwnedPersonalKeysThroughRealDatabaseAndController() throws Exception {
         mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 0)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.timezone").value("Asia/Shanghai"))
                 .andExpect(jsonPath("$.data.startDate").value(today.minusDays(6).toString()))
                 .andExpect(jsonPath("$.data.endDate").value(today.plusDays(1).toString()))
-                .andExpect(jsonPath("$.data.summary.calls").value(2))
-                .andExpect(jsonPath("$.data.summary.inputTokens").value(50))
-                .andExpect(jsonPath("$.data.summary.outputTokens").value(20))
-                .andExpect(jsonPath("$.data.summary.totalTokens").value(70))
+                .andExpect(jsonPath("$.data.summary.calls").value(1))
+                .andExpect(jsonPath("$.data.summary.inputTokens").value(40))
+                .andExpect(jsonPath("$.data.summary.outputTokens").value(0))
+                .andExpect(jsonPath("$.data.summary.totalTokens").value(40))
                 .andExpect(jsonPath("$.data.summary.unknownCalls").value(1))
                 .andExpect(jsonPath("$.data.summary.failedCalls").value(1))
                 .andExpect(jsonPath("$.data.daily.length()").value(7))
-                .andExpect(jsonPath("$.data.daily[6].totalTokens").value(70))
+                .andExpect(jsonPath("$.data.daily[6].totalTokens").value(40))
                 .andExpect(jsonPath("$.data.models[0].key").value(model))
                 .andExpect(jsonPath("$.data.users").isEmpty());
+
+        mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 0))
+                        .param("keySource", "SYSTEM"))
+                .andExpect(status().isBadRequest());
 
         mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 0))
                         .param("userId", String.valueOf(otherId)))
@@ -131,7 +135,7 @@ class TokenUsageIntegrationTest {
         }
         mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 1)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.summary.totalTokens").value(70))
+                .andExpect(jsonPath("$.data.summary.totalTokens").value(40))
                 .andExpect(jsonPath("$.data.users").isEmpty());
         mvc.perform(get("/api/user/token-usage").header("Authorization", bearer(ownerId, 1))
                         .param("userId", String.valueOf(otherId)))
