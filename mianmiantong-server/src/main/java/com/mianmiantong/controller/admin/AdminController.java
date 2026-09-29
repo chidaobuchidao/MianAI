@@ -215,16 +215,11 @@ public class AdminController {
     public Result<?> deleteUser(@RequestBody Map<String, Object> body) {
         requireAdmin();
         Long userId = Long.valueOf(body.get("userId").toString());
-        if (userId == 1L || userId == getUser().getId()) {
+        if (userId == 1L || userId.equals(JwtAuthFilter.getCurrentUserId())) {
             throw new IllegalArgumentException("不能删除自己的账号");
         }
         userMapper.deleteById(userId);
         return Result.ok(Map.of("message", "已删除"));
-    }
-
-    private User getUser() {
-        Long userId = JwtAuthFilter.getCurrentUserId();
-        return userId != null ? userMapper.selectById(userId) : null;
     }
 
     /** Clear all test interview sessions */

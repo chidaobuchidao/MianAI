@@ -238,6 +238,15 @@ class AdminControllerIntegrationTest {
     }
 
     @Test
+    void administratorsCannotDeleteThemselves() throws Exception {
+        postJson("/api/admin/delete-user", "{\"userId\":" + adminId + "}")
+                .andExpect(status().isBadRequest());
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_user WHERE id = ?", Long.class, adminId))
+                .isEqualTo(1L);
+    }
+
+    @Test
     void theInitialAdministratorCannotBeDeleted() throws Exception {
         postJson("/api/admin/delete-user", "{\"userId\":1}")
                 .andExpect(status().isBadRequest());
