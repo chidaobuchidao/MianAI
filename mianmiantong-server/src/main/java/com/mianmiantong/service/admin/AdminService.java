@@ -29,6 +29,9 @@ public class AdminService {
     /** 初始管理员账号，任何人都不能删除。 */
     private static final long INITIAL_ADMIN_ID = 1L;
 
+    /** 单页上限，与 {@code PageQuery} 一致。用户列表每行还要补查最多三次，页越大放大越多。 */
+    private static final int MAX_PAGE_SIZE = 100;
+
     private static final int ROLE_USER = 0;
     private static final int ROLE_ADMIN = 1;
     private static final int FLAG_OFF = 0;
@@ -68,9 +71,10 @@ public class AdminService {
      * <p>逐行刷新过期的每日用量（会写库），与配额接口看到的已用次数保持一致。
      */
     public PageResponse<AdminUserRow> listUsers(int page, int pageSize, String keyword) {
+        String limit = limitClause(page, pageSize);
         long total = userMapper.selectCount(userFilter(keyword));
         List<User> users = userMapper.selectList(
-            userFilter(keyword).orderByDesc(User::getId).last(limitClause(page, pageSize)));
+            userFilter(keyword).orderByDesc(User::getId).last(limit));
 
         List<AdminUserRow> rows = new ArrayList<>(users.size());
         for (User user : users) {
@@ -82,9 +86,10 @@ public class AdminService {
 
     /** 面试会话列表，按 id 倒序分页，可按岗位模糊搜索。 */
     public PageResponse<AdminSessionRow> listSessions(int page, int pageSize, String keyword) {
+        String limit = limitClause(page, pageSize);
         long total = sessionMapper.selectCount(sessionFilter(keyword));
         List<InterviewSession> sessions = sessionMapper.selectList(
-            sessionFilter(keyword).orderByDesc(InterviewSession::getId).last(limitClause(page, pageSize)));
+            sessionFilter(keyword).orderByDesc(InterviewSession::getId).last(limit));
 
         List<AdminSessionRow> rows = new ArrayList<>(sessions.size());
         for (InterviewSession session : sessions) {
@@ -181,8 +186,16 @@ public class AdminService {
         return user;
     }
 
+    /** 校验分页参数后生成 LIMIT 子句。offset 按 long 计算，大页码不会溢出成负数。 */
     private static String limitClause(int page, int pageSize) {
-        return "LIMIT " + ((page - 1) * pageSize) + "," + pageSize;
+        if (page < 1) {
+            throw new IllegalArgumentException("page必须大于0");
+        }
+        if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("pageSize必须在1到" + MAX_PAGE_SIZE + "之间");
+        }
+        long offset = (long) (page - 1) * pageSize;
+        return "LIMIT " + offset + "," + pageSize;
     }
 
     /**

@@ -159,6 +159,30 @@ class AdminControllerIntegrationTest {
     }
 
     @Test
+    void invalidPagingIsRejected() throws Exception {
+        mvc.perform(get("/api/admin/users").param("page", "abc").header("Authorization", adminToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("page 参数格式不正确"));
+        mvc.perform(get("/api/admin/users").param("page", "0").header("Authorization", adminToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("page必须大于0"));
+        mvc.perform(get("/api/admin/users").param("pageSize", "0").header("Authorization", adminToken()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/admin/sessions").param("pageSize", "101").header("Authorization", adminToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("pageSize必须在1到100之间"));
+    }
+
+    @Test
+    void hugePageNumberDoesNotOverflowTheOffset() throws Exception {
+        mvc.perform(get("/api/admin/users").param("keyword", tag).param("page", String.valueOf(Integer.MAX_VALUE))
+                        .param("pageSize", "100").header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(3))
+                .andExpect(jsonPath("$.data.list").isEmpty());
+    }
+
+    @Test
     void sessionListingNamesUsersAndReportsStatus() throws Exception {
         mvc.perform(get("/api/admin/sessions").param("keyword", tag).header("Authorization", adminToken()))
                 .andExpect(status().isOk())

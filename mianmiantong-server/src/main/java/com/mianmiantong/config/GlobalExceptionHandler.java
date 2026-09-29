@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,6 +39,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<?> handleUnreadableBody(HttpMessageNotReadableException ex) {
         return Result.fail(400, "请求体格式不正确");
+    }
+
+    /** 查询参数或路径变量类型不符，例如 page=abc。 */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return Result.fail(400, ex.getName() + " 参数格式不正确");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
