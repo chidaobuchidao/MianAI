@@ -20,9 +20,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserProfileService {
 
-    /** 未在用户记录上显式设置时的每日免费调用次数。 */
-    static final int DEFAULT_DAILY_QUOTA = 10;
-
     /** 已完成的面试会话状态值。 */
     private static final int SESSION_STATUS_COMPLETED = 1;
 
@@ -78,7 +75,7 @@ public class UserProfileService {
 
         if (userId == null) {
             return new QuotaView(hasApiKey, isAdmin, hasApiKey || isAdmin,
-                DEFAULT_DAILY_QUOTA, 0, DEFAULT_DAILY_QUOTA);
+                QuotaService.DEFAULT_DAILY_QUOTA, 0, QuotaService.DEFAULT_DAILY_QUOTA);
         }
 
         User user = userMapper.selectById(userId);
@@ -93,7 +90,7 @@ public class UserProfileService {
             quotaUsed = info.quotaUsed();
             quotaRemaining = info.quotaRemaining();
         } else {
-            dailyQuota = valueOrDefault(user == null ? null : user.getDailyQuota(), DEFAULT_DAILY_QUOTA);
+            dailyQuota = valueOrDefault(user == null ? null : user.getDailyQuota(), QuotaService.DEFAULT_DAILY_QUOTA);
             quotaUsed = valueOrDefault(user == null ? null : user.getQuotaUsed(), 0);
             quotaRemaining = Math.max(0, dailyQuota - quotaUsed);
         }

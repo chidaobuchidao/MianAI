@@ -19,6 +19,12 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class QuotaService {
 
+    /**
+     * 用户记录未设置 daily_quota 时的每日免费调用次数。
+     * {@code UserMapper#incrementQuota} 的 SQL 里 COALESCE(daily_quota, 10) 需与此保持一致。
+     */
+    public static final int DEFAULT_DAILY_QUOTA = 10;
+
     private final UserMapper userMapper;
     private final UserAiConfigService userAiConfigService;
 
@@ -121,7 +127,7 @@ public class QuotaService {
     }
 
     private int dailyQuota(User user) {
-        return user.getDailyQuota() != null ? user.getDailyQuota() : 10;
+        return user.getDailyQuota() != null ? user.getDailyQuota() : DEFAULT_DAILY_QUOTA;
     }
 
     private int quotaUsed(User user) {

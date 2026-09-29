@@ -136,9 +136,9 @@ class UserProfileServiceTest {
 
             UserProfileService.QuotaView view = service.quotaView(USER_ID, false);
 
-            assertThat(view.dailyQuota()).isEqualTo(UserProfileService.DEFAULT_DAILY_QUOTA);
+            assertThat(view.dailyQuota()).isEqualTo(QuotaService.DEFAULT_DAILY_QUOTA);
             assertThat(view.quotaUsed()).isZero();
-            assertThat(view.quotaRemaining()).isEqualTo(UserProfileService.DEFAULT_DAILY_QUOTA);
+            assertThat(view.quotaRemaining()).isEqualTo(QuotaService.DEFAULT_DAILY_QUOTA);
         }
 
         @Test
@@ -157,7 +157,7 @@ class UserProfileServiceTest {
 
             UserProfileService.QuotaView view = service.quotaView(null, false);
 
-            assertThat(view.dailyQuota()).isEqualTo(UserProfileService.DEFAULT_DAILY_QUOTA);
+            assertThat(view.dailyQuota()).isEqualTo(QuotaService.DEFAULT_DAILY_QUOTA);
             assertThat(view.knowledgeBaseEnabled()).isFalse();
             verify(userMapper, never()).selectById(any());
         }
