@@ -1,5 +1,6 @@
 -- H2 schema for testing (MySQL compatibility mode)
--- Combined from V1-V13 migrations
+-- Combined from V1-V16 migrations. sys_user also carries the columns the User entity maps
+-- that no migration on main creates (username, password_hash, daily_quota, quota_used, quota_date).
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS sys_user (
@@ -7,11 +8,19 @@ CREATE TABLE IF NOT EXISTS sys_user (
     openid VARCHAR(64) NOT NULL UNIQUE,
     nickname VARCHAR(50),
     avatar_url VARCHAR(255),
+    username VARCHAR(64),
+    password_hash VARCHAR(120),
     role TINYINT DEFAULT 0,
+    daily_quota INT DEFAULT 10,
+    quota_used INT DEFAULT 0,
+    quota_date DATE,
     knowledge_base_enabled TINYINT DEFAULT 0,
+    email VARCHAR(128),
+    email_verified TINYINT DEFAULT 0,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email ON sys_user (email);
 
 -- 题目分类表
 CREATE TABLE IF NOT EXISTS question_category (
