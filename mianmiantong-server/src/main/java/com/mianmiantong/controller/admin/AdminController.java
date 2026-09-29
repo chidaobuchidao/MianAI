@@ -1,8 +1,10 @@
 package com.mianmiantong.controller.admin;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.entity.Announcement;
+import com.mianmiantong.entity.interview.InterviewSession;
 import com.mianmiantong.entity.user.User;
 import com.mianmiantong.mapper.interview.InterviewSessionMapper;
 import com.mianmiantong.mapper.user.UserMapper;
@@ -66,12 +68,8 @@ public class AdminController {
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(defaultValue = "") String keyword) {
         requireAdmin();
-        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>();
-        if (keyword != null && !keyword.isBlank()) {
-            qw.and(w -> w.like(User::getNickname, keyword).or().like(User::getUsername, keyword));
-        }
-        qw.orderByDesc(User::getId);
-        long total = userMapper.selectCount(qw);
+        long total = userMapper.selectCount(userFilter(keyword));
+        var qw = userFilter(keyword).orderByDesc(User::getId);
         qw.last("LIMIT " + ((page - 1) * pageSize) + "," + pageSize);
         List<User> users = userMapper.selectList(qw);
 
@@ -110,13 +108,8 @@ public class AdminController {
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(defaultValue = "") String keyword) {
         requireAdmin();
-        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<
-            com.mianmiantong.entity.interview.InterviewSession>();
-        if (keyword != null && !keyword.isBlank()) {
-            qw.like(com.mianmiantong.entity.interview.InterviewSession::getPosition, keyword);
-        }
-        qw.orderByDesc(com.mianmiantong.entity.interview.InterviewSession::getId);
-        long total = sessionMapper.selectCount(qw);
+        long total = sessionMapper.selectCount(sessionFilter(keyword));
+        var qw = sessionFilter(keyword).orderByDesc(InterviewSession::getId);
         qw.last("LIMIT " + ((page - 1) * pageSize) + "," + pageSize);
         var sessions = sessionMapper.selectList(qw);
 
@@ -139,6 +132,26 @@ public class AdminController {
         result.put("page", page);
         result.put("pageSize", pageSize);
         return Result.ok(result);
+    }
+
+    /**
+     * Filter conditions only, so the count can omit the page query's ORDER BY. Ordering a
+     * COUNT(*) is meaningless, and H2 rejects it as a non-aggregated column in an aggregate query.
+     */
+    private static LambdaQueryWrapper<User> userFilter(String keyword) {
+        var qw = new LambdaQueryWrapper<User>();
+        if (keyword != null && !keyword.isBlank()) {
+            qw.and(w -> w.like(User::getNickname, keyword).or().like(User::getUsername, keyword));
+        }
+        return qw;
+    }
+
+    private static LambdaQueryWrapper<InterviewSession> sessionFilter(String keyword) {
+        var qw = new LambdaQueryWrapper<InterviewSession>();
+        if (keyword != null && !keyword.isBlank()) {
+            qw.like(InterviewSession::getPosition, keyword);
+        }
+        return qw;
     }
 
     /** Set user remaining free quota (admin sets remaining, we compute quotaUsed) */
