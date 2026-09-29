@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mianmiantong.common.ForbiddenException;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.config.JwtAuthFilter;
+import com.mianmiantong.dto.admin.SetLimitRequest;
+import com.mianmiantong.dto.admin.SetQuotaRequest;
+import com.mianmiantong.dto.admin.TargetUserRequest;
 import com.mianmiantong.entity.Announcement;
 import com.mianmiantong.entity.interview.InterviewSession;
 import com.mianmiantong.entity.user.User;
@@ -12,6 +15,7 @@ import com.mianmiantong.mapper.user.UserMapper;
 import com.mianmiantong.mapper.user.UserAiConfigMapper;
 import com.mianmiantong.service.announcement.AnnouncementService;
 import com.mianmiantong.service.user.QuotaService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -157,10 +161,10 @@ public class AdminController {
 
     /** Set user remaining free quota (admin sets remaining, we compute quotaUsed) */
     @PostMapping("/set-quota")
-    public Result<?> setQuota(@RequestBody Map<String, Object> body) {
+    public Result<?> setQuota(@Valid @RequestBody SetQuotaRequest request) {
         requireAdmin();
-        Long userId = Long.valueOf(body.get("userId").toString());
-        int remaining = Integer.parseInt(body.get("remaining").toString());
+        Long userId = request.userId();
+        int remaining = request.remaining();
         var user = userMapper.selectById(userId);
         if (user == null) throw new IllegalArgumentException("用户不存在");
         int daily = user.getDailyQuota() != null ? user.getDailyQuota() : 10;
@@ -172,10 +176,10 @@ public class AdminController {
 
     /** Set daily quota limit */
     @PostMapping("/set-limit")
-    public Result<?> setLimit(@RequestBody Map<String, Object> body) {
+    public Result<?> setLimit(@Valid @RequestBody SetLimitRequest request) {
         requireAdmin();
-        Long userId = Long.valueOf(body.get("userId").toString());
-        int limit = Integer.parseInt(body.get("limit").toString());
+        Long userId = request.userId();
+        int limit = request.limit();
         var user = userMapper.selectById(userId);
         if (user == null) throw new IllegalArgumentException("用户不存在");
         quotaService.refreshDailyQuota(user);
@@ -186,9 +190,9 @@ public class AdminController {
 
     /** Toggle user admin role */
     @PostMapping("/toggle-admin")
-    public Result<?> toggleAdmin(@RequestBody Map<String, Object> body) {
+    public Result<?> toggleAdmin(@Valid @RequestBody TargetUserRequest request) {
         requireAdmin();
-        Long userId = Long.valueOf(body.get("userId").toString());
+        Long userId = request.userId();
         var user = userMapper.selectById(userId);
         if (user == null) throw new IllegalArgumentException("用户不存在");
         boolean makeAdmin = user.getRole() == null || user.getRole() != 1;
@@ -199,9 +203,9 @@ public class AdminController {
 
     /** Toggle paper knowledge base access for users without their own API key */
     @PostMapping("/toggle-knowledge-base")
-    public Result<?> toggleKnowledgeBase(@RequestBody Map<String, Object> body) {
+    public Result<?> toggleKnowledgeBase(@Valid @RequestBody TargetUserRequest request) {
         requireAdmin();
-        Long userId = Long.valueOf(body.get("userId").toString());
+        Long userId = request.userId();
         var user = userMapper.selectById(userId);
         if (user == null) throw new IllegalArgumentException("用户不存在");
         boolean enabled = user.getKnowledgeBaseEnabled() == null || user.getKnowledgeBaseEnabled() != 1;
@@ -212,9 +216,9 @@ public class AdminController {
 
     /** Delete user */
     @PostMapping("/delete-user")
-    public Result<?> deleteUser(@RequestBody Map<String, Object> body) {
+    public Result<?> deleteUser(@Valid @RequestBody TargetUserRequest request) {
         requireAdmin();
-        Long userId = Long.valueOf(body.get("userId").toString());
+        Long userId = request.userId();
         if (userId == 1L || userId.equals(JwtAuthFilter.getCurrentUserId())) {
             throw new IllegalArgumentException("不能删除自己的账号");
         }

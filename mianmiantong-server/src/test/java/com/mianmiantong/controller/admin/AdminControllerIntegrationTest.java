@@ -207,6 +207,27 @@ class AdminControllerIntegrationTest {
     }
 
     @Test
+    void invalidRequestBodiesAreRejectedAndChangeNothing() throws Exception {
+        postJson("/api/admin/set-limit", "{\"limit\":5}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("userId不能为空"));
+        postJson("/api/admin/set-limit", "{\"userId\":" + aliceId + ",\"limit\":-1}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("limit不能为负数"));
+        postJson("/api/admin/set-quota", "{\"userId\":" + aliceId + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("remaining不能为空"));
+        postJson("/api/admin/toggle-admin", "{\"userId\":\"abc\"}")
+                .andExpect(status().isBadRequest());
+        postJson("/api/admin/delete-user", "")
+                .andExpect(status().isBadRequest());
+
+        assertThat(intColumn("daily_quota", aliceId)).isEqualTo(10);
+        assertThat(intColumn("quota_used", aliceId)).isEqualTo(3);
+        assertThat(intColumn("role", aliceId)).isZero();
+    }
+
+    @Test
     void toggleAdminFlipsTheRole() throws Exception {
         postJson("/api/admin/toggle-admin", "{\"userId\":" + bobId + "}")
                 .andExpect(status().isOk())

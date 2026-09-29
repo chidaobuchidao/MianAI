@@ -4,6 +4,7 @@ import com.mianmiantong.common.ForbiddenException;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.service.user.QuotaService.QuotaExhaustedException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,6 +31,13 @@ public class GlobalExceptionHandler {
     public Result<?> handleValidation(MethodArgumentNotValidException ex) {
         FieldError fieldError = ex.getBindingResult().getFieldErrors().get(0);
         return Result.fail(400, fieldError.getDefaultMessage());
+    }
+
+    /** 请求体缺失、JSON 语法错误或字段类型不符。不回显解析细节。 */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return Result.fail(400, "请求体格式不正确");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
