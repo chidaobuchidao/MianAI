@@ -1,5 +1,6 @@
 package com.mianmiantong.config;
 
+import com.mianmiantong.common.ForbiddenException;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.service.user.QuotaService.QuotaExhaustedException;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public Result<?> handleQuotaExhausted(QuotaExhaustedException ex) {
         return Result.fail(429, ex.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<?> handleForbidden(ForbiddenException ex) {
+        return Result.fail(403, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -252,9 +252,25 @@ class AdminControllerIntegrationTest {
         assertThat(count("interview_session")).isZero();
     }
 
+    @Test
+    void nonAdministratorsAreForbidden() throws Exception {
+        mvc.perform(get("/api/admin/status").header("Authorization", bearer(aliceId, 0)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.message").value("无管理员权限"));
+
+        postJsonAs(bearer(aliceId, 0), "/api/admin/toggle-admin", "{\"userId\":" + bobId + "}")
+                .andExpect(status().isForbidden());
+        assertThat(intColumn("role", bobId)).isZero();
+    }
+
     private ResultActions postJson(String path, String body) throws Exception {
+        return postJsonAs(adminToken(), path, body);
+    }
+
+    private ResultActions postJsonAs(String token, String path, String body) throws Exception {
         MockHttpServletRequestBuilder request = post(path)
-                .header("Authorization", adminToken())
+                .header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
         return mvc.perform(request);

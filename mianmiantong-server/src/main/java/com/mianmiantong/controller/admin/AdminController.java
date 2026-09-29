@@ -1,6 +1,7 @@
 package com.mianmiantong.controller.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.mianmiantong.common.ForbiddenException;
 import com.mianmiantong.common.Result;
 import com.mianmiantong.config.JwtAuthFilter;
 import com.mianmiantong.entity.Announcement;
@@ -44,7 +45,7 @@ public class AdminController {
     /** All admin endpoints require role=1 */
     private void requireAdmin() {
         if (!JwtAuthFilter.isAdmin()) {
-            throw new IllegalArgumentException("无管理员权限");
+            throw new ForbiddenException("无管理员权限");
         }
     }
 
